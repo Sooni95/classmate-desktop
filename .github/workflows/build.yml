@@ -1,0 +1,38 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build EXE
+        run: npm run dist
+
+      - name: Publish to "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: ClassMate 최신 빌드
+          body: |
+            자동 빌드된 Windows 버전입니다.
+            - **ClassMate-portable.exe** : 설치 없이 더블클릭 실행 (추천)
+            - **ClassMate-Setup.exe** : 설치 버전
+            ⚠ 서명 없는 베타라 Windows 경고가 뜨면 "추가 정보 → 실행"
+          files: |
+            dist/*.exe
