@@ -22,7 +22,9 @@ jobs:
         run: npm install
 
       - name: Build EXE
-        run: npm run dist
+        run: npm run dist -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to "latest" release
         uses: softprops/action-gh-release@v2
