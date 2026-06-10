@@ -9,7 +9,7 @@ let ignoring = true;
 function setIgnore(v){ if(ignoring!==v){ ignoring=v; window.cm.setIgnore(v); } }
 document.addEventListener('mousemove', e => {
   // 전체 입력이 필요한 모드(주석/돋보기/캡처)에서는 항상 잡는다
-  if (drawMode || lensOn || snipOn) { setIgnore(false); trackPtr(e); return; }
+  if (drawMode || lensOn || snipOn || PS.spot>0) { setIgnore(false); trackPtr(e); return; }
   const el = document.elementFromPoint(e.clientX, e.clientY);
   setIgnore(!(el && el.closest('.iv')));
   trackPtr(e);
@@ -100,6 +100,12 @@ $('tStart').addEventListener('click',function(){
 $('tReset').addEventListener('click',()=>{stopT();tLeft=tTotal;rT();});
 rT();
 $('tfClose').addEventListener('click',e=>{e.stopPropagation();$('tFloat').classList.remove('on');});
+$('tfPause').addEventListener('click',e=>{e.stopPropagation();$('tStart').click();$('tfPause').textContent=tRun?'⏸':'▶';});
+$('tfReset').addEventListener('click',e=>{e.stopPropagation();$('tReset').click();$('tfPause').textContent='▶';});
+let tfSize=34;
+function setTfSize(d){tfSize=Math.min(72,Math.max(22,tfSize+d));$('tfTime').style.fontSize=tfSize+'px';}
+$('tfSm').addEventListener('click',e=>{e.stopPropagation();setTfSize(-8);});
+$('tfLg').addEventListener('click',e=>{e.stopPropagation();setTfSize(8);});
 makeDrag($('tFloat'),(e,s)=>{
   if(!s){const r=$('tFloat').getBoundingClientRect();$('tFloat').style.right='auto';return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   $('tFloat').style.left=(e.clientX-s.dx)+'px';$('tFloat').style.top=(e.clientY-s.dy)+'px';
@@ -283,7 +289,7 @@ function renderPtr(){
 function trackPtr(e){
   hx=e.clientX;hy=e.clientY;
   if(!(PS.ring||PS.spot>0)&&!lensOn)return;
-  if(!ptrRAF)ptrRAF=requestAnimationFrame(()=>{ptrRAF=0;renderPtr();});
+  if(!ptrRAF)ptrRAF=requestAnimationFrame(()=>{ptrRAF=0;renderPtr();if(lensOn)renderLens();});
 }
 document.addEventListener('pointerdown',e=>{
   if(!PS.ring)return;
@@ -294,53 +300,46 @@ document.addEventListener('pointerdown',e=>{
 $('mRing').addEventListener('click',()=>{PS.ring=!PS.ring;syncPtr();});
 $('mSpotC').addEventListener('click',()=>{PS.spot=PS.spot===1?0:1;syncPtr();});
 $('mSpotR').addEventListener('click',()=>{PS.spot=PS.spot===2?0:2;syncPtr();});
-$('pSize').addEventListener('input',e=>{PS.size=+e.target.value;renderPtr();});
+$('pSize').addEventListener('input',e=>{PS.size=+e.target.value;renderPtr();if(lensOn)renderLens();});
+// 휠 조절: 스팟 켜짐 → 크기 / 렌즈 켜짐 → 배율 (입력 캡처 상태에서만 수신됨)
+document.addEventListener('wheel',e=>{
+  if(lensOn){e.preventDefault();lz=Math.min(6,Math.max(1.3,lz+(e.deltaY<0?0.3:-0.3)));renderLens();}
+  else if(PS.spot>0){e.preventDefault();PS.size=Math.min(600,Math.max(80,PS.size+(e.deltaY<0?20:-20)));$('pSize').value=PS.size;renderPtr();}
+},{passive:false});
 
-/* ===== 돋보기: 실제 화면 정지 + 확대 (ZoomIt 방식) ===== */
-let lensOn=false,lz=2,lensImgW=0,lensImgH=0,lox=0,loy=0,dragging=false,dlx,dly,lensB=null;
-const lensWrap=$('lensWrap'),lensImg=$('lensImg');
-async function toggleLens(force){
-  const on=force!==undefined?force:!lensOn;
-  if(on===lensOn)return;
-  if(on){
+/* ===== 부분 렌즈: 마우스 주변만 확대 (스냅샷 기반) ===== */
+let lensOn=false,lensShape=0,lz=2,lensImgW=0,lensImgH=0,lensB=null; // lensShape: 0끄기 1원 2사각
+const lens2=$('lens2'),lensImg=$('lensImg'),lensTip=$('lensTip');
+async function setLens(shape){ // 0/1/2
+  if(shape>0&&lensShape===0){ // 새로 켤 때 스냅샷
     const res=await window.cm.captureScreen();
     if(!res)return;
-    lensB=res.bounds;
-    lensImg.src=res.dataURL;
+    lensB=res.bounds;lensImg.src=res.dataURL;
     await new Promise(r=>{lensImg.onload=r;});
     lensImgW=lensImg.naturalWidth;lensImgH=lensImg.naturalHeight;
-    lz=2;centerLensAt(hx,hy);
-    lensOn=true;lensWrap.classList.add('on');setIgnore(false);
-  }else{
-    lensOn=false;lensWrap.classList.remove('on');
+    lz=2;
   }
+  lensShape=shape;lensOn=shape>0;
+  lens2.className=(shape===2?'rect':'circle')+(lensOn?' on':'');
+  lensTip.classList.toggle('on',lensOn);
   $('mLens').classList.toggle('on',lensOn);
+  if(lensOn)renderLens();
 }
-function centerLensAt(cx,cy){applyLens(cx,cy);}
-function applyLens(cx,cy){
-  // 캡처된 모니터(lensB) 기준: 화면좌표 cx,cy를 이미지 좌표로 변환해 중심 배치
-  const b=lensB||{x:0,y:0,w:innerWidth,h:innerHeight};
-  const sc=b.w/lensImgW;        // 이미지→화면 기본 비율
-  const z=sc*lz;
-  const ix=(cx-b.x)*(lensImgW/b.w), iy=(cy-b.y)*(lensImgH/b.h);
-  lox=b.x+b.w/2 - ix*z;
-  loy=b.y+b.h/2 - iy*z;
-  lensImg.style.transform=`translate(${lox}px,${loy}px) scale(${z})`;
+function cycleLens(){setLens((lensShape+1)%3);}
+function renderLens(){
+  if(!lensOn||!lensB)return;
+  const S=Math.max(180,PS.size*1.4);            // 렌즈 박스 크기 (스팟 크기 슬라이더 연동)
+  const H=lensShape===2?S*0.62:S;
+  lens2.style.left=(hx-S/2)+'px';lens2.style.top=(hy-H/2)+'px';
+  lens2.style.width=S+'px';lens2.style.height=H+'px';
+  // 커서 아래 지점이 박스 중앙에 z배로 보이도록
+  const imgScale=lensB.w/lensImgW;              // 이미지→화면 비
+  const sc=imgScale*lz;
+  const tx=S/2-(hx-lensB.x)*lz;
+  const ty=H/2-(hy-lensB.y)*lz;
+  lensImg.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
 }
-lensWrap.addEventListener('wheel',e=>{
-  e.preventDefault();
-  lz=Math.min(6,Math.max(1,lz+(e.deltaY<0?0.3:-0.3)));
-  applyLens(hx,hy);
-},{passive:false});
-lensWrap.addEventListener('pointerdown',e=>{dragging=true;dlx=e.clientX;dly=e.clientY;lensWrap.setPointerCapture(e.pointerId);});
-lensWrap.addEventListener('pointermove',e=>{
-  if(!dragging)return;
-  lox+=e.clientX-dlx;loy+=e.clientY-dly;dlx=e.clientX;dly=e.clientY;
-  const b=lensB||{w:innerWidth};
-  lensImg.style.transform=`translate(${lox}px,${loy}px) scale(${(b.w/lensImgW)*lz})`;
-});
-lensWrap.addEventListener('pointerup',()=>dragging=false);
-$('mLens').addEventListener('click',()=>toggleLens());
+$('mLens').addEventListener('click',cycleLens);
 
 /* ===== 주석 ===== */
 const dc=$('dc'),ctx=dc.getContext('2d');
@@ -369,7 +368,7 @@ function undo(){if(undoStack.length)ctx.putImageData(undoStack.pop(),0,0);}
 $('undoBtn').addEventListener('click',undo);
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
-  if(e.key==='Escape'){if(snipOn)endSnip();else if(lensOn)toggleLens(false);else allOff();}
+  if(e.key==='Escape'){if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();}
 });
 dc.addEventListener('pointerdown',e=>{
   if(!drawMode)return;saveSt();drawing=true;[lastX,lastY]=[e.clientX,e.clientY];dc.setPointerCapture(e.pointerId);
@@ -388,13 +387,50 @@ dc.addEventListener('pointermove',e=>{
 const endD=()=>{drawing=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';};
 dc.addEventListener('pointerup',endD);dc.addEventListener('pointercancel',endD);
 
+/* ===== 소음 측정 (마이크) ===== */
+let nStream=null,nCtx=null,nAn=null,nRAF=0,nOver=0,nLastBeep=0;
+$('nTh').addEventListener('input',e=>$('nThV').textContent=e.target.value);
+$('nStart').addEventListener('click',async()=>{
+  if(nStream)return;
+  try{
+    nStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    nCtx=new AudioContext();
+    const srcN=nCtx.createMediaStreamSource(nStream);
+    nAn=nCtx.createAnalyser();nAn.fftSize=512;srcN.connect(nAn);
+    const buf=new Uint8Array(nAn.fftSize);
+    const loop=()=>{
+      if(!nAn)return;
+      nAn.getByteTimeDomainData(buf);
+      let sum=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;sum+=v*v;}
+      const rms=Math.sqrt(sum/buf.length);
+      const lvl=Math.min(100,Math.round(rms*300)); // 체감 스케일
+      $('nFill').style.width=lvl+'%';
+      $('nVal').textContent='현재 '+lvl+' / 기준 '+$('nTh').value;
+      const th=+$('nTh').value;
+      if(lvl>th){nOver++;}else{nOver=Math.max(0,nOver-2);}
+      const alert=nOver>20; // 약 0.7초 이상 지속 초과 시
+      $('noiseAlert').classList.toggle('on',alert);
+      if(alert&&Date.now()-nLastBeep>3000){beep();nLastBeep=Date.now();}
+      nRAF=requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){$('nVal').textContent='마이크 권한이 거부되었습니다';}
+});
+$('nStop').addEventListener('click',()=>{
+  cancelAnimationFrame(nRAF);
+  if(nStream){nStream.getTracks().forEach(t=>t.stop());nStream=null;}
+  if(nCtx){nCtx.close();nCtx=null;}nAn=null;nOver=0;
+  $('nFill').style.width='0%';$('nVal').textContent='대기 중';
+  $('noiseAlert').classList.remove('on');
+});
+
 /* ===== 전체 끄기 & 전역 단축키 수신 ===== */
-function allOff(){PS.ring=false;PS.spot=0;syncPtr();toggleDraw(false);if(lensOn)toggleLens(false);if(snipOn)endSnip();}
+function allOff(){PS.ring=false;PS.spot=0;syncPtr();toggleDraw(false);if(lensOn)setLens(0);if(snipOn)endSnip();$('nStop').click();}
 window.cm.onHotkey(ch=>{
   switch(ch){
     case 'hk-ring': PS.ring=!PS.ring;syncPtr();break;
     case 'hk-spot': PS.spot=(PS.spot+1)%3;syncPtr();break;
-    case 'hk-lens': toggleLens();break;
+    case 'hk-lens': cycleLens();break;
     case 'hk-draw': toggleDraw();break;
     case 'hk-snip': startSnip();break;
     case 'hk-dock': dock.classList.contains('hide')?expandDock():collapseDock();break;

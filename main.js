@@ -20,13 +20,25 @@ function createOverlay() {
   win = new BrowserWindow({
     ...ub,
     transparent: true, frame: false, alwaysOnTop: true,
-    skipTaskbar: true, resizable: false, hasShadow: false,
+    skipTaskbar: true, resizable: true, hasShadow: false,  // resizable:false면 생성 크기가 주모니터로 클램핑되는 경우가 있어 true로 생성
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false,
     },
   });
+  // ★ 멀티모니터 스팬 강제: 생성 직후 한 번 더 명시적으로 배치
+  win.setBounds(ub);
+  win.setResizable(false);
   win.setAlwaysOnTop(true, 'screen-saver');
+  // 모니터 연결/해제/배치변경 시 자동 재스팬
+  const respan = () => {
+    const u = unionBounds(); origin = { x: u.x, y: u.y };
+    win.setResizable(true); win.setBounds(u); win.setResizable(false);
+    win.webContents.send('bounds-changed');
+  };
+  screen.on('display-added', respan);
+  screen.on('display-removed', respan);
+  screen.on('display-metrics-changed', respan);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.setIgnoreMouseEvents(true, { forward: true });
 
@@ -43,7 +55,11 @@ function createOverlay() {
       thumbnailSize: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor },
     });
     win.setOpacity(1);
-    const src = sources.find(s => s.display_id == String(d.id)) || sources[0];
+    let src = sources.find(s => s.display_id == String(d.id));
+    if (!src) { // Windows에서 display_id가 비는 경우: 디스플레이 순서로 폴백
+      const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
+      src = sources[idx] || sources[0];
+    }
     if (!src) return null;
     return {
       dataURL: src.thumbnail.toDataURL(),
@@ -78,6 +94,8 @@ if (!gotLock) { app.quit(); }
 else {
   app.on('second-instance', () => { if (win) win.webContents.send('hk-dock'); });
   app.whenReady().then(() => {
+    const { session } = require('electron');
+    session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'media'));
     createOverlay();
     registerShortcuts();
     try {
