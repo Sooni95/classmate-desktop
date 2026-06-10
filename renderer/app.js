@@ -69,12 +69,23 @@ makeDrag($('brand'),(e,start)=>{
   placePanels();
 });
 $('quitBtn').addEventListener('click',()=>window.cm.quit());
+let toastT;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1800);}
+// 접어두기: 독 → pill
+function collapseDock(){dock.classList.add('hide');$('pill').classList.add('on');Object.values(panels).forEach(p=>p.classList.remove('on'));openPanel=null;}
+function expandDock(){dock.classList.remove('hide');$('pill').classList.remove('on');}
+$('collapseBtn').addEventListener('click',collapseDock);
+$('pill').addEventListener('click',expandDock);
 
 /* ===== 타이머 ===== */
 let tTotal=300,tLeft=300,tInt=null,tRun=false;
 const tDisp=$('tDisp');
 const fmtT=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-function rT(){tDisp.textContent=fmtT(tLeft);tDisp.className='tdisp'+(tLeft===0?' done':(tLeft<=10?' warn':''));}
+function rT(){
+  const cls=(tLeft===0?' done':(tLeft<=10?' warn':''));
+  tDisp.textContent=fmtT(tLeft);tDisp.className='tdisp'+cls;
+  const tf=$('tfTime');tf.textContent=fmtT(tLeft);tf.className='tf'+cls;
+}
 function stopT(){clearInterval(tInt);tInt=null;tRun=false;$('tStart').textContent='시작';}
 function beep(){try{const ac=new AudioContext();[0,.2,.4].forEach(d=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;o.start(ac.currentTime+d);g.gain.setValueAtTime(.15,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d+.18);o.stop(ac.currentTime+d+.2);});}catch(e){}}
 document.querySelectorAll('.presets button').forEach(b=>b.addEventListener('click',()=>{tTotal=tLeft=+b.dataset.m*60;stopT();rT();}));
@@ -83,10 +94,16 @@ $('tStart').addEventListener('click',function(){
   if(tRun){stopT();return;}
   if(tLeft<=0)tLeft=tTotal;
   tRun=true;this.textContent='일시정지';
+  $('tFloat').classList.add('on');   // ★ 분리 플로팅 타이머 표시
   tInt=setInterval(()=>{tLeft--;rT();if(tLeft<=0){stopT();beep();}},1000);
 });
 $('tReset').addEventListener('click',()=>{stopT();tLeft=tTotal;rT();});
 rT();
+$('tfClose').addEventListener('click',e=>{e.stopPropagation();$('tFloat').classList.remove('on');});
+makeDrag($('tFloat'),(e,s)=>{
+  if(!s){const r=$('tFloat').getBoundingClientRect();$('tFloat').style.right='auto';return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  $('tFloat').style.left=(e.clientX-s.dx)+'px';$('tFloat').style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.tagName==='BUTTON');
 
 /* ===== 발표자 ===== */
 let pool=[],orig=[],pHist=[],nHist=[];
@@ -136,29 +153,51 @@ $('memoBtn').addEventListener('click',()=>{
   mCnt++;const m=document.createElement('div');m.className='memo iv';
   const c=MCOLS[mCnt%4];
   m.style.cssText=`left:${130+Math.random()*200}px;top:${110+Math.random()*160}px;`;
-  m.innerHTML=`<div class="mbar" style="background:${c}cc"><span></span><div><button class="mbtn2">─</button><button class="mbtn2">×</button></div></div><textarea placeholder="메모…" style="background:${c}"></textarea>`;
+  m.innerHTML=`<div class="mbar" style="background:${c}cc">
+    <span style="display:flex;align-items:center;gap:4px">
+      <button class="fbtn" data-f="-1">A-</button><button class="fbtn" data-f="1">A+</button>
+      <input type="range" min="35" max="100" value="100" title="투명도">
+    </span>
+    <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
+  </div><textarea placeholder="메모…" style="background:${c};font-size:14px"></textarea><div class="rs2"></div>`;
   document.body.appendChild(m);
+  const ta=m.querySelector('textarea');
   const [minB,xB]=m.querySelectorAll('.mbtn2');
   xB.addEventListener('click',()=>m.remove());
   minB.addEventListener('click',()=>{m.classList.toggle('min');minB.textContent=m.classList.contains('min')?'▢':'─';});
+  // 글자 크기 (10~36px)
+  m.querySelectorAll('.fbtn').forEach(b=>b.addEventListener('click',()=>{
+    const cur=parseInt(ta.style.fontSize)||14;
+    ta.style.fontSize=Math.min(36,Math.max(10,cur+(+b.dataset.f)*2))+'px';
+  }));
+  // 투명도
+  m.querySelector('input[type=range]').addEventListener('input',e=>m.style.opacity=e.target.value/100);
+  // 이동
   makeDrag(m.querySelector('.mbar'),(e,s)=>{
     if(!s){const r=m.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     m.style.left=(e.clientX-s.dx)+'px';m.style.top=(e.clientY-s.dy)+'px';
-  },e=>e.target.tagName==='BUTTON');
-  m.querySelector('textarea').focus();
+  },e=>['BUTTON','INPUT'].includes(e.target.tagName));
+  // 크기조절 (우하단)
+  makeDrag(m.querySelector('.rs2'),(e,s)=>{
+    if(!s)return{sx:e.clientX,sy:e.clientY,sw:m.offsetWidth,sh:ta.offsetHeight};
+    m.style.width=Math.max(150,s.sw+(e.clientX-s.sx))+'px';
+    ta.style.minHeight=Math.max(60,s.sh+(e.clientY-s.sy))+'px';
+  });
+  ta.focus();
 });
 
 /* ===== 핀 ===== */
 function addPin(src,label,x,y,w){
   const p=document.createElement('div');p.className='pin iv';
   p.style.cssText=`left:${x??(200+Math.random()*160)}px;top:${y??(110+Math.random()*120)}px;width:${w??280}px;`;
-  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><button class="x">×</button></div><img src="${src}" draggable="false"><div class="rs"></div>`;
+  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:6px"><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div><img src="${src}" draggable="false"><div class="rs"></div>`;
   document.body.appendChild(p);
   p.querySelector('.x').addEventListener('click',()=>p.remove());
+  p.querySelector('input[type=range]').addEventListener('input',e=>p.style.opacity=e.target.value/100);
   makeDrag(p.querySelector('.pb'),(e,s)=>{
     if(!s){const r=p.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     p.style.left=(e.clientX-s.dx)+'px';p.style.top=(e.clientY-s.dy)+'px';
-  },e=>e.target.tagName==='BUTTON');
+  },e=>['BUTTON','INPUT'].includes(e.target.tagName));
   makeDrag(p.querySelector('.rs'),(e,s)=>{
     if(!s)return{sx:e.clientX,sw:p.offsetWidth};
     p.style.width=Math.max(100,s.sw+(e.clientX-s.sx))+'px';
@@ -172,11 +211,16 @@ document.addEventListener('paste',e=>{
 /* ===== 영역 캡처 → 핀 (Snipaste 핵심) ===== */
 let snipOn=false,snipImgData=null,sx0,sy0;
 const snipWrap=$('snipWrap'),snipRect=$('snipRect');
+let snipB=null;
 async function startSnip(){
   if(snipOn)return;
-  const data=await window.cm.captureScreen();
-  if(!data)return;
-  snipImgData=data;$('snipImg').src=data;
+  const res=await window.cm.captureScreen();
+  if(!res)return;
+  snipImgData=res.dataURL;snipB=res.bounds;
+  const im=$('snipImg');
+  im.src=res.dataURL;
+  // 캡처한 모니터 위치에 이미지 배치 (멀티모니터)
+  im.style.cssText=`left:${snipB.x}px;top:${snipB.y}px;width:${snipB.w}px;height:${snipB.h}px;inset:auto;`;
   snipOn=true;snipWrap.classList.add('on');setIgnore(false);
 }
 function endSnip(){snipOn=false;snipWrap.classList.remove('on');snipRect.style.display='none';}
@@ -201,10 +245,15 @@ snipWrap.addEventListener('pointerup',e=>{
   // 스냅샷에서 해당 영역 잘라내기 (스케일 보정)
   const img=new Image();
   img.onload=()=>{
-    const scX=img.naturalWidth/innerWidth, scY=img.naturalHeight/innerHeight;
+    // 선택 영역을 캡처 모니터 기준 좌표로 변환
+    const lx=x-snipB.x, ly=y-snipB.y;
+    const scX=img.naturalWidth/snipB.w, scY=img.naturalHeight/snipB.h;
     const cv=document.createElement('canvas');cv.width=w*scX;cv.height=h*scY;
-    cv.getContext('2d').drawImage(img,x*scX,y*scY,w*scX,h*scY,0,0,w*scX,h*scY);
-    addPin(cv.toDataURL('image/png'),'캡처',x,y,w);
+    cv.getContext('2d').drawImage(img,lx*scX,ly*scY,w*scX,h*scY,0,0,w*scX,h*scY);
+    const out=cv.toDataURL('image/png');
+    addPin(out,'캡처',x,y,w);
+    window.cm.copyImage(out);            // ★ 클립보드 복사 → 한글/PPT에 Ctrl+V 가능
+    toast('📋 클립보드에 복사됨 — Ctrl+V로 붙여넣기 가능');
     endSnip();
   };
   img.src=snipImgData;
@@ -248,15 +297,16 @@ $('mSpotR').addEventListener('click',()=>{PS.spot=PS.spot===2?0:2;syncPtr();});
 $('pSize').addEventListener('input',e=>{PS.size=+e.target.value;renderPtr();});
 
 /* ===== 돋보기: 실제 화면 정지 + 확대 (ZoomIt 방식) ===== */
-let lensOn=false,lz=2,lensImgW=0,lensImgH=0,lox=0,loy=0,dragging=false,dlx,dly;
+let lensOn=false,lz=2,lensImgW=0,lensImgH=0,lox=0,loy=0,dragging=false,dlx,dly,lensB=null;
 const lensWrap=$('lensWrap'),lensImg=$('lensImg');
 async function toggleLens(force){
   const on=force!==undefined?force:!lensOn;
   if(on===lensOn)return;
   if(on){
-    const data=await window.cm.captureScreen();
-    if(!data)return;
-    lensImg.src=data;
+    const res=await window.cm.captureScreen();
+    if(!res)return;
+    lensB=res.bounds;
+    lensImg.src=res.dataURL;
     await new Promise(r=>{lensImg.onload=r;});
     lensImgW=lensImg.naturalWidth;lensImgH=lensImg.naturalHeight;
     lz=2;centerLensAt(hx,hy);
@@ -266,17 +316,15 @@ async function toggleLens(force){
   }
   $('mLens').classList.toggle('on',lensOn);
 }
-function centerLensAt(cx,cy){
-  // 화면좌표 cx,cy가 확대 중심이 되도록 이미지 배치
-  const scX=lensImgW/innerWidth, scY=lensImgH/innerHeight;
-  lox=innerWidth/2 - cx*scX*(lz/scX)/1; // 단순화: 아래 applyLens에서 계산
-  applyLens(cx,cy);
-}
+function centerLensAt(cx,cy){applyLens(cx,cy);}
 function applyLens(cx,cy){
-  const sc=innerWidth/lensImgW; // 이미지→화면 기본 축소비
+  // 캡처된 모니터(lensB) 기준: 화면좌표 cx,cy를 이미지 좌표로 변환해 중심 배치
+  const b=lensB||{x:0,y:0,w:innerWidth,h:innerHeight};
+  const sc=b.w/lensImgW;        // 이미지→화면 기본 비율
   const z=sc*lz;
-  lox=innerWidth/2 - cx*(lensImgW/innerWidth)*z;
-  loy=innerHeight/2 - cy*(lensImgH/innerHeight)*z;
+  const ix=(cx-b.x)*(lensImgW/b.w), iy=(cy-b.y)*(lensImgH/b.h);
+  lox=b.x+b.w/2 - ix*z;
+  loy=b.y+b.h/2 - iy*z;
   lensImg.style.transform=`translate(${lox}px,${loy}px) scale(${z})`;
 }
 lensWrap.addEventListener('wheel',e=>{
@@ -288,8 +336,8 @@ lensWrap.addEventListener('pointerdown',e=>{dragging=true;dlx=e.clientX;dly=e.cl
 lensWrap.addEventListener('pointermove',e=>{
   if(!dragging)return;
   lox+=e.clientX-dlx;loy+=e.clientY-dly;dlx=e.clientX;dly=e.clientY;
-  const sc=innerWidth/lensImgW;
-  lensImg.style.transform=`translate(${lox}px,${loy}px) scale(${sc*lz})`;
+  const b=lensB||{w:innerWidth};
+  lensImg.style.transform=`translate(${lox}px,${loy}px) scale(${(b.w/lensImgW)*lz})`;
 });
 lensWrap.addEventListener('pointerup',()=>dragging=false);
 $('mLens').addEventListener('click',()=>toggleLens());
@@ -349,7 +397,7 @@ window.cm.onHotkey(ch=>{
     case 'hk-lens': toggleLens();break;
     case 'hk-draw': toggleDraw();break;
     case 'hk-snip': startSnip();break;
-    case 'hk-dock': dock.classList.toggle('hide');break;
+    case 'hk-dock': dock.classList.contains('hide')?expandDock():collapseDock();break;
     case 'hk-escape': allOff();break;
   }
 });

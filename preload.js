@@ -1,12 +1,9 @@
-// 렌더러 ↔ 메인 안전 브리지
 const { contextBridge, ipcRenderer } = require('electron');
-
 contextBridge.exposeInMainWorld('cm', {
-  setIgnore: (ignore) => ipcRenderer.send('set-ignore', ignore),
+  setIgnore: (ig) => ipcRenderer.send('set-ignore', ig),
   captureScreen: () => ipcRenderer.invoke('capture-screen'),
+  copyImage: (dataURL) => ipcRenderer.send('copy-image', dataURL),
   quit: () => ipcRenderer.send('quit-app'),
-  onHotkey: (handler) => {
-    ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
-      .forEach(ch => ipcRenderer.on(ch, () => handler(ch)));
-  },
+  onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
+    .forEach(ch => ipcRenderer.on(ch, () => h(ch))),
 });

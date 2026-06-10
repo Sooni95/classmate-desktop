@@ -139,6 +139,30 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .pin .pb .x:hover{color:var(--red);}
 .pin img{display:block;width:100%;}
 .pin .rs{position:absolute;right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,var(--or) 100%);}
+
+/* collapse pill */
+#pill{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:70;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;border:none;border-radius:100px;padding:9px 20px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);display:none;align-items:center;gap:8px;}
+#pill.on{display:flex;}
+#collapseBtn{width:34px;height:34px;border:none;background:var(--dk2);border-radius:10px;cursor:pointer;color:#6b7884;font-size:13px;}
+#collapseBtn:hover{background:var(--dk3);color:#fff;}
+/* floating timer */
+#tFloat{position:fixed;right:30px;top:26px;z-index:60;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:16px;padding:10px 18px;box-shadow:var(--shadow);display:none;align-items:center;gap:12px;cursor:grab;}
+#tFloat.on{display:flex;}
+#tFloat:active{cursor:grabbing;}
+#tFloat .tf{font-size:34px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+#tFloat .tf.warn{color:var(--amber);}
+#tFloat .tf.done{color:var(--red);animation:bl .55s infinite;}
+#tFloat .tx{border:none;background:none;color:#6b7884;font-size:15px;cursor:pointer;}
+#tFloat .tx:hover{color:var(--red);}
+/* memo extras */
+.memo .rs2{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(120,80,0,.5) 100%);}
+.memo .fbtn{border:none;background:rgba(0,0,0,.08);border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;color:rgba(80,50,0,.7);padding:2px 5px;}
+.memo .mbar input[type=range]{width:44px;accent-color:#a07000;height:12px;}
+/* pin opacity */
+.pin .pb input[type=range]{width:52px;accent-color:var(--or);height:12px;}
+/* toast */
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:95;background:rgba(22,28,36,.95);color:#fff;font-size:13px;padding:10px 20px;border-radius:100px;box-shadow:var(--shadow);display:none;}
+#toast.on{display:block;}
 </style>
 <body>
 
@@ -201,14 +225,14 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 </div>
 
 <div class="panel iv" id="p-ptr">
-  <div class="ph">🎯 포인터 강조 <span style="font-size:10px;color:#6b7884">(전역 단축키 — 다른 앱 사용 중에도 작동)</span></div>
-  <div class="mrow"><button class="mbtn" id="mRing"><span class="mi">⭕</span>링<span class="key">Ctrl+Alt+1</span></button></div>
+  <div class="ph">🎯 포인터 강조 <span style="font-size:10px;color:#6b7884">(F6~F9 단일키 — 다른 앱 사용 중에도 작동)</span></div>
+  <div class="mrow"><button class="mbtn" id="mRing"><span class="mi">⭕</span>링<span class="key">F6</span></button></div>
   <div class="mrow">
-    <button class="mbtn" id="mSpotC"><span class="mi">🔦</span>스팟·원<span class="key">Ctrl+Alt+2</span></button>
+    <button class="mbtn" id="mSpotC"><span class="mi">🔦</span>스팟·원<span class="key">F7</span></button>
     <button class="mbtn" id="mSpotR"><span class="mi">▭</span>스팟·사각<span class="key">×2</span></button>
   </div>
-  <div class="mrow"><button class="mbtn" id="mLens"><span class="mi">🔍</span>돋보기 (화면 정지 확대)<span class="key">Ctrl+Alt+3</span></button></div>
-  <div class="srow"><span>스팟 크기</span><input type="range" id="pSize" min="80" max="340" value="160"></div>
+  <div class="mrow"><button class="mbtn" id="mLens"><span class="mi">🔍</span>돋보기 (화면 정지 확대)<span class="key">F8</span></button></div>
+  <div class="srow"><span>스팟 크기</span><input type="range" id="pSize" min="80" max="600" value="200"></div>
 </div>
 
 <div class="panel iv" id="p-pin">
@@ -231,10 +255,14 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button class="tool" data-p="p-pin"><span class="ti">📌</span>핀</button>
   <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
-  <button class="tool" id="drawBtn"><span class="ti">✏️</span>주석</button>
+  <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>주석</button>
+  <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>
 
+<button id="pill"><span>🟠</span> ClassMate</button>
+<div id="tFloat" class="iv"><span class="tf" id="tfTime">05:00</span><button class="tx" id="tfClose">✕</button></div>
+<div id="toast"></div>
 <script src="app.js"></script>
 </body>
 </html>

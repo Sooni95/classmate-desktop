@@ -1,81 +1,97 @@
-// ClassMate Desktop — main process
-// 투명 풀스크린 오버레이 + 클릭 통과(click-through) + 전역 단축키 + 화면 캡처
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu } = require('electron');
+// ClassMate Desktop v0.2 — main process
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage } = require('electron');
 const path = require('path');
 
-let win = null, tray = null;
+let win = null, tray = null, origin = { x: 0, y: 0 };
+
+// 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
+function unionBounds() {
+  const ds = screen.getAllDisplays();
+  const minX = Math.min(...ds.map(d => d.bounds.x));
+  const minY = Math.min(...ds.map(d => d.bounds.y));
+  const maxX = Math.max(...ds.map(d => d.bounds.x + d.bounds.width));
+  const maxY = Math.max(...ds.map(d => d.bounds.y + d.bounds.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
 
 function createOverlay() {
-  const { width, height } = screen.getPrimaryDisplay().bounds;
+  const ub = unionBounds();
+  origin = { x: ub.x, y: ub.y };
   win = new BrowserWindow({
-    x: 0, y: 0, width, height,
-    transparent: true,        // 배경 투명 → 다른 앱이 그대로 보임
-    frame: false,             // 창 테두리 없음
-    alwaysOnTop: true,        // 항상 위
-    skipTaskbar: true,
-    resizable: false,
-    hasShadow: false,
+    ...ub,
+    transparent: true, frame: false, alwaysOnTop: true,
+    skipTaskbar: true, resizable: false, hasShadow: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
+      contextIsolation: true, nodeIntegration: false,
     },
   });
-  win.setAlwaysOnTop(true, 'screen-saver'); // 전체화면 PPT 위에도 뜨도록
+  win.setAlwaysOnTop(true, 'screen-saver');
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-
-  // 기본: 마우스 이벤트 통과 (forward:true → 렌더러는 mousemove를 계속 받음)
   win.setIgnoreMouseEvents(true, { forward: true });
 
-  // 렌더러가 "지금 커서가 위젯 위/밖"을 알려주면 통과 여부 전환
-  ipcMain.on('set-ignore', (_e, ignore) => {
-    if (win) win.setIgnoreMouseEvents(ignore, { forward: true });
-  });
+  ipcMain.on('set-ignore', (_e, ig) => { if (win) win.setIgnoreMouseEvents(ig, { forward: true }); });
 
-  // 화면 스냅샷 (돋보기·영역캡처용) — 오버레이 자신은 잠시 숨겨서 제외
+  // 커서가 있는 모니터를 캡처 → {dataURL, bounds(창 기준 좌표)}
   ipcMain.handle('capture-screen', async () => {
-    const d = screen.getPrimaryDisplay();
+    const pt = screen.getCursorScreenPoint();
+    const d = screen.getDisplayNearestPoint(pt);
     win.setOpacity(0);
-    await new Promise(r => setTimeout(r, 120)); // 합성 반영 대기
+    await new Promise(r => setTimeout(r, 120));
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor },
     });
     win.setOpacity(1);
     const src = sources.find(s => s.display_id == String(d.id)) || sources[0];
-    return src ? src.thumbnail.toDataURL() : null;
+    if (!src) return null;
+    return {
+      dataURL: src.thumbnail.toDataURL(),
+      bounds: { x: d.bounds.x - origin.x, y: d.bounds.y - origin.y, w: d.bounds.width, h: d.bounds.height },
+    };
+  });
+
+  // 캡처 이미지를 클립보드로 (Ctrl+V로 한글/PPT에 붙여넣기 가능)
+  ipcMain.on('copy-image', (_e, dataURL) => {
+    try { clipboard.writeImage(nativeImage.createFromDataURL(dataURL)); } catch (e) {}
   });
 
   ipcMain.on('quit-app', () => app.quit());
 }
 
 function registerShortcuts() {
-  const send = (ch) => win && win.webContents.send(ch);
-  // 전역 단축키 — 다른 앱에 포커스가 있어도 작동
-  globalShortcut.register('Control+Alt+1', () => send('hk-ring'));      // 포인터 링
-  globalShortcut.register('Control+Alt+2', () => send('hk-spot'));      // 스포트라이트 순환
-  globalShortcut.register('Control+Alt+3', () => send('hk-lens'));      // 돋보기 (화면 정지 확대)
-  globalShortcut.register('Control+Alt+4', () => send('hk-draw'));      // 화면 주석
-  globalShortcut.register('Control+Alt+S', () => send('hk-snip'));      // 영역 캡처 → 핀
-  globalShortcut.register('Control+Alt+`', () => send('hk-dock'));      // 툴바 토글
-  globalShortcut.register('Control+Alt+0', () => send('hk-escape'));    // 모두 끄기
+  const send = ch => win && win.webContents.send(ch);
+  // v0.2: 단일 F키 (F6~F9는 대부분의 프로그램에서 비어 있음)
+  const map = [
+    ['F6', 'hk-ring'], ['F7', 'hk-spot'], ['F8', 'hk-lens'], ['F9', 'hk-draw'],
+    // 이전 조합도 호환 유지
+    ['Control+Alt+1', 'hk-ring'], ['Control+Alt+2', 'hk-spot'],
+    ['Control+Alt+3', 'hk-lens'], ['Control+Alt+4', 'hk-draw'],
+    ['Control+Alt+S', 'hk-snip'], ['Control+Alt+`', 'hk-dock'], ['Control+Alt+0', 'hk-escape'],
+  ];
+  map.forEach(([k, ch]) => { try { globalShortcut.register(k, () => send(ch)); } catch (e) {} });
 }
 
-app.whenReady().then(() => {
-  createOverlay();
-  registerShortcuts();
-  // 트레이 아이콘 (아이콘 파일 없으면 기본 빈 이미지로도 메뉴는 동작)
-  try {
-    tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
-    tray.setToolTip('ClassMate');
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: '툴바 보이기/숨기기 (Ctrl+Alt+`)', click: () => win.webContents.send('hk-dock') },
-      { label: '모두 끄기 (Ctrl+Alt+0)', click: () => win.webContents.send('hk-escape') },
-      { type: 'separator' },
-      { label: '종료', click: () => app.quit() },
-    ]));
-  } catch (e) { /* 트레이 아이콘 없어도 앱은 동작 */ }
-});
+// 중복 실행 방지
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) { app.quit(); }
+else {
+  app.on('second-instance', () => { if (win) win.webContents.send('hk-dock'); });
+  app.whenReady().then(() => {
+    createOverlay();
+    registerShortcuts();
+    try {
+      tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
+      tray.setToolTip('ClassMate');
+      tray.setContextMenu(Menu.buildFromTemplate([
+        { label: '툴바 보이기/숨기기 (Ctrl+Alt+`)', click: () => win.webContents.send('hk-dock') },
+        { label: '모두 끄기 (Ctrl+Alt+0)', click: () => win.webContents.send('hk-escape') },
+        { type: 'separator' },
+        { label: '종료', click: () => app.quit() },
+      ]));
+    } catch (e) {}
+  });
+}
 
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('window-all-closed', () => app.quit());
