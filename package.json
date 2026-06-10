@@ -1,0 +1,25 @@
+{
+  "name": "classmate-desktop",
+  "productName": "ClassMate",
+  "version": "0.1.0",
+  "description": "코코아팹 ClassMate — 강사용 수업 보조 오버레이 (데스크탑)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "kr.cocoafab.classmate",
+    "productName": "ClassMate",
+    "files": ["main.js", "preload.js", "renderer/**", "assets/**"],
+    "win": {
+      "target": [{ "target": "portable" }, { "target": "nsis" }],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": { "oneClick": true, "perMachine": false }
+  }
+}
