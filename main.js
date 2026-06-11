@@ -81,6 +81,10 @@ function createOverlay() {
     try { clipboard.writeImage(nativeImage.createFromDataURL(dataURL)); } catch (e) {}
   });
 
+  ipcMain.on('copy-text', (_e, text) => {
+    try { clipboard.writeText(text); } catch (e) {}
+  });
+
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
   ipcMain.handle('shorten', async (_e, { slug, target, ttl, token }) => {
     try {

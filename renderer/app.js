@@ -335,21 +335,23 @@ let pk=null;
 function pkInit(names){
   const uniq=[...new Set(names)];
   const order=[...names].sort(()=>Math.random()-.5);
+  const interval=Math.min(3.0,Math.max(1.0,58/order.length)); // 인원 많으면 촘촘히
   const balls=order.map((nm,i)=>({
     nm,col:BRAND[uniq.indexOf(nm)%BRAND.length],
-    x:50+Math.random()*(PKW-100),y:-16-i*30,
-    vx:(Math.random()-.5)*80,vy:0,r:9,done:false,slow:0
+    x:60+Math.random()*(PKW-120),y:-16,
+    vx:(Math.random()-.5)*50,vy:0,r:11,done:false,live:false,rel:i*interval,slow:0
   }));
   const pegs=[];
   for(let r=0;r<6;r++){
     const cnt=7+(r%2);
-    for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:92+r*38,r:5});
+    for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:92+r*38,r:6});
   }
   const paddles=[
-    {cx:PKW*0.30,cy:332,len:80,a:Math.random()*6,w:2.3},
-    {cx:PKW*0.70,cy:332,len:80,a:Math.random()*6,w:-2.7},
+    {cx:PKW*0.30,cy:330,len:80,a:Math.random()*6,w:1.9},
+    {cx:PKW*0.70,cy:330,len:80,a:Math.random()*6,w:-2.2},
+    {cx:PKW/2,  cy:418,len:88,a:Math.random()*6,w:1.5},  // 골 문지기 — 구멍을 주기적으로 막음
   ];
-  return {balls,pegs,paddles,arrived:[]};
+  return {balls,pegs,paddles,arrived:[],t:0};
 }
 function collideCircle(b,cx,cy,cr,rest){
   let nx=b.x-cx,ny=b.y-cy;const d=Math.hypot(nx,ny),min=b.r+cr;
@@ -372,16 +374,22 @@ function collideSeg(b,x1,y1,x2,y2,rest){
   if(vn<0){b.vx-=(1+rest)*vn*nx;b.vy-=(1+rest)*vn*ny;}
   return true;
 }
-const PK_GAP=42;
+const PK_GAP=20;
 function pkStep(dt){
-  const G=1150,REST=0.58;
+  const G=410,REST=0.66;
+  pk.t+=dt;
   pk.paddles.forEach(p=>p.a+=p.w*dt);
   for(const b of pk.balls){
     if(b.done)continue;
-    b.vy+=G*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;
+    if(!b.live){if(pk.t>=b.rel)b.live=true;else continue;}
+    b.vy+=G*dt;
+    b.vx*=0.998;b.vy*=0.999;                       // 미세 감속
+    const cap=Math.hypot(b.vx,b.vy);
+    if(cap>600){b.vx*=600/cap;b.vy*=600/cap;}       // 과속 방지
+    b.x+=b.vx*dt;b.y+=b.vy*dt;
     if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)*REST;}
     if(b.x>PKW-b.r){b.x=PKW-b.r;b.vx=-Math.abs(b.vx)*REST;}
-    for(const p of pk.pegs)collideCircle(b,p.x,p.y,p.r,0.62);
+    for(const p of pk.pegs)collideCircle(b,p.x,p.y,p.r,0.7);
     // 깔때기 + 골 통로
     collideSeg(b,0,362,PKW/2-PK_GAP,440,0.42);
     collideSeg(b,PKW,362,PKW/2+PK_GAP,440,0.42);
@@ -392,16 +400,16 @@ function pkStep(dt){
       const hx2=Math.cos(p.a)*p.len/2,hy2=Math.sin(p.a)*p.len/2;
       if(collideSeg(b,p.cx-hx2,p.cy-hy2,p.cx+hx2,p.cy+hy2,0.5)){
         const rx=b.x-p.cx,ry=b.y-p.cy;
-        b.vx+=-ry*p.w*0.85;b.vy+=rx*p.w*0.85;  // 막대 회전이 공을 쳐냄
+        b.vx+=-ry*p.w*0.7;b.vy+=rx*p.w*0.7;   // 막대 회전이 공을 쳐냄
       }
     }
     if(b.y>PKH-10){b.done=true;pk.arrived.push(b);}
     // 끼임 방지
     const sp=Math.hypot(b.vx,b.vy);
-    if(sp<14&&b.y>0){b.slow+=dt;if(b.slow>1.1){b.vx+=(Math.random()-.5)*240;b.vy-=170;b.slow=0;}}else b.slow=0;
+    if(sp<12&&b.y>0){b.slow+=dt;if(b.slow>1.4){b.vx+=(Math.random()-.5)*180;b.vy-=120;b.slow=0;}}else b.slow=0;
   }
   // 구슬끼리 충돌
-  const bs=pk.balls.filter(b=>!b.done&&b.y>-12);
+  const bs=pk.balls.filter(b=>!b.done&&b.live);
   for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
     const a=bs[i],c=bs[j];let dx=c.x-a.x,dy=c.y-a.y;
     const d=Math.hypot(dx,dy),min=a.r+c.r;
@@ -436,18 +444,20 @@ function pkDraw(){
   });
   // 구슬
   for(const b of pk.balls){
-    if(b.done||b.y<-10)continue;
+    if(b.done||!b.live)continue;
     const grad=gx.createRadialGradient(b.x-3,b.y-3,1,b.x,b.y,b.r);
     grad.addColorStop(0,'#ffffff');grad.addColorStop(.25,b.col);grad.addColorStop(1,b.col);
     gx.beginPath();gx.arc(b.x,b.y,b.r,0,7);gx.fillStyle=grad;gx.fill();
     gx.strokeStyle='rgba(0,0,0,.35)';gx.lineWidth=1;gx.stroke();
-    gx.fillStyle='#fff';gx.font='bold 8.5px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
-    gx.shadowColor='rgba(0,0,0,.6)';gx.shadowBlur=2;
-    gx.fillText(b.nm.slice(0,2),b.x,b.y);gx.shadowBlur=0;
+    gx.font='bold 10px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+    gx.lineWidth=2.5;gx.strokeStyle='rgba(0,0,0,.65)';
+    gx.strokeText(b.nm.slice(0,2),b.x,b.y);
+    gx.fillStyle='#fff';gx.fillText(b.nm.slice(0,2),b.x,b.y);
   }
   // 상태 표시
   gx.fillStyle='#9fb0bf';gx.font='12px "Malgun Gothic"';gx.textAlign='left';gx.textBaseline='alphabetic';
-  gx.fillText('남은 구슬 '+pk.balls.filter(b=>!b.done).length,10,20);
+  const wait=pk.balls.filter(b=>!b.done&&!b.live).length;
+  gx.fillText('남은 구슬 '+pk.balls.filter(b=>!b.done).length+(wait?' (대기 '+wait+')':''),10,20);
   if(pk.arrived.length){gx.textAlign='right';gx.fillText('방금 골인: '+pk.arrived.at(-1).nm,PKW-10,20);}
 }
 function dropPlinko(){
@@ -458,9 +468,10 @@ function dropPlinko(){
     pkStep(dt/2);pkStep(dt/2);
     pkDraw();
     const left=pk.balls.filter(b=>!b.done).length;
-    if(left>0&&now-t0<50000){gameAnim=requestAnimationFrame(tick);}
+    if(left>0&&now-t0<120000){gameAnim=requestAnimationFrame(tick);}
     else{
-      const w=pk.arrived.at(-1);
+      let w=pk.arrived.at(-1);
+      if(!w){const rem=pk.balls.filter(b=>!b.done);w=rem[rem.length-1];}
       if(w){
         gRes.textContent='🎉 마지막 골인: '+w.nm+'!';
         gx.fillStyle='rgba(22,28,36,.82)';gx.fillRect(0,PKH/2-58,PKW,116);
@@ -496,18 +507,12 @@ $('suTtl').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>
   $('suTtl').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');suTtl=+b.dataset.s;
 }));
-// 연동 토큰 (BYO Key와 동일하게 로컬 저장)
-$('suToken').value=localStorage.getItem('su_token')||'';
-$('suGear').addEventListener('click',()=>$('suTokenRow').classList.toggle('on'));
-$('suTokenSave').addEventListener('click',()=>{
-  localStorage.setItem('su_token',$('suToken').value.trim());
-  $('suTokenRow').classList.remove('on');toast('🔑 연동 토큰 저장됨');
-});
+
 function suSay(msg,good){const m=$('suMsg');m.textContent=msg;m.style.color=good?'#34c759':'var(--amber)';}
 $('suGo').addEventListener('click',async()=>{
   let target=$('suTarget').value.trim();
   const slug=$('suSlug').value.trim();
-  const token=localStorage.getItem('su_token')||SU_TOKEN_DEFAULT;
+  const token=SU_TOKEN_DEFAULT;
   if(!target){suSay('원본 URL을 입력하세요');return;}
   if(!/^https?:\/\//i.test(target))target='https://'+target;
   if(!slug){suSay('단축 이름을 입력하세요 (예: 수업자료)');return;}
@@ -523,12 +528,13 @@ $('suGo').addEventListener('click',async()=>{
     $('suCard').classList.add('on');$('suQr').classList.remove('on');$('suQr').innerHTML='';
     suSay('완성! 복사하거나 QR로 띄워보세요 🎉',true);
   }else if(res.status===409){suSay('"'+slug+'" 는 이미 사용 중이에요 — 다른 이름을 써보세요');}
-  else if(res.status===403){suSay('서버 토큰이 일치하지 않아요 — ⚙ 연동 설정에서 확인');$('suTokenRow').classList.add('on');}
+  else if(res.status===403){suSay('서버 연동 오류 (관리자 문의)');} 
   else if(res.status===0){suSay('인터넷 연결을 확인하세요 (단축주소는 온라인 기능)');}
   else{suSay('오류: '+(res.message||res.status));}
 });
-$('suCopy').addEventListener('click',async()=>{
-  try{await navigator.clipboard.writeText('https://'+$('suUrl').textContent);toast('📋 단축주소 복사됨');}catch(e){}
+$('suCopy').addEventListener('click',()=>{
+  window.cm.copyText('https://'+$('suUrl').textContent);
+  toast('📋 단축주소 복사됨');
 });
 $('suQrBtn').addEventListener('click',()=>{
   const box=$('suQr');
@@ -829,11 +835,52 @@ function toggleDraw(force){
   dc.style.zIndex=z;dctmp.style.zIndex=z+1;
   if(drawMode){
     setPanel(null);setIgnore(false);
-    // 펜 툴바: 독이 있는 모니터 상단 중앙 (멀티모니터 합산 중앙 X)
-    const d=dockDisp();
-    $('dtb').style.left=(d.x+d.w/2)+'px';$('dtb').style.top=(d.y+18)+'px';
-  }else commitText();
+    // 펜 툴바: 직접 옮긴 적 없으면 독이 있는 모니터 상단 중앙에
+    if(!dtbMoved){
+      const d=dockDisp(),tb=$('dtb');
+      requestAnimationFrame(()=>{
+        tb.style.left=(d.x+(d.w-tb.offsetWidth)/2)+'px';
+        tb.style.top=(d.y+18)+'px';
+      });
+    }
+  }else{commitText();$('dtbPill').classList.remove('on');}
 }
+// 펜 툴바 이동 (⠿ 손잡이)
+let dtbMoved=false;
+makeDrag($('dtbGrip'),(e,s)=>{
+  const tb=$('dtb');
+  if(!s){const r=tb.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top,w:r.width,h:r.height};}
+  dtbMoved=true;
+  const p=clampDock(e.clientX-s.dx,e.clientY-s.dy,s.w,s.h);
+  tb.style.left=p.x+'px';tb.style.top=p.y+'px';
+});
+// 펜 툴바 접기 → ✏️ 알약 (이동 가능, 클릭하면 펼침)
+let dtbPillMoved=false;
+$('dtbMin').addEventListener('click',()=>{
+  const tb=$('dtb'),p=$('dtbPill');
+  const r=tb.getBoundingClientRect();
+  tb.classList.remove('on');p.classList.add('on');
+  const c=clampDock(r.left,r.top,44,44);
+  p.style.left=c.x+'px';p.style.top=c.y+'px';
+});
+makeDrag($('dtbPill'),(e,s)=>{
+  const p=$('dtbPill');
+  if(!s){dtbPillMoved=false;const r=p.getBoundingClientRect();
+    return{dx:e.clientX-r.left,dy:e.clientY-r.top,sx:e.clientX,sy:e.clientY};}
+  if(Math.abs(e.clientX-s.sx)+Math.abs(e.clientY-s.sy)>4)dtbPillMoved=true;
+  const c=clampDock(e.clientX-s.dx,e.clientY-s.dy,44,44);
+  p.style.left=c.x+'px';p.style.top=c.y+'px';
+});
+$('dtbPill').addEventListener('click',()=>{
+  if(dtbPillMoved){dtbPillMoved=false;return;}
+  const tb=$('dtb'),p=$('dtbPill');
+  const pr=p.getBoundingClientRect();
+  p.classList.remove('on');tb.classList.add('on');dtbMoved=true;
+  requestAnimationFrame(()=>{
+    const c=clampDock(pr.left,pr.top,tb.offsetWidth,tb.offsetHeight);
+    tb.style.left=c.x+'px';tb.style.top=c.y+'px';
+  });
+});
 $('drawBtn').addEventListener('click',()=>toggleDraw());
 $('exitDraw').addEventListener('click',()=>toggleDraw(false));
 $('clearBtn').addEventListener('click',()=>{saveSt();ctx.clearRect(0,0,dc.width,dc.height);});
