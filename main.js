@@ -44,6 +44,15 @@ function createOverlay() {
 
   ipcMain.on('set-ignore', (_e, ig) => { if (win) win.setIgnoreMouseEvents(ig, { forward: true }); });
 
+  // 디스플레이 배치 정보 (창 기준 좌표) — 1/2/3모니터 어디서든 UI를 올바른 화면에 배치
+  ipcMain.handle('get-displays', () => {
+    const pid = screen.getPrimaryDisplay().id;
+    return screen.getAllDisplays().map(d => ({
+      x: d.bounds.x - origin.x, y: d.bounds.y - origin.y,
+      w: d.bounds.width, h: d.bounds.height, primary: d.id === pid,
+    }));
+  });
+
   // 커서가 있는 모니터를 캡처 → {dataURL, bounds(창 기준 좌표)}
   ipcMain.handle('capture-screen', async () => {
     const pt = screen.getCursorScreenPoint();
@@ -70,6 +79,21 @@ function createOverlay() {
   // 캡처 이미지를 클립보드로 (Ctrl+V로 한글/PPT에 붙여넣기 가능)
   ipcMain.on('copy-image', (_e, dataURL) => {
     try { clipboard.writeImage(nativeImage.createFromDataURL(dataURL)); } catch (e) {}
+  });
+
+  // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
+  ipcMain.handle('shorten', async (_e, { slug, target, ttl, token }) => {
+    try {
+      const res = await fetch('https://코코아팹.kr/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-token': token },
+        body: JSON.stringify({ slug, target, ttl }),
+      });
+      const text = await res.text();
+      return { ok: res.ok, status: res.status, message: text };
+    } catch (err) {
+      return { ok: false, status: 0, message: String(err) };
+    }
   });
 
   ipcMain.on('quit-app', () => app.quit());

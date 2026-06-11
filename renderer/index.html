@@ -5,24 +5,25 @@
 <script src="../assets/qrcode.min.js"></script>
 <style>
 :root{
-  --or:#FF7A00;--or2:#E85D00;--dk:#161c24;--dk2:#212a36;--dk3:#2c3744;
+  /* 코코아팹 브랜드 오렌지 #F68C1F */
+  --or:#F68C1F;--or2:#D9760F;--dk:#161c24;--dk2:#212a36;--dk3:#2c3744;
   --line:rgba(255,255,255,.09);--red:#e05544;--amber:#ffb020;
   --shadow:0 20px 54px -12px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
 body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;-webkit-user-select:none;user-select:none;}
-/* 핵심: 루트는 클릭 통과, 위젯(.iv)만 상호작용 */
 body{pointer-events:none;}
 .iv{pointer-events:auto;}
 
 /* ===== dock ===== */
-#dock{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:5px;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:var(--shadow);}
-#dock.free{transform:none;bottom:auto;}
+#dock{position:fixed;left:0;top:0;z-index:70;display:flex;align-items:center;gap:5px;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:var(--shadow);visibility:hidden;}
+#dock.ready{visibility:visible;}
 #dock.hide{display:none;}
 .brand{display:flex;align-items:center;gap:10px;padding:0 11px 0 5px;margin-right:3px;border-right:1px solid var(--line);height:40px;cursor:grab;}
 .brand:active{cursor:grabbing;}
-.brand .lo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--or),var(--or2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:900;}
+.brand .lo{width:30px;height:30px;border-radius:9px;overflow:hidden;background:var(--or);}
+.brand .lo img{width:100%;height:100%;display:block;}
 .brand .nm{font-size:15px;color:#fff;font-weight:800;}
 .brand .nm small{display:block;font-size:9.5px;font-weight:400;color:#7c8894;margin-top:2px;}
 .tool{width:58px;height:56px;border:none;background:transparent;border-radius:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#aeb9c4;font-family:inherit;font-size:10.5px;transition:.13s;position:relative;}
@@ -37,7 +38,7 @@ body{pointer-events:none;}
 .panel.on{display:block;}
 .ph{font-size:13px;font-weight:600;color:#9fb0bf;margin-bottom:13px;}
 .tabs{display:flex;gap:4px;margin-bottom:13px;background:var(--dk2);border-radius:10px;padding:4px;}
-.tab{flex:1;border:none;background:transparent;color:#9fb0bf;font-family:inherit;font-size:12px;font-weight:600;border-radius:7px;padding:7px 0;cursor:pointer;}
+.tab{flex:1;border:none;background:transparent;color:#9fb0bf;font-family:inherit;font-size:11.5px;font-weight:600;border-radius:7px;padding:7px 0;cursor:pointer;}
 .tab.on{background:var(--or);color:#fff;}
 .pane{display:none;}.pane.on{display:block;}
 .btn-go{border:none;border-radius:10px;padding:11px 0;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;background:var(--or);color:#fff;width:100%;}
@@ -70,26 +71,72 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .nrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:12.5px;color:#9fb0bf;}
 .nrow input{width:64px;text-align:center;}
 .tres{font-size:12.5px;color:#cdd8e2;line-height:1.9;margin:9px 0;}
+.gdesc{font-size:11.5px;color:#9fb0bf;line-height:1.7;margin-bottom:11px;}
+
+/* ===== 게임 모달 (돌림판 / 핀볼) ===== */
+#gameWrap{position:fixed;left:0;top:0;z-index:80;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;}
+#gameWrap.on{display:block;}
+#gameHead{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 9px 0 16px;cursor:grab;background:var(--dk2);}
+#gameHead:active{cursor:grabbing;}
+#gameTitle{font-size:14px;font-weight:800;color:#fff;}
+#gameClose{border:none;background:none;color:#7c8894;font-size:17px;cursor:pointer;}
+#gameClose:hover{color:var(--red);}
+#gameCv{display:block;background:#10151c;}
+#gameFoot{display:flex;align-items:center;gap:8px;padding:10px 14px;}
+#gameRes{flex:1;font-size:19px;font-weight:800;color:var(--or);min-height:24px;}
+#gameGo{border:none;border-radius:10px;padding:10px 22px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;background:var(--or);color:#fff;}
+#gameGo:hover{background:var(--or2);}
+#gameGo:disabled{background:var(--dk3);color:#6b7884;cursor:default;}
 
 /* qr */
 #qrbox{display:flex;justify-content:center;align-items:center;min-height:148px;background:#fff;border-radius:12px;padding:12px;margin:10px 0;}
 #qrbox.empty{background:var(--dk2);color:#6b7884;font-size:12.5px;}
 .qr-inp{width:100%;}
-.wip{margin-top:10px;background:var(--dk2);border:1px dashed var(--line);border-radius:10px;padding:11px 13px;font-size:11.5px;color:#7c8894;line-height:1.7;}
-.wip b{color:var(--amber);}
+/* 단축주소 */
+.su-slug{display:flex;align-items:center;background:var(--dk2);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:9px;}
+.su-slug:focus-within{border-color:var(--or);}
+.su-base{font-size:13px;font-weight:700;color:var(--or);padding:0 2px 0 11px;white-space:nowrap;}
+.su-slug input{flex:1;background:transparent;border:none;min-width:0;}
+.su-ttl{display:flex;gap:5px;margin-bottom:10px;}
+.su-ttl button{flex:1;background:var(--dk2);border:1px solid var(--line);color:#9fb0bf;border-radius:8px;padding:7px 0;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}
+.su-ttl button.on{background:var(--or);border-color:var(--or);color:#fff;}
+.su-msg{font-size:11.5px;min-height:16px;margin-top:8px;color:var(--amber);line-height:1.6;}
+.su-card{display:none;margin-top:6px;background:linear-gradient(135deg,rgba(246,140,31,.16),rgba(217,118,15,.08));border:1px solid rgba(246,140,31,.45);border-radius:13px;padding:13px 14px;}
+.su-card.on{display:block;}
+.su-url{font-size:16px;font-weight:800;color:var(--or);word-break:break-all;line-height:1.45;}
+.su-exp{font-size:11px;color:#9fb0bf;margin:5px 0 10px;}
+.su-actions{display:flex;gap:6px;}
+.su-copy{flex:1;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:8px;padding:8px 0;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.su-copy:hover{background:var(--or);border-color:var(--or);color:#fff;}
+#suQr{display:none;justify-content:center;background:#fff;border-radius:10px;padding:12px;margin-top:10px;}
+#suQr.on{display:flex;}
+.su-gear{display:block;margin:12px auto 0;background:none;border:none;color:#6b7884;font-family:inherit;font-size:10.5px;cursor:pointer;}
+.su-gear:hover{color:#9fb0bf;}
+.su-token{display:none;gap:6px;margin-top:8px;}
+.su-token.on{display:flex;}
+.su-token input{flex:1;min-width:0;}
 
-/* ptr panel */
-.mrow{display:flex;gap:6px;margin-bottom:7px;}
-.mbtn{flex:1;background:var(--dk2);border:1px solid var(--line);color:#cdd8e2;border-radius:10px;padding:9px 0 7px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
-.mbtn.on{background:var(--or);color:#fff;border-color:var(--or);}
-.mbtn .mi{font-size:16px;}
-.key{font-size:9px;background:rgba(255,255,255,.12);border-radius:4px;padding:1px 5px;}
+/* ptr panel — v0.4: 모드별 그룹 + 상태 표시로 혼동 제거 */
+.mgrp{background:var(--dk2);border:1px solid var(--line);border-radius:12px;padding:9px;margin-bottom:8px;}
+.mbtn{width:100%;background:transparent;border:none;color:#cdd8e2;border-radius:9px;padding:9px 8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:9px;}
+.mbtn:hover{background:var(--dk3);}
+.mbtn.on{background:var(--or);color:#fff;}
+.mbtn .mi{font-size:17px;}
+.mbtn .key{margin-left:auto;font-size:9.5px;background:rgba(255,255,255,.12);border-radius:4px;padding:2px 6px;}
+.shape{display:flex;gap:5px;margin-top:7px;}
+.shape button{flex:1;background:var(--dk3);border:1px solid var(--line);color:#9fb0bf;border-radius:8px;padding:6px 0;font-family:inherit;font-size:11.5px;cursor:pointer;}
+.shape button.on{background:#fff;color:var(--or2);border-color:#fff;font-weight:800;}
 .srow{display:flex;align-items:center;gap:9px;margin:9px 0 2px;font-size:12px;color:#9fb0bf;}
 .srow input{flex:1;accent-color:var(--or);}
+#pStat{margin-top:9px;font-size:11.5px;color:#9fb0bf;background:var(--dk2);border-radius:8px;padding:8px 11px;}
+#pStat b{color:var(--or);}
 
 /* ===== overlays ===== */
-#dc{position:fixed;inset:0;z-index:40;display:none;}
+#dc,#dctmp{position:fixed;inset:0;z-index:40;}
+#dc{display:none;}
 #dc.on{display:block;cursor:crosshair;}
+#dctmp{pointer-events:none;display:none;}
+#dctmp.on{display:block;}
 #dtb{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:66;display:none;gap:7px;align-items:center;background:var(--dk);border:1px solid var(--line);border-radius:14px;padding:8px 11px;box-shadow:var(--shadow);}
 #dtb.on{display:flex;}
 .sw{width:23px;height:23px;border-radius:50%;border:2px solid rgba(255,255,255,.2);cursor:pointer;}
@@ -98,8 +145,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .tb:hover{background:var(--dk3);}
 .tb.on{background:var(--or);color:#fff;}
 .tb.danger:hover{background:var(--red);color:#fff;}
+#penHud{position:fixed;z-index:96;display:none;align-items:center;gap:8px;background:rgba(22,28,36,.92);border-radius:100px;padding:6px 14px;color:#fff;font-size:12px;pointer-events:none;}
+#penHud.on{display:flex;}
+#penHud .dot{border-radius:50%;background:currentColor;}
 
-#halo{position:fixed;left:0;top:0;width:34px;height:34px;border:3px solid var(--or);border-radius:50%;box-shadow:0 0 14px rgba(255,122,0,.55);z-index:90;display:none;}
+#halo{position:fixed;left:0;top:0;width:34px;height:34px;border:3px solid var(--or);border-radius:50%;box-shadow:0 0 14px rgba(246,140,31,.55);z-index:90;display:none;}
 #halo.on{display:block;}
 #halo::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;background:var(--or);border-radius:50%;transform:translate(-50%,-50%);}
 .ripple{position:fixed;width:14px;height:14px;border:3px solid var(--or);border-radius:50%;z-index:89;animation:rip .5s ease-out forwards;}
@@ -111,18 +161,15 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #spotHole.circle{border-radius:50%;}
 #spotHole.rect{border-radius:14px;}
 
-/* 돋보기: 화면 정지(frozen) 스냅샷 위에 확대 — ZoomIt과 동일 UX */
 #lensWrap{position:fixed;inset:0;z-index:88;display:none;background:#000;}
 #lensWrap.on{display:block;}
-#lensImg{position:absolute;left:0;top:0;transform-origin:0 0;}
 #lensHint{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(22,28,36,.9);color:#fff;font-size:12px;padding:7px 16px;border-radius:100px;z-index:89;}
 
-/* 영역 캡처 (Snipaste) */
 #snipWrap{position:fixed;inset:0;z-index:92;display:none;cursor:crosshair;}
 #snipWrap.on{display:block;}
 #snipImg{position:absolute;inset:0;width:100%;height:100%;}
 #snipDim{position:absolute;inset:0;background:rgba(0,0,0,.45);}
-#snipRect{position:absolute;border:2px solid var(--or);background:rgba(255,122,0,.08);display:none;}
+#snipRect{position:absolute;border:2px solid var(--or);background:rgba(246,140,31,.08);display:none;}
 #snipHint{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(22,28,36,.9);color:#fff;font-size:12px;padding:7px 16px;border-radius:100px;}
 
 /* memo & pin */
@@ -130,19 +177,30 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .memo .mbar{height:26px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 7px;}
 .memo .mbtn2{border:none;background:none;font-size:15px;cursor:pointer;color:rgba(80,50,0,.5);}
 .memo .mbtn2:hover{color:var(--red);}
-.memo textarea{width:100%;border:none;resize:none;font-family:inherit;font-size:14px;line-height:1.5;padding:9px 11px 12px;color:#5a3d00;min-height:90px;background:transparent;}
-.memo.min textarea{display:none;}
+.memo .mtext{width:100%;font-family:inherit;font-size:14px;line-height:1.5;padding:9px 11px 12px;color:#5a3d00;min-height:90px;outline:none;-webkit-user-select:text;user-select:text;cursor:text;word-break:break-all;overflow:auto;max-height:380px;}
+.memo .mtext:empty::before{content:attr(data-ph);color:rgba(90,61,0,.4);}
+.memo.min .mtext{display:none;}
+.memo .rs2{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(120,80,0,.5) 100%);}
+.memo .fbtn{border:none;background:rgba(0,0,0,.08);border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;color:rgba(80,50,0,.7);padding:2px 5px;}
+.memo .mbar input[type=range]{width:44px;accent-color:#a07000;height:12px;}
 .pin{position:fixed;z-index:48;border-radius:8px;overflow:hidden;box-shadow:0 16px 40px -10px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.85);min-width:100px;}
 .pin .pb{height:28px;background:var(--dk);display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 9px;cursor:grab;}
-.pin .pb .lbl{font-size:10.5px;color:#9fb0bf;max-width:110px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.pin .pb .x{border:none;background:none;color:#7c8894;font-size:15px;cursor:pointer;}
+.pin .pb .lbl{font-size:10.5px;color:#9fb0bf;max-width:86px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.pin .pb .x,.pin .pb .cap{border:none;background:none;color:#7c8894;font-size:13px;cursor:pointer;}
 .pin .pb .x:hover{color:var(--red);}
+.pin .pb .cap:hover,.pin .pb .cap.on{color:var(--or);}
 .pin img{display:block;width:100%;}
+.pin .pcap{display:none;background:#FFF3A3;color:#5a3d00;font-size:13px;line-height:1.5;padding:7px 10px;outline:none;-webkit-user-select:text;user-select:text;cursor:text;word-break:break-all;}
+.pin .pcap.on{display:block;}
+.pin .pcap:empty::before{content:"핀 메모…";color:rgba(90,61,0,.4);}
+.pin .pb input[type=range]{width:52px;accent-color:var(--or);height:12px;}
 .pin .rs{position:absolute;right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,var(--or) 100%);}
 
-/* collapse pill */
-#pill{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:70;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;border:none;border-radius:100px;padding:9px 20px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);display:none;align-items:center;gap:8px;}
+/* collapse pill — v0.4: 자유 이동 */
+#pill{position:fixed;left:0;top:0;z-index:70;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;border:none;border-radius:100px;padding:9px 18px;font-family:inherit;font-size:14px;font-weight:800;cursor:grab;box-shadow:var(--shadow);display:none;align-items:center;gap:8px;}
+#pill:active{cursor:grabbing;}
 #pill.on{display:flex;}
+#pill img{width:20px;height:20px;border-radius:6px;}
 #collapseBtn{width:34px;height:34px;border:none;background:var(--dk2);border-radius:10px;cursor:pointer;color:#6b7884;font-size:13px;}
 #collapseBtn:hover{background:var(--dk3);color:#fff;}
 /* floating timer */
@@ -154,17 +212,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #tFloat .tf.done{color:var(--red);animation:bl .55s infinite;}
 #tFloat .tx{border:none;background:none;color:#6b7884;font-size:15px;cursor:pointer;}
 #tFloat .tx:hover{color:var(--red);}
-/* memo extras */
-.memo .rs2{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(120,80,0,.5) 100%);}
-.memo .fbtn{border:none;background:rgba(0,0,0,.08);border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;color:rgba(80,50,0,.7);padding:2px 5px;}
-.memo .mbar input[type=range]{width:44px;accent-color:#a07000;height:12px;}
-/* pin opacity */
-.pin .pb input[type=range]{width:52px;accent-color:var(--or);height:12px;}
 /* toast */
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:95;background:rgba(22,28,36,.95);color:#fff;font-size:13px;padding:10px 20px;border-radius:100px;box-shadow:var(--shadow);display:none;}
 #toast.on{display:block;}
 
-/* 부분 렌즈 (마우스 따라다님) */
+/* 부분 렌즈 */
 #lens2{position:fixed;z-index:88;display:none;overflow:hidden;border:3px solid var(--or);box-shadow:0 14px 40px -8px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.35);pointer-events:none;background:#111;will-change:left,top;}
 #lens2.on{display:block;}
 #lens2.circle{border-radius:50%;}
@@ -172,30 +224,55 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #lens2 img{position:absolute;left:0;top:0;transform-origin:0 0;}
 #lensTip{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(22,28,36,.92);color:#fff;font-size:12px;padding:7px 16px;border-radius:100px;z-index:89;display:none;}
 #lensTip.on{display:block;}
-/* 소음측정 */
+
+/* ===== 소음측정 + 폭탄 게이지 ===== */
 .noise-bar{height:26px;background:var(--dk2);border-radius:8px;overflow:hidden;margin:10px 0 6px;}
 .noise-fill{height:100%;width:0%;background:linear-gradient(90deg,#34c759,#ffb020 60%,#e05544 85%);transition:width .08s;}
 .noise-val{font-size:12px;color:#9fb0bf;text-align:right;}
 #noiseAlert{position:fixed;inset:0;z-index:38;pointer-events:none;display:none;border:14px solid rgba(224,85,68,.55);animation:bl .5s infinite;}
 #noiseAlert.on{display:block;}
+#nBomb{position:fixed;z-index:60;width:150px;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;flex-direction:column;align-items:center;padding:13px 12px 11px;cursor:grab;}
+#nBomb.on{display:flex;}
+#nBomb:active{cursor:grabbing;}
+#bombRing{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;}
+#bombRing .inner{width:76px;height:76px;border-radius:50%;background:var(--dk);display:flex;align-items:center;justify-content:center;font-size:38px;}
+#nBomb .blabel{margin-top:8px;font-size:12px;font-weight:700;color:#cdd8e2;}
+#nBomb .bsub{font-size:10px;color:#6b7884;margin-top:2px;}
+#nBomb.shake #bombRing{animation:shk .12s infinite;}
+@keyframes shk{0%{transform:translate(1.5px,-1px) rotate(1.4deg);}50%{transform:translate(-1.5px,1px) rotate(-1.4deg);}100%{transform:translate(1px,1.5px) rotate(.8deg);}}
+#boomFlash{position:fixed;inset:0;z-index:94;pointer-events:none;background:radial-gradient(circle,rgba(255,200,80,.85),rgba(224,85,68,.7));display:none;}
+#boomFlash.on{display:block;animation:bfade 1.4s ease-out forwards;}
+@keyframes bfade{0%{opacity:1;}100%{opacity:0;}}
+#boomEmoji{position:fixed;z-index:95;font-size:120px;pointer-events:none;display:none;transform:translate(-50%,-50%);}
+#boomEmoji.on{display:block;animation:bpop 1.4s ease-out forwards;}
+@keyframes bpop{0%{transform:translate(-50%,-50%) scale(.3);opacity:1;}55%{transform:translate(-50%,-50%) scale(1.7);}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;}}
+
+/* 카메라 모달 */
+#camWrap{position:fixed;left:0;top:0;z-index:82;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:480px;}
+#camWrap.on{display:block;}
+#camWrap video{width:100%;display:block;background:#000;}
+#camWrap .cfoot{display:flex;gap:8px;padding:11px 13px;}
 </style>
 <body>
 
 <!-- overlays -->
 <canvas id="dc" class="iv"></canvas>
+<canvas id="dctmp"></canvas>
 <div id="spot"><div id="spotHole" class="circle"></div></div>
 <div id="halo"></div>
 <div id="lens2"><img id="lensImg"></div>
 <div id="lensTip">🔍 렌즈 — 휠: 배율 · F8: 모양 전환/끄기 · ESC: 종료</div>
 <div id="snipWrap" class="iv"><img id="snipImg"><div id="snipDim"></div><div id="snipRect"></div><div id="snipHint">📌 드래그로 영역 선택 → 핀 생성 · ESC: 취소</div></div>
+<div id="penHud"><span class="dot"></span><span class="ptxt"></span></div>
 
 <div id="dtb" class="iv">
   <span class="sw sel" style="background:#ff3b3b" data-c="#ff3b3b"></span>
-  <span class="sw" style="background:#ff9500" data-c="#ff9500"></span>
+  <span class="sw" style="background:#F68C1F" data-c="#F68C1F"></span>
   <span class="sw" style="background:#34c759" data-c="#34c759"></span>
   <span class="sw" style="background:#007aff" data-c="#007aff"></span>
+  <span class="sw" style="background:#ffe600" data-c="#ffe600"></span>
   <button class="tb on" id="penBtn">✏️ 펜</button>
-  <button class="tb" id="hlBtn">🟡 형광</button>
+  <button class="tb" id="hlBtn">🖍 형광</button>
   <button class="tb" id="erBtn">⬜ 지우개</button>
   <button class="tb" id="undoBtn">↩</button>
   <button class="tb danger" id="clearBtn">↺ 전체</button>
@@ -213,7 +290,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
 <div class="panel iv" id="p-picker">
   <div class="ph">🎲 랜덤 발표자</div>
-  <div class="tabs"><button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button></div>
+  <div class="tabs">
+    <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button><button class="tab" data-t="wh">🎡돌림판</button><button class="tab" data-t="pk">🎢핀볼</button>
+  </div>
   <div class="pane on" id="pane-nm">
     <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
     <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
@@ -231,54 +310,120 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="tres" id="tRes"></div>
     <button class="btn-go" id="tBtn">모둠 나누기!</button>
   </div>
+  <div class="pane" id="pane-wh">
+    <div class="gdesc">🎡 <b style="color:#F68C1F">돌림판</b> — [이름] 탭의 명단으로 돌아가는 룰렛입니다. '뽑힌 사람 제외' 옵션이 함께 적용됩니다.</div>
+    <button class="btn-go" id="wheelOpen">돌림판 열기</button>
+  </div>
+  <div class="pane" id="pane-pk">
+    <div class="gdesc">🎢 <b style="color:#F68C1F">핀볼 (Plinko)</b> — 공이 핀에 튕기며 떨어져 당첨 칸을 정합니다. [이름] 탭의 명단을 사용합니다.</div>
+    <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
+  </div>
 </div>
 
 <div class="panel iv" id="p-qr">
-  <div class="ph">🔗 QR 생성</div>
-  <input type="text" class="qr-inp" id="qrUrl" placeholder="URL 입력 (자동 생성)">
-  <div id="qrbox" class="empty">URL 입력 시 자동 생성 (오프라인 작동)</div>
-  <div class="wip"><b>⏳ 기능구현중</b> — 단축주소 <u>https://cocoafab.kr/내가정한이름</u> 형태의 커스텀 숏URL은 도메인 연동 후 제공 예정입니다.</div>
+  <div class="ph">🔗 QR · 단축주소</div>
+  <div class="tabs"><button class="tab on" data-t="qr1">QR 생성</button><button class="tab" data-t="qr2">✂ 단축주소</button></div>
+  <div class="pane on" id="pane-qr1">
+    <input type="text" class="qr-inp" id="qrUrl" placeholder="URL 입력 (자동 생성)">
+    <div id="qrbox" class="empty">URL 입력 시 자동 생성 (오프라인 작동)</div>
+  </div>
+  <div class="pane" id="pane-qr2">
+    <input type="text" class="qr-inp" id="suTarget" placeholder="원본 URL (https://…)" style="margin-bottom:8px">
+    <div class="su-slug">
+      <span class="su-base">코코아팹.kr/</span>
+      <input type="text" id="suSlug" placeholder="수업자료" maxlength="40">
+    </div>
+    <div class="su-ttl" id="suTtl">
+      <button data-s="604800" class="on">1주</button>
+      <button data-s="1209600">2주</button>
+      <button data-s="2592000">1개월</button>
+      <button data-s="7776000">3개월</button>
+    </div>
+    <button class="btn-go" id="suGo">단축주소 만들기</button>
+    <div class="su-msg" id="suMsg"></div>
+    <div class="su-card" id="suCard">
+      <div class="su-url" id="suUrl"></div>
+      <div class="su-exp" id="suExp"></div>
+      <div class="su-actions">
+        <button class="su-copy" id="suCopy">📋 복사</button>
+        <button class="su-copy" id="suQrBtn">QR 보기</button>
+      </div>
+      <div id="suQr"></div>
+    </div>
+    <button class="su-gear" id="suGear">⚙ 연동 설정</button>
+    <div class="su-token" id="suTokenRow">
+      <input type="password" id="suToken" placeholder="연동 토큰 입력">
+      <button class="btn-g" id="suTokenSave" style="padding:9px 14px">저장</button>
+    </div>
+  </div>
 </div>
 
 <div class="panel iv" id="p-ptr">
-  <div class="ph">🎯 포인터 강조 <span style="font-size:10px;color:#6b7884">(F6~F9 단일키 — 다른 앱 사용 중에도 작동)</span></div>
-  <div class="mrow"><button class="mbtn" id="mRing"><span class="mi">⭕</span>링<span class="key">F6</span></button></div>
-  <div class="mrow">
-    <button class="mbtn" id="mSpotC"><span class="mi">🔦</span>스팟·원<span class="key">F7</span></button>
-    <button class="mbtn" id="mSpotR"><span class="mi">▭</span>스팟·사각<span class="key">×2</span></button>
+  <div class="ph">🎯 포인터 강조 <span style="font-size:10px;color:#6b7884">(F6~F8 — 다른 앱 사용 중에도 작동)</span></div>
+  <div class="mgrp"><button class="mbtn" id="mRing"><span class="mi">⭕</span>커서 링 + 클릭 물결<span class="key">F6</span></button></div>
+  <div class="mgrp">
+    <button class="mbtn" id="mSpot"><span class="mi">🔦</span>스포트라이트<span class="key">F7</span></button>
+    <div class="shape"><button id="shC" class="on">● 원형</button><button id="shR">▬ 사각형</button></div>
   </div>
-  <div class="mrow"><button class="mbtn" id="mLens"><span class="mi">🔍</span>돋보기 (화면 정지 확대)<span class="key">F8</span></button></div>
-  <div class="srow"><span>스팟 크기</span><input type="range" id="pSize" min="80" max="600" value="200"></div>
+  <div class="mgrp"><button class="mbtn" id="mLens"><span class="mi">🔍</span>돋보기 (확대)<span class="key">F8</span></button></div>
+  <div class="srow"><span>크기</span><input type="range" id="pSize" min="80" max="600" value="200"></div>
+  <div id="pStat">현재: <b>꺼짐</b></div>
 </div>
 
 <div class="panel iv" id="p-pin">
   <div class="ph">📌 핀</div>
   <p style="font-size:12px;color:#9fb0bf;line-height:1.7;margin-bottom:12px">
-    화면 일부를 캡처해서 항상 위에 고정하거나,<br>복사한 이미지를 <b style="color:var(--or)">Ctrl+V</b>로 핀하세요.
+    화면 일부를 캡처하거나 카메라로 찍어 항상 위에 고정.<br>복사한 이미지는 <b style="color:var(--or)">Ctrl+V</b>로 핀하세요.<br>핀의 <b style="color:var(--or)">✎</b> 버튼으로 핀 위에 메모를 달 수 있어요.
   </p>
-  <div class="ctrl">
+  <div class="ctrl" style="flex-direction:column;gap:7px">
     <button class="btn-go" id="snipBtn">✂ 영역 캡처 → 핀</button>
+    <button class="btn-g" id="camBtn">📷 카메라 촬영 → 핀</button>
   </div>
-  <p style="font-size:10.5px;color:#6b7884;margin-top:9px">전역 단축키: Ctrl+Alt+S</p>
+  <p style="font-size:10.5px;color:#6b7884;margin-top:9px">캡처 전역 단축키: Ctrl+Alt+S</p>
 </div>
 
 <div class="panel iv" id="p-noise">
-  <div class="ph">📢 소음 측정</div>
+  <div class="ph">📢 소음 측정 — 폭탄 게이지</div>
   <div class="noise-bar"><div class="noise-fill" id="nFill"></div></div>
   <div class="noise-val" id="nVal">대기 중</div>
-  <div class="srow"><span>경고 기준</span><input type="range" id="nTh" min="20" max="90" value="60"><span id="nThV" style="font-size:12px;color:#cdd8e2">60</span></div>
-  <div class="ctrl" style="margin-top:10px">
+  <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="20" max="90" value="60"><span id="nThV" style="font-size:12px;color:#cdd8e2">60</span></div>
+  <p style="font-size:10.5px;color:#6b7884;line-height:1.7;margin:7px 0 10px">
+    기준 60 ≈ 교실이 "시끄럽다"고 느끼는 수준(약 70dB).<br>마이크 감도가 제각각이라 슬라이더로 보정하세요.<br>기준을 <b style="color:var(--amber)">계속 넘으면 💣 게이지가 차오르고</b>, 가득 차면 💥 터집니다.
+  </p>
+  <div class="ctrl">
     <button class="btn-go" id="nStart">측정 시작</button>
     <button class="btn-g" id="nStop">중지</button>
   </div>
-  <p style="font-size:10.5px;color:#6b7884;margin-top:9px">기준 초과 시 화면 테두리가 빨갛게 깜빡입니다 (마이크 권한 필요)</p>
 </div>
 
 <div id="noiseAlert"></div>
+<div id="nBomb" class="iv">
+  <div id="bombRing"><div class="inner">💣</div></div>
+  <div class="blabel" id="bombPct">0%</div>
+  <div class="bsub">조용히 하면 줄어들어요</div>
+</div>
+<div id="boomFlash"></div>
+<div id="boomEmoji">💥</div>
+
+<!-- 카메라 모달 -->
+<div id="camWrap" class="iv">
+  <video id="camVid" autoplay muted playsinline></video>
+  <div class="cfoot">
+    <button class="btn-go" id="camShot" style="flex:2">📸 촬영 → 핀</button>
+    <button class="btn-g" id="camCancel" style="flex:1">취소</button>
+  </div>
+</div>
+
+<!-- 게임 모달 -->
+<div id="gameWrap" class="iv">
+  <div id="gameHead"><span id="gameTitle">🎡 돌림판</span><button id="gameClose">✕</button></div>
+  <canvas id="gameCv" width="540" height="430"></canvas>
+  <div id="gameFoot"><div id="gameRes"></div><button id="gameGo">돌리기!</button></div>
+</div>
 
 <!-- dock -->
 <div id="dock" class="iv">
-  <div class="brand" id="brand"><div class="lo">C</div><div class="nm">ClassMate<small>코코아팹 데스크탑</small></div></div>
+  <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate<small>코코아팹 데스크탑</small></div></div>
   <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
   <button class="tool" data-p="p-picker"><span class="ti">🎲</span>발표자</button>
   <button class="tool" data-p="p-qr"><span class="ti">🔗</span>QR</button>
@@ -291,7 +436,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button id="quitBtn" title="종료">✕</button>
 </div>
 
-<button id="pill" class="iv"><span>🟠</span> ClassMate</button>
+<button id="pill" class="iv"><img src="../assets/logo.png" draggable="false"> ClassMate</button>
 <div id="tFloat" class="iv">
   <span class="tf" id="tfTime">05:00</span>
   <span style="display:flex;flex-direction:column;gap:3px">
