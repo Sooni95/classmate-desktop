@@ -120,7 +120,12 @@ window.cm.onBoundsChanged(async()=>{
 });
 $('quitBtn').addEventListener('click',()=>window.cm.quit());
 let toastT;
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1800);}
+function toast(msg){
+  const t=$('toast');const d=dockDisp();
+  t.style.left=(d.x+d.w/2)+'px';
+  t.style.bottom=(innerHeight-(d.y+d.h)+96)+'px';
+  t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1800);
+}
 
 /* ===== 접어두기 — v0.4: 제자리 접힘 + pill 이동 가능 ===== */
 const pill=$('pill');
@@ -163,7 +168,7 @@ function rT(){
   const tf=$('tfTime');tf.textContent=fmtT(tLeft);tf.className='tf'+cls;
 }
 function stopT(){clearInterval(tInt);tInt=null;tRun=false;$('tStart').textContent='시작';}
-function beep(n){try{const ac=new AudioContext();const ds=n===3?[0,.2,.4]:[0,.2,.4];ds.forEach(d=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;o.start(ac.currentTime+d);g.gain.setValueAtTime(.15,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d+.18);o.stop(ac.currentTime+d+.2);});}catch(e){}}
+function beep(){try{const ac=new AudioContext();[0,.2,.4].forEach(d=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;o.start(ac.currentTime+d);g.gain.setValueAtTime(.15,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d+.18);o.stop(ac.currentTime+d+.2);});}catch(e){}}
 document.querySelectorAll('.presets button').forEach(b=>b.addEventListener('click',()=>{tTotal=tLeft=+b.dataset.m*60;stopT();rT();}));
 $('setC').addEventListener('click',()=>{tTotal=tLeft=(parseInt($('cMin').value)||0)*60+(parseInt($('cSec').value)||0);stopT();rT();});
 $('tStart').addEventListener('click',function(){
@@ -233,17 +238,29 @@ $('tBtn').addEventListener('click',()=>{
 
 /* ===== 게임 모달 공통 ===== */
 const gameWrap=$('gameWrap'),gCv=$('gameCv'),gx=gCv.getContext('2d'),gRes=$('gameRes'),gGo=$('gameGo');
-let gameMode=null,gameAnim=0;
-const BRAND=['#F68C1F','#FFB45E','#D9760F','#2c3744','#ffd9ad'];
+let gameMode=null,gameAnim=0,gameNames=[];
+const BRAND=['#F68C1F','#FFB45E','#D9760F','#5b8def','#34c759','#e05544','#a78bfa','#ffd166'];
+// "이름*5" → 구슬 5개 (withCount=true일 때)
+function parseNames(txt,withCount){
+  const out=[];
+  txt.split('\n').map(s=>s.trim()).filter(Boolean).forEach(line=>{
+    const m=line.match(/^(.*?)\s*\*\s*(\d+)$/);
+    if(m&&withCount){const n=Math.min(10,Math.max(1,+m[2]));for(let i=0;i<n;i++)out.push(m[1].trim());}
+    else out.push((m?m[1]:line).trim());
+  });
+  return out.filter(Boolean);
+}
 function openGame(mode){
-  const src=candidates();
-  if(src.length<2){toast('[이름] 탭에 명단을 2명 이상 입력하세요');return;}
-  gameMode=mode;gRes.textContent='';gGo.disabled=false;
-  $('gameTitle').textContent=mode==='wheel'?'🎡 돌림판':'🎢 핀볼 (Plinko)';
-  gGo.textContent=mode==='wheel'?'돌리기!':'공 떨어뜨리기!';
+  const src=mode==='wheel'?parseNames($('wheelNames').value,false):parseNames($('pkNames').value,true);
+  if(src.length<2){toast('명단을 2명(개) 이상 입력하세요');return;}
+  if(mode==='plinko'&&src.length>40)src.length=40; // 구슬 최대 40개
+  gameNames=src;gameMode=mode;gRes.textContent='';gGo.disabled=false;
+  $('gameTitle').textContent=mode==='wheel'?'🎡 돌림판':'🎢 핀볼 — 마지막에 골인하는 사람 당첨!';
+  gGo.textContent=mode==='wheel'?'돌리기!':'구슬 떨어뜨리기!';
+  gCv.height=mode==='wheel'?430:470;
   gameWrap.classList.add('on');
   centerOnDockDisplay(gameWrap);
-  if(mode==='wheel')drawWheel(src,0);else drawPlinko(src,null,null,-1);
+  if(mode==='wheel')drawWheel(src,0);else{pk=pkInit(src);pkDraw();}
 }
 function closeGame(){cancelAnimationFrame(gameAnim);gameWrap.classList.remove('on');gameMode=null;}
 $('gameClose').addEventListener('click',closeGame);
@@ -254,38 +271,41 @@ makeDrag($('gameHead'),(e,s)=>{
   gameWrap.style.left=(e.clientX-s.dx)+'px';gameWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='gameClose');
 gGo.addEventListener('click',()=>{
-  const src=candidates();
-  if(src.length<1){gRes.textContent='남은 명단이 없습니다';return;}
-  if(src.length===1){gRes.textContent='🎉 '+src[0]+' (마지막 1명)';recordWin(src[0]);gGo.disabled=true;return;}
   gGo.disabled=true;gRes.textContent='';
-  if(gameMode==='wheel')spinWheel(src);else dropPlinko(src);
+  if(gameMode==='wheel')spinWheel(gameNames);else dropPlinko();
 });
 
-/* --- 돌림판 --- */
-const W=540,H=430,WCX=W/2,WCY=H/2+6,WR=185;
+/* --- 돌림판 (당첨 = 위쪽 중앙 포인터) --- */
+const WW=540,WH=430,WCX=WW/2,WCY=WH/2+12,WR=178;
 function drawWheel(names,angle){
-  gx.clearRect(0,0,W,H);
+  gx.clearRect(0,0,WW,WH);
   const n=names.length,step=Math.PI*2/n;
   for(let i=0;i<n;i++){
     const a0=angle+i*step,a1=a0+step;
     gx.beginPath();gx.moveTo(WCX,WCY);gx.arc(WCX,WCY,WR,a0,a1);gx.closePath();
     gx.fillStyle=BRAND[i%BRAND.length];gx.fill();
     gx.strokeStyle='rgba(0,0,0,.25)';gx.lineWidth=1;gx.stroke();
-    // 이름
     gx.save();gx.translate(WCX,WCY);gx.rotate(a0+step/2);
-    gx.fillStyle=(i%BRAND.length===3)?'#fff':'#3a2200';
+    gx.fillStyle='#fff';
     gx.font='bold '+(n>20?11:n>12?13:16)+'px "Malgun Gothic"';
+    gx.shadowColor='rgba(0,0,0,.4)';gx.shadowBlur=3;
     gx.textAlign='right';gx.textBaseline='middle';
     const label=names[i].length>6?names[i].slice(0,6)+'…':names[i];
     gx.fillText(label,WR-12,0);gx.restore();
   }
-  // 중심 + 포인터(우측)
+  // 중심
   gx.beginPath();gx.arc(WCX,WCY,26,0,7);gx.fillStyle='#161c24';gx.fill();
   gx.strokeStyle='#F68C1F';gx.lineWidth=4;gx.stroke();
-  gx.fillStyle='#F68C1F';gx.font='16px serif';gx.textAlign='center';gx.textBaseline='middle';
+  gx.font='16px serif';gx.textAlign='center';gx.textBaseline='middle';
   gx.fillText('🦋',WCX,WCY+1);
-  gx.beginPath();gx.moveTo(WCX+WR+18,WCY);gx.lineTo(WCX+WR-8,WCY-12);gx.lineTo(WCX+WR-8,WCY+12);gx.closePath();
+  // 포인터: 위쪽 중앙, 아래(원판)를 향함
+  gx.beginPath();
+  gx.moveTo(WCX,WCY-WR+16);          // 뾰족한 끝 (원판 안쪽)
+  gx.lineTo(WCX-14,WCY-WR-12);
+  gx.lineTo(WCX+14,WCY-WR-12);
+  gx.closePath();
   gx.fillStyle='#fff';gx.fill();
+  gx.strokeStyle='rgba(0,0,0,.35)';gx.lineWidth=2;gx.stroke();
 }
 function spinWheel(names){
   const n=names.length,step=Math.PI*2/n;
@@ -298,103 +318,158 @@ function spinWheel(names){
     drawWheel(names,a);
     if(t<1){gameAnim=requestAnimationFrame(tick);}
     else{
-      // 포인터(각도 0, 우측)가 가리키는 조각
-      const norm=((-a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+      // 위쪽 중앙 포인터(절대각 -90°)가 가리키는 조각
+      const norm=(((-Math.PI/2)-a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
       const idx=Math.floor(norm/step)%n;
-      const wnr=names[idx];
-      gRes.textContent='🎉 '+wnr+'!';beep();recordWin(wnr);gGo.disabled=false;
+      gRes.textContent='🎉 '+names[idx]+'!';beep();gGo.disabled=false;
     }
   };
   gameAnim=requestAnimationFrame(tick);
 }
 
-/* --- 핀볼 (Plinko) ---
-   당첨자는 균등 추첨으로 먼저 정하고, 공의 좌우 경로가 그 칸에 도착하도록 구성.
-   (실제 Plinko는 가운데 칸 확률이 높아 불공정 → 공정성 유지용 설계) */
-let PK=null;
-function plinkoLayout(src){
-  const K=Math.min(src.length,7);
-  const winner=src[Math.random()*src.length|0];
-  let slots=[winner,...src.filter(x=>x!==winner).sort(()=>Math.random()-.5).slice(0,K-1)];
-  slots=slots.sort(()=>Math.random()-.5);
-  const target=slots.indexOf(winner);
-  const rows=8,slotW=W/K;
-  return {K,winner,slots,target,rows,slotW,top:64,bottom:H-46};
+/* --- 핀볼: 진짜 물리 시뮬 ---
+   모든 구슬이 핀에 튕기고, 회전 막대에 걸러지고, 깔때기로 모임.
+   '마지막'에 골인한 구슬의 주인이 당첨 (이름*5 = 구슬 5개) */
+const PKW=540,PKH=470;
+let pk=null;
+function pkInit(names){
+  const uniq=[...new Set(names)];
+  const order=[...names].sort(()=>Math.random()-.5);
+  const balls=order.map((nm,i)=>({
+    nm,col:BRAND[uniq.indexOf(nm)%BRAND.length],
+    x:50+Math.random()*(PKW-100),y:-16-i*30,
+    vx:(Math.random()-.5)*80,vy:0,r:9,done:false,slow:0
+  }));
+  const pegs=[];
+  for(let r=0;r<6;r++){
+    const cnt=7+(r%2);
+    for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:92+r*38,r:5});
+  }
+  const paddles=[
+    {cx:PKW*0.30,cy:332,len:80,a:Math.random()*6,w:2.3},
+    {cx:PKW*0.70,cy:332,len:80,a:Math.random()*6,w:-2.7},
+  ];
+  return {balls,pegs,paddles,arrived:[]};
 }
-function drawPlinko(src,layout,ball,litSlot){
-  const L=layout||plinkoLayout(src);
-  gx.clearRect(0,0,W,H);
-  // 핀
-  gx.fillStyle='#5b6878';
-  const rowH=(L.bottom-L.top)/L.rows;
-  for(let r=0;r<L.rows;r++){
-    const cnt=6+(r%2),off=(r%2)?L.slotW*0.5:0;
-    for(let c=0;c<=cnt;c++){
-      const x=(W/(cnt+1))*(c+0.5)+((r%2)?14:-14);
-      const y=L.top+r*rowH;
-      gx.beginPath();gx.arc(x,y,4,0,7);gx.fill();
+function collideCircle(b,cx,cy,cr,rest){
+  let nx=b.x-cx,ny=b.y-cy;const d=Math.hypot(nx,ny),min=b.r+cr;
+  if(d===0||d>=min)return false;
+  nx/=d;ny/=d;
+  b.x+=nx*(min-d);b.y+=ny*(min-d);
+  const vn=b.vx*nx+b.vy*ny;
+  if(vn<0){b.vx-=(1+rest)*vn*nx;b.vy-=(1+rest)*vn*ny;}
+  return true;
+}
+function collideSeg(b,x1,y1,x2,y2,rest){
+  const dx=x2-x1,dy=y2-y1,len2=dx*dx+dy*dy||1;
+  let t=((b.x-x1)*dx+(b.y-y1)*dy)/len2;t=Math.max(0,Math.min(1,t));
+  const px=x1+dx*t,py=y1+dy*t;
+  let nx=b.x-px,ny=b.y-py;const d=Math.hypot(nx,ny);
+  if(d===0||d>=b.r)return false;
+  nx/=d;ny/=d;
+  b.x+=nx*(b.r-d);b.y+=ny*(b.r-d);
+  const vn=b.vx*nx+b.vy*ny;
+  if(vn<0){b.vx-=(1+rest)*vn*nx;b.vy-=(1+rest)*vn*ny;}
+  return true;
+}
+const PK_GAP=42;
+function pkStep(dt){
+  const G=1150,REST=0.58;
+  pk.paddles.forEach(p=>p.a+=p.w*dt);
+  for(const b of pk.balls){
+    if(b.done)continue;
+    b.vy+=G*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;
+    if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)*REST;}
+    if(b.x>PKW-b.r){b.x=PKW-b.r;b.vx=-Math.abs(b.vx)*REST;}
+    for(const p of pk.pegs)collideCircle(b,p.x,p.y,p.r,0.62);
+    // 깔때기 + 골 통로
+    collideSeg(b,0,362,PKW/2-PK_GAP,440,0.42);
+    collideSeg(b,PKW,362,PKW/2+PK_GAP,440,0.42);
+    collideSeg(b,PKW/2-PK_GAP,440,PKW/2-PK_GAP,PKH,0.3);
+    collideSeg(b,PKW/2+PK_GAP,440,PKW/2+PK_GAP,PKH,0.3);
+    // 회전 막대 (스피너)
+    for(const p of pk.paddles){
+      const hx2=Math.cos(p.a)*p.len/2,hy2=Math.sin(p.a)*p.len/2;
+      if(collideSeg(b,p.cx-hx2,p.cy-hy2,p.cx+hx2,p.cy+hy2,0.5)){
+        const rx=b.x-p.cx,ry=b.y-p.cy;
+        b.vx+=-ry*p.w*0.85;b.vy+=rx*p.w*0.85;  // 막대 회전이 공을 쳐냄
+      }
+    }
+    if(b.y>PKH-10){b.done=true;pk.arrived.push(b);}
+    // 끼임 방지
+    const sp=Math.hypot(b.vx,b.vy);
+    if(sp<14&&b.y>0){b.slow+=dt;if(b.slow>1.1){b.vx+=(Math.random()-.5)*240;b.vy-=170;b.slow=0;}}else b.slow=0;
+  }
+  // 구슬끼리 충돌
+  const bs=pk.balls.filter(b=>!b.done&&b.y>-12);
+  for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
+    const a=bs[i],c=bs[j];let dx=c.x-a.x,dy=c.y-a.y;
+    const d=Math.hypot(dx,dy),min=a.r+c.r;
+    if(d>0&&d<min){
+      dx/=d;dy/=d;const pen=(min-d)/2;
+      a.x-=dx*pen;a.y-=dy*pen;c.x+=dx*pen;c.y+=dy*pen;
+      const rel=(c.vx-a.vx)*dx+(c.vy-a.vy)*dy;
+      if(rel<0){a.vx+=rel*dx*.9;a.vy+=rel*dy*.9;c.vx-=rel*dx*.9;c.vy-=rel*dy*.9;}
     }
   }
-  // 슬롯
-  for(let i=0;i<L.K;i++){
-    const x=i*L.slotW;
-    gx.fillStyle=i===litSlot?'#F68C1F':'#212a36';
-    gx.beginPath();gx.roundRect(x+3,L.bottom,L.slotW-6,34,8);gx.fill();
-    gx.fillStyle=i===litSlot?'#fff':'#9fb0bf';
-    gx.font='bold '+(L.K>5?11:13)+'px "Malgun Gothic"';
-    gx.textAlign='center';gx.textBaseline='middle';
-    const label=L.slots[i].length>5?L.slots[i].slice(0,5)+'…':L.slots[i];
-    gx.fillText(label,x+L.slotW/2,L.bottom+17);
-    gx.strokeStyle='rgba(255,255,255,.12)';
-    gx.beginPath();gx.moveTo(x,L.top-20);gx.lineTo(x,L.bottom);gx.stroke();
-  }
-  // 공
-  if(ball){
-    gx.beginPath();gx.arc(ball.x,ball.y,9,0,7);
-    const grad=gx.createRadialGradient(ball.x-3,ball.y-3,1,ball.x,ball.y,9);
-    grad.addColorStop(0,'#FFD9AD');grad.addColorStop(1,'#F68C1F');
-    gx.fillStyle=grad;gx.fill();
-    gx.strokeStyle='rgba(0,0,0,.3)';gx.stroke();
-  }
-  return L;
 }
-function dropPlinko(src){
-  const L=plinkoLayout(src);PK=L;
-  // 좌우 이동 경로: target 칸 중앙에 도착하도록 스텝 구성
-  const startX=W/2, endX=L.target*L.slotW+L.slotW/2;
-  const steps=L.rows;
-  const xs=[startX];
-  for(let i=1;i<=steps;i++){
-    const t=i/steps;
-    // 목표 지점으로 수렴하되 매 행 랜덤 흔들림 (실제 튕김 느낌)
-    const base=startX+(endX-startX)*t;
-    const wig=(Math.random()-.5)*L.slotW*(1-t)*1.6;
-    xs.push(Math.min(W-14,Math.max(14,base+wig)));
+function pkDraw(){
+  gx.clearRect(0,0,PKW,PKH);
+  const line=(x1,y1,x2,y2)=>{gx.beginPath();gx.moveTo(x1,y1);gx.lineTo(x2,y2);gx.stroke();};
+  // 깔때기
+  gx.strokeStyle='#3a4654';gx.lineWidth=5;gx.lineCap='round';
+  line(0,362,PKW/2-PK_GAP,440);line(PKW,362,PKW/2+PK_GAP,440);
+  line(PKW/2-PK_GAP,440,PKW/2-PK_GAP,PKH-3);line(PKW/2+PK_GAP,440,PKW/2+PK_GAP,PKH-3);
+  // 골 표시
+  gx.fillStyle='rgba(246,140,31,.16)';gx.fillRect(PKW/2-PK_GAP+3,442,PK_GAP*2-6,PKH-445);
+  gx.fillStyle='#F68C1F';gx.font='bold 11px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+  gx.fillText('GOAL',PKW/2,PKH-14);
+  // 핀
+  gx.fillStyle='#5b6878';
+  pk.pegs.forEach(p=>{gx.beginPath();gx.arc(p.x,p.y,p.r,0,7);gx.fill();});
+  // 회전 막대
+  pk.paddles.forEach(p=>{
+    const hx2=Math.cos(p.a)*p.len/2,hy2=Math.sin(p.a)*p.len/2;
+    gx.strokeStyle='#F68C1F';gx.lineWidth=7;gx.lineCap='round';
+    gx.beginPath();gx.moveTo(p.cx-hx2,p.cy-hy2);gx.lineTo(p.cx+hx2,p.cy+hy2);gx.stroke();
+    gx.fillStyle='#fff';gx.beginPath();gx.arc(p.cx,p.cy,4.5,0,7);gx.fill();
+  });
+  // 구슬
+  for(const b of pk.balls){
+    if(b.done||b.y<-10)continue;
+    const grad=gx.createRadialGradient(b.x-3,b.y-3,1,b.x,b.y,b.r);
+    grad.addColorStop(0,'#ffffff');grad.addColorStop(.25,b.col);grad.addColorStop(1,b.col);
+    gx.beginPath();gx.arc(b.x,b.y,b.r,0,7);gx.fillStyle=grad;gx.fill();
+    gx.strokeStyle='rgba(0,0,0,.35)';gx.lineWidth=1;gx.stroke();
+    gx.fillStyle='#fff';gx.font='bold 8.5px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+    gx.shadowColor='rgba(0,0,0,.6)';gx.shadowBlur=2;
+    gx.fillText(b.nm.slice(0,2),b.x,b.y);gx.shadowBlur=0;
   }
-  xs[steps]=endX;
-  const rowH=(L.bottom-L.top)/L.rows;
-  const start=performance.now(),per=300,total=per*steps+500;
+  // 상태 표시
+  gx.fillStyle='#9fb0bf';gx.font='12px "Malgun Gothic"';gx.textAlign='left';gx.textBaseline='alphabetic';
+  gx.fillText('남은 구슬 '+pk.balls.filter(b=>!b.done).length,10,20);
+  if(pk.arrived.length){gx.textAlign='right';gx.fillText('방금 골인: '+pk.arrived.at(-1).nm,PKW-10,20);}
+}
+function dropPlinko(){
+  pk=pkInit(gameNames);
+  let last=performance.now();const t0=last;
   const tick=now=>{
-    const el=now-start;
-    let ball;
-    if(el<per*steps){
-      const i=Math.floor(el/per),t=(el%per)/per;
-      const y0=i===0?20:L.top+(i-1)*rowH, y1=L.top+i*rowH;
-      // 행 사이 낙하: 가속 + 핀에 닿을 때 살짝 바운스
-      const yy=y0+(y1-y0)*(t*t);
-      const xx=xs[i]+(xs[i+1]-xs[i])*t;
-      const bounce=Math.sin(t*Math.PI)* -4;
-      ball={x:xx,y:yy+bounce};
-      drawPlinko(src,L,ball,-1);
-      gameAnim=requestAnimationFrame(tick);
-    }else if(el<total){
-      const t=(el-per*steps)/500;
-      ball={x:endX,y:L.top+(L.rows-1)*rowH+(L.bottom+10-(L.top+(L.rows-1)*rowH))*Math.min(1,t*1.3)};
-      drawPlinko(src,L,ball,t>0.5?L.target:-1);
-      gameAnim=requestAnimationFrame(tick);
-    }else{
-      drawPlinko(src,L,{x:endX,y:L.bottom+8},L.target);
-      gRes.textContent='🎉 '+L.winner+'!';beep();recordWin(L.winner);gGo.disabled=false;
+    const dt=Math.min(0.032,(now-last)/1000);last=now;
+    pkStep(dt/2);pkStep(dt/2);
+    pkDraw();
+    const left=pk.balls.filter(b=>!b.done).length;
+    if(left>0&&now-t0<50000){gameAnim=requestAnimationFrame(tick);}
+    else{
+      const w=pk.arrived.at(-1);
+      if(w){
+        gRes.textContent='🎉 마지막 골인: '+w.nm+'!';
+        gx.fillStyle='rgba(22,28,36,.82)';gx.fillRect(0,PKH/2-58,PKW,116);
+        gx.fillStyle='#F68C1F';gx.font='bold 36px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+        gx.fillText('🎉 '+w.nm,PKW/2,PKH/2-8);
+        gx.fillStyle='#fff';gx.font='14px "Malgun Gothic"';
+        gx.fillText('마지막 골인 — 당첨!',PKW/2,PKH/2+30);
+      }
+      beep();gGo.disabled=false;
     }
   };
   gameAnim=requestAnimationFrame(tick);
@@ -403,15 +478,19 @@ function dropPlinko(src){
 /* ===== QR ===== */
 let qrT;
 $('qrUrl').addEventListener('input',e=>{clearTimeout(qrT);qrT=setTimeout(()=>genQR(e.target.value.trim()),450);});
+function makeQR(el,text){
+  el.innerHTML='';
+  try{new QRCode(el,{text,width:132,height:132,colorDark:'#1c1d1f',colorLight:'#ffffff'});}catch(e){}
+}
 function genQR(url){
   const box=$('qrbox');
   if(!url){box.className='empty';box.textContent='URL 입력 시 자동 생성 (오프라인 작동)';return;}
-  box.className='';box.innerHTML='';
-  try{new QRCode(box,{text:url,width:132,height:132,colorDark:'#1c1d1f',colorLight:'#ffffff'});}catch(e){}
+  box.className='';makeQR(box,url);
 }
 
 /* ===== 단축주소 (코코아팹.kr) — 온라인 기능 ===== */
 const SU_BASE='코코아팹.kr';
+const SU_TOKEN_DEFAULT='kocoafab2026'; // 기본 내장 — ⚙에서 변경 가능
 let suTtl=604800;
 $('suTtl').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
   $('suTtl').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
@@ -428,12 +507,11 @@ function suSay(msg,good){const m=$('suMsg');m.textContent=msg;m.style.color=good
 $('suGo').addEventListener('click',async()=>{
   let target=$('suTarget').value.trim();
   const slug=$('suSlug').value.trim();
-  const token=localStorage.getItem('su_token')||'';
+  const token=localStorage.getItem('su_token')||SU_TOKEN_DEFAULT;
   if(!target){suSay('원본 URL을 입력하세요');return;}
   if(!/^https?:\/\//i.test(target))target='https://'+target;
   if(!slug){suSay('단축 이름을 입력하세요 (예: 수업자료)');return;}
   if(/[\/\s?#]/.test(slug)||slug.toLowerCase()==='api'){suSay('단축 이름에 공백, /, ?, # 은 쓸 수 없어요');return;}
-  if(!token){suSay('⚙ 연동 설정에서 토큰을 먼저 저장하세요');$('suTokenRow').classList.add('on');return;}
   $('suGo').disabled=true;$('suGo').textContent='만드는 중…';suSay('');
   const res=await window.cm.shorten({slug,target,ttl:suTtl,token});
   $('suGo').disabled=false;$('suGo').textContent='단축주소 만들기';
@@ -445,7 +523,7 @@ $('suGo').addEventListener('click',async()=>{
     $('suCard').classList.add('on');$('suQr').classList.remove('on');$('suQr').innerHTML='';
     suSay('완성! 복사하거나 QR로 띄워보세요 🎉',true);
   }else if(res.status===409){suSay('"'+slug+'" 는 이미 사용 중이에요 — 다른 이름을 써보세요');}
-  else if(res.status===403){suSay('토큰이 올바르지 않아요 — ⚙ 연동 설정 확인');$('suTokenRow').classList.add('on');}
+  else if(res.status===403){suSay('서버 토큰이 일치하지 않아요 — ⚙ 연동 설정에서 확인');$('suTokenRow').classList.add('on');}
   else if(res.status===0){suSay('인터넷 연결을 확인하세요 (단축주소는 온라인 기능)');}
   else{suSay('오류: '+(res.message||res.status));}
 });
@@ -455,29 +533,29 @@ $('suCopy').addEventListener('click',async()=>{
 $('suQrBtn').addEventListener('click',()=>{
   const box=$('suQr');
   if(box.classList.contains('on')){box.classList.remove('on');return;}
-  box.innerHTML='';box.classList.add('on');
+  box.classList.add('on');
   // QR에는 퓨니코드 형태로 (구형 스캐너 호환), 화면 표시는 한글
-  const puny=new URL('https://'+$('suUrl').textContent).href;
-  try{new QRCode(box,{text:puny,width:132,height:132,colorDark:'#1c1d1f',colorLight:'#ffffff'});}catch(e){}
+  makeQR(box,new URL('https://'+$('suUrl').textContent).href);
 });
 
 /* ===== 메모 — v0.4: 부분 글자 크기 (선택한 단어만) ===== */
 const MCOLS=['#FFF3A3','#FFB3C6','#B3F0D4','#C7D2FF'];let mCnt=0;
 function applyFontSize(ed,dir){
   const sel=getSelection();
-  const hasSel=sel.rangeCount&&!sel.isCollapsed&&ed.contains(sel.anchorNode);
+  const hasSel=sel.rangeCount&&!sel.isCollapsed&&ed.contains(sel.anchorNode)&&ed.contains(sel.focusNode);
   if(hasSel){
-    // 선택 부분만: 현재 크기 기준 ±4px
-    const node=sel.anchorNode.nodeType===3?sel.anchorNode.parentElement:sel.anchorNode;
+    // 선택된 부분만 정확히 span으로 감싸서 크기 변경 (execCommand의 '옆 글자' 버그 제거)
+    const range=sel.getRangeAt(0);
+    const node=range.startContainer.nodeType===3?range.startContainer.parentElement:range.startContainer;
     const cur=parseFloat(getComputedStyle(node).fontSize)||14;
     const next=Math.min(56,Math.max(10,cur+dir*4));
-    document.execCommand('styleWithCSS',false,true);
-    document.execCommand('fontSize',false,'7');
-    ed.querySelectorAll('font[size="7"],span[style*="xxx-large"]').forEach(n=>{
-      const sp=document.createElement('span');sp.style.fontSize=next+'px';sp.innerHTML=n.innerHTML;n.replaceWith(sp);
-    });
+    const span=document.createElement('span');span.style.fontSize=next+'px';
+    try{range.surroundContents(span);}
+    catch(e){span.appendChild(range.extractContents());range.insertNode(span);}
+    // 같은 부분을 계속 키우고 줄일 수 있게 재선택
+    sel.removeAllRanges();
+    const nr=document.createRange();nr.selectNodeContents(span);sel.addRange(nr);
   }else{
-    // 선택 없으면 전체 기본 크기
     const cur=parseFloat(ed.style.fontSize)||14;
     ed.style.fontSize=Math.min(56,Math.max(10,cur+dir*4))+'px';
   }
@@ -581,6 +659,8 @@ async function startSnip(){
   const im=$('snipImg');
   im.src=res.dataURL;
   im.style.cssText=`left:${snipB.x}px;top:${snipB.y}px;width:${snipB.w}px;height:${snipB.h}px;inset:auto;`;
+  const h=$('snipHint');
+  h.style.left=(snipB.x+snipB.w/2)+'px';h.style.top=(snipB.y+16)+'px';
   snipOn=true;snipWrap.classList.add('on');setIgnore(false);
 }
 function endSnip(){snipOn=false;snipWrap.classList.remove('on');snipRect.style.display='none';}
@@ -660,7 +740,7 @@ $('mRing').addEventListener('click',()=>{PS.ring=!PS.ring;syncPtr();});
 $('mSpot').addEventListener('click',()=>{PS.spot=PS.spot>0?0:spotShape;syncPtr();});
 $('shC').addEventListener('click',()=>{spotShape=1;if(PS.spot>0)PS.spot=1;syncPtr();});
 $('shR').addEventListener('click',()=>{spotShape=2;if(PS.spot>0)PS.spot=2;syncPtr();});
-$('pSize').addEventListener('input',e=>{PS.size=+e.target.value;renderPtr();if(lensOn)renderLens();});
+$('pSize').addEventListener('input',e=>{PS.size=+e.target.value;renderPtr();});
 
 /* ===== 휠: 주석 모드 → 펜 굵기 / 렌즈 → 배율 / 스팟 → 크기 ===== */
 let penHudT;
@@ -673,19 +753,30 @@ function showPenHud(){
   clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
 }
 document.addEventListener('wheel',e=>{
-  if(drawMode){
+  if(drawMode&&penType==='text'){
+    e.preventDefault();
+    txSize=Math.min(96,Math.max(12,txSize+(e.deltaY<0?3:-3)));
+    if(txEditor)txEditor.style.fontSize=txSize+'px';
+    showTextHud();
+  }
+  else if(drawMode){
     e.preventDefault();
     const d=e.deltaY<0?2:-2;
     const lim={pen:[2,30],hl:[8,60],eraser:[10,80]}[penType];
     PW[penType]=Math.min(lim[1],Math.max(lim[0],PW[penType]+d));
     showPenHud();
   }
+  else if(lensOn&&e.ctrlKey){ // Ctrl+휠: 렌즈 원 자체 크기
+    e.preventDefault();
+    lensSize=Math.min(680,Math.max(140,lensSize+(e.deltaY<0?24:-24)));
+    renderLens();
+  }
   else if(lensOn){e.preventDefault();lz=Math.min(6,Math.max(1.3,lz+(e.deltaY<0?0.3:-0.3)));renderLens();}
   else if(PS.spot>0){e.preventDefault();PS.size=Math.min(600,Math.max(80,PS.size+(e.deltaY<0?20:-20)));$('pSize').value=PS.size;renderPtr();}
 },{passive:false});
 
 /* ===== 부분 렌즈 ===== */
-let lensOn=false,lensShape=0,lz=2,lensImgW=0,lensImgH=0,lensB=null;
+let lensOn=false,lensShape=0,lz=2,lensImgW=0,lensB=null,lensSize=280;
 const lens2=$('lens2'),lensImg=$('lensImg'),lensTip=$('lensTip');
 async function setLens(shape){
   if(shape>0&&lensShape===0){
@@ -693,11 +784,12 @@ async function setLens(shape){
     if(!res)return;
     lensB=res.bounds;lensImg.src=res.dataURL;
     await new Promise(r=>{lensImg.onload=r;});
-    lensImgW=lensImg.naturalWidth;lensImgH=lensImg.naturalHeight;
+    lensImgW=lensImg.naturalWidth;
     lz=2;
   }
   lensShape=shape;lensOn=shape>0;
   lens2.className=(shape===2?'rect':'circle')+(lensOn?' on':'');
+  if(lensOn){const d=dispAt(hx,hy);lensTip.style.left=(d.x+d.w/2)+'px';lensTip.style.top=(d.y+16)+'px';}
   lensTip.classList.toggle('on',lensOn);
   $('mLens').classList.toggle('on',lensOn);
   syncPtr();
@@ -706,7 +798,7 @@ async function setLens(shape){
 function cycleLens(){setLens((lensShape+1)%3);}
 function renderLens(){
   if(!lensOn||!lensB)return;
-  const S=Math.max(180,PS.size*1.4);
+  const S=lensSize;
   const H2=lensShape===2?S*0.62:S;
   lens2.style.left=(hx-S/2)+'px';lens2.style.top=(hy-H2/2)+'px';
   lens2.style.width=S+'px';lens2.style.height=H2+'px';
@@ -732,10 +824,15 @@ function toggleDraw(force){
   dctmp.classList.toggle('on',drawMode);
   $('dtb').classList.toggle('on',drawMode);
   $('drawBtn').classList.toggle('on',drawMode);
-  // 주석 중에는 캔버스를 핀/메모 위로 → 핀 위에도 필기 가능
+  // 펜 모드 중에는 캔버스를 핀/메모 위로 → 핀 위에도 필기 가능
   const z=drawMode?56:40;
   dc.style.zIndex=z;dctmp.style.zIndex=z+1;
-  if(drawMode){setPanel(null);setIgnore(false);}
+  if(drawMode){
+    setPanel(null);setIgnore(false);
+    // 펜 툴바: 독이 있는 모니터 상단 중앙 (멀티모니터 합산 중앙 X)
+    const d=dockDisp();
+    $('dtb').style.left=(d.x+d.w/2)+'px';$('dtb').style.top=(d.y+18)+'px';
+  }else commitText();
 }
 $('drawBtn').addEventListener('click',()=>toggleDraw());
 $('exitDraw').addEventListener('click',()=>toggleDraw(false));
@@ -743,17 +840,62 @@ $('clearBtn').addEventListener('click',()=>{saveSt();ctx.clearRect(0,0,dc.width,
 document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{
   document.querySelectorAll('.sw').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');penColor=s.dataset.c;
 }));
-function setTool(t){penType=t;['penBtn','hlBtn','erBtn'].forEach(id=>$(id).classList.remove('on'));$({pen:'penBtn',hl:'hlBtn',eraser:'erBtn'}[t]).classList.add('on');}
+function setTool(t){
+  if(penType==='text'&&t!=='text')commitText();
+  penType=t;
+  ['penBtn','hlBtn','erBtn','txBtn'].forEach(id=>$(id).classList.remove('on'));
+  $({pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn'}[t]).classList.add('on');
+}
 $('penBtn').addEventListener('click',()=>setTool('pen'));
 $('hlBtn').addEventListener('click',()=>setTool('hl'));
 $('erBtn').addEventListener('click',()=>setTool('eraser'));
+$('txBtn').addEventListener('click',()=>setTool('text'));
+
+/* --- 글자 도구: 클릭한 곳에 입력 → Enter로 화면에 새김 (휠로 크기) --- */
+let txSize=28,txEditor=null;
+function showTextHud(){
+  const hud=$('penHud');
+  hud.querySelector('.dot').style.cssText='width:10px;height:10px;color:'+penColor;
+  hud.querySelector('.ptxt').textContent='글자 크기 '+txSize+' (휠로 조절)';
+  hud.style.left=(hx+24)+'px';hud.style.top=(hy+24)+'px';
+  hud.classList.add('on');
+  clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
+}
+function openTextEditor(x,y){
+  const ed=document.createElement('div');
+  ed.className='cvtext iv';ed.contentEditable='true';
+  ed.style.left=x+'px';ed.style.top=y+'px';
+  ed.style.color=penColor;ed.style.fontSize=txSize+'px';
+  ed.dataset.x=x;ed.dataset.y=y;
+  document.body.appendChild(ed);txEditor=ed;
+  setTimeout(()=>ed.focus(),0);
+  ed.addEventListener('keydown',e=>{
+    e.stopPropagation();
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commitText();}
+    else if(e.key==='Escape'){txEditor=null;ed.remove();}
+  });
+}
+function commitText(){
+  if(!txEditor)return;
+  const ed=txEditor;txEditor=null;
+  const txt=ed.innerText.replace(/\n+$/,'');
+  const x=+ed.dataset.x,y=+ed.dataset.y;
+  const col=ed.style.color,fs=parseFloat(ed.style.fontSize);
+  ed.remove();
+  if(!txt.trim())return;
+  saveSt();
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  ctx.fillStyle=col;ctx.font='bold '+fs+'px "Malgun Gothic"';ctx.textBaseline='top';ctx.textAlign='left';
+  txt.split('\n').forEach((ln,i)=>ctx.fillText(ln,x+4,y+4+i*fs*1.28));
+}
 function saveSt(){if(undoStack.length>=20)undoStack.shift();undoStack.push(ctx.getImageData(0,0,dc.width,dc.height));}
 function undo(){if(undoStack.length)ctx.putImageData(undoStack.pop(),0,0);}
 $('undoBtn').addEventListener('click',undo);
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(e.key==='Escape'){
-    if(gameWrap.classList.contains('on'))closeGame();
+    if($('noiseGuide').classList.contains('on'))$('noiseGuide').classList.remove('on');
+    else if(gameWrap.classList.contains('on'))closeGame();
     else if($('camWrap').classList.contains('on'))closeCam();
     else if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();
   }
@@ -773,7 +915,9 @@ function pathStroke(c,pts,w){
   c.stroke();
 }
 dc.addEventListener('pointerdown',e=>{
-  if(!drawMode)return;saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
+  if(!drawMode)return;
+  if(penType==='text'){commitText();openTextEditor(e.clientX,e.clientY);return;}
+  saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
   if(penType==='eraser'){
     ctx.globalCompositeOperation='destination-out';
@@ -843,7 +987,20 @@ function explode(){
   gauge=0;boomCool=Date.now()+2500; // 폭발 직후 2.5초 충전 유예
   setTimeout(()=>{$('boomFlash').classList.remove('on');be.classList.remove('on');},1500);
 }
-$('nStart').addEventListener('click',async()=>{
+function showNoiseGuide(){
+  const g=$('noiseGuide');g.classList.add('on');centerOnDockDisplay(g);
+}
+$('ngStart').addEventListener('click',()=>{
+  localStorage.setItem('noise_guide_seen','1');
+  $('noiseGuide').classList.remove('on');startNoise();
+});
+$('ngClose').addEventListener('click',()=>$('noiseGuide').classList.remove('on'));
+$('nHelp').addEventListener('click',showNoiseGuide);
+$('nStart').addEventListener('click',()=>{
+  if(!localStorage.getItem('noise_guide_seen')){showNoiseGuide();return;}
+  startNoise();
+});
+async function startNoise(){
   if(nStream)return;
   try{
     nStream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -879,7 +1036,7 @@ $('nStart').addEventListener('click',async()=>{
     };
     loop();
   }catch(e){$('nVal').textContent='마이크 권한이 거부되었습니다';}
-});
+}
 $('nStop').addEventListener('click',()=>{
   cancelAnimationFrame(nRAF);
   if(nStream){nStream.getTracks().forEach(t=>t.stop());nStream=null;}
@@ -890,7 +1047,7 @@ $('nStop').addEventListener('click',()=>{
 });
 
 /* ===== 전체 끄기 & 전역 단축키 ===== */
-function allOff(){PS.ring=false;PS.spot=0;syncPtr();toggleDraw(false);if(lensOn)setLens(0);if(snipOn)endSnip();$('nStop').click();closeGame();closeCam();}
+function allOff(){commitText();PS.ring=false;PS.spot=0;syncPtr();toggleDraw(false);if(lensOn)setLens(0);if(snipOn)endSnip();$('nStop').click();closeGame();closeCam();}
 window.cm.onHotkey(ch=>{
   switch(ch){
     case 'hk-ring': PS.ring=!PS.ring;syncPtr();break;

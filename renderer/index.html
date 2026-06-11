@@ -161,9 +161,6 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #spotHole.circle{border-radius:50%;}
 #spotHole.rect{border-radius:14px;}
 
-#lensWrap{position:fixed;inset:0;z-index:88;display:none;background:#000;}
-#lensWrap.on{display:block;}
-#lensHint{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(22,28,36,.9);color:#fff;font-size:12px;padding:7px 16px;border-radius:100px;z-index:89;}
 
 #snipWrap{position:fixed;inset:0;z-index:92;display:none;cursor:crosshair;}
 #snipWrap.on{display:block;}
@@ -217,7 +214,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #toast.on{display:block;}
 
 /* 부분 렌즈 */
-#lens2{position:fixed;z-index:88;display:none;overflow:hidden;border:3px solid var(--or);box-shadow:0 14px 40px -8px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.35);pointer-events:none;background:#111;will-change:left,top;}
+#lens2{position:fixed;z-index:88;display:none;overflow:hidden;border:2.5px dashed rgba(255,255,255,.95);box-shadow:0 10px 30px -8px rgba(0,0,0,.45);pointer-events:none;background:#111;will-change:left,top;}
 #lens2.on{display:block;}
 #lens2.circle{border-radius:50%;}
 #lens2.rect{border-radius:16px;}
@@ -247,6 +244,18 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #boomEmoji.on{display:block;animation:bpop 1.4s ease-out forwards;}
 @keyframes bpop{0%{transform:translate(-50%,-50%) scale(.3);opacity:1;}55%{transform:translate(-50%,-50%) scale(1.7);}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;}}
 
+/* 펜-글자 입력창 */
+.cvtext{position:fixed;z-index:58;min-width:36px;max-width:55vw;background:transparent;outline:2px dashed rgba(246,140,31,.85);outline-offset:3px;padding:4px;font-weight:bold;line-height:1.28;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:pre-wrap;-webkit-user-select:text;user-select:text;cursor:text;text-shadow:0 1px 3px rgba(0,0,0,.25);}
+/* 소음 작동 안내 팝업 */
+#noiseGuide{position:fixed;left:0;top:0;z-index:84;width:360px;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px;display:none;color:#e7edf3;}
+#noiseGuide.on{display:block;}
+#noiseGuide .ng-head{font-size:16px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+#noiseGuide .ng-head button{border:none;background:none;color:#6b7884;font-size:16px;cursor:pointer;}
+#noiseGuide .ng-step{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.65;margin-bottom:11px;color:#cdd8e2;}
+#noiseGuide .ng-step span{font-size:18px;}
+#noiseGuide .ng-step b{color:var(--or);}
+#noiseGuide .ng-foot{font-size:11px;color:#6b7884;margin:4px 0 14px;line-height:1.6;}
+
 /* 카메라 모달 */
 #camWrap{position:fixed;left:0;top:0;z-index:82;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:480px;}
 #camWrap.on{display:block;}
@@ -261,7 +270,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <div id="spot"><div id="spotHole" class="circle"></div></div>
 <div id="halo"></div>
 <div id="lens2"><img id="lensImg"></div>
-<div id="lensTip">🔍 렌즈 — 휠: 배율 · F8: 모양 전환/끄기 · ESC: 종료</div>
+<div id="lensTip">🔍 렌즈 — 휠: 배율 · Ctrl+휠: 원 크기 · F8: 모양/끄기 · ESC: 종료</div>
 <div id="snipWrap" class="iv"><img id="snipImg"><div id="snipDim"></div><div id="snipRect"></div><div id="snipHint">📌 드래그로 영역 선택 → 핀 생성 · ESC: 취소</div></div>
 <div id="penHud"><span class="dot"></span><span class="ptxt"></span></div>
 
@@ -271,8 +280,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <span class="sw" style="background:#34c759" data-c="#34c759"></span>
   <span class="sw" style="background:#007aff" data-c="#007aff"></span>
   <span class="sw" style="background:#ffe600" data-c="#ffe600"></span>
+  <span class="sw" style="background:#111111" data-c="#111111"></span>
+  <span class="sw" style="background:#ffffff" data-c="#ffffff"></span>
   <button class="tb on" id="penBtn">✏️ 펜</button>
   <button class="tb" id="hlBtn">🖍 형광</button>
+  <button class="tb" id="txBtn">T 글자</button>
   <button class="tb" id="erBtn">⬜ 지우개</button>
   <button class="tb" id="undoBtn">↩</button>
   <button class="tb danger" id="clearBtn">↺ 전체</button>
@@ -311,17 +323,19 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <button class="btn-go" id="tBtn">모둠 나누기!</button>
   </div>
   <div class="pane" id="pane-wh">
-    <div class="gdesc">🎡 <b style="color:#F68C1F">돌림판</b> — [이름] 탭의 명단으로 돌아가는 룰렛입니다. '뽑힌 사람 제외' 옵션이 함께 적용됩니다.</div>
+    <textarea class="names" id="wheelNames" placeholder="이름을 줄바꿈으로 입력"></textarea>
+    <div class="gdesc">🎡 위쪽 화살표에 멈추는 사람 당첨!</div>
     <button class="btn-go" id="wheelOpen">돌림판 열기</button>
   </div>
   <div class="pane" id="pane-pk">
-    <div class="gdesc">🎢 <b style="color:#F68C1F">핀볼 (Plinko)</b> — 공이 핀에 튕기며 떨어져 당첨 칸을 정합니다. [이름] 탭의 명단을 사용합니다.</div>
+    <textarea class="names" id="pkNames" placeholder="이름을 줄바꿈으로 입력&#10;김수훈*5  ← 별표로 구슬 개수 (5개)"></textarea>
+    <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
 </div>
 
 <div class="panel iv" id="p-qr">
-  <div class="ph">🔗 QR · 단축주소</div>
+  <div class="ph">🔗 URL — QR · 단축주소</div>
   <div class="tabs"><button class="tab on" data-t="qr1">QR 생성</button><button class="tab" data-t="qr2">✂ 단축주소</button></div>
   <div class="pane on" id="pane-qr1">
     <input type="text" class="qr-inp" id="qrUrl" placeholder="URL 입력 (자동 생성)">
@@ -383,7 +397,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 </div>
 
 <div class="panel iv" id="p-noise">
-  <div class="ph">📢 소음 측정 — 폭탄 게이지</div>
+  <div class="ph">📢 소음 측정 — 폭탄 게이지 <button id="nHelp" style="float:right;border:none;background:var(--dk2);color:#9fb0bf;border-radius:6px;font-size:10.5px;padding:3px 8px;cursor:pointer;font-family:inherit">❓ 작동 방식</button></div>
   <div class="noise-bar"><div class="noise-fill" id="nFill"></div></div>
   <div class="noise-val" id="nVal">대기 중</div>
   <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="20" max="90" value="60"><span id="nThV" style="font-size:12px;color:#cdd8e2">60</span></div>
@@ -397,6 +411,14 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 </div>
 
 <div id="noiseAlert"></div>
+<div id="noiseGuide" class="iv">
+  <div class="ng-head"><span>📢 소음 폭탄, 이렇게 작동해요</span><button id="ngClose">✕</button></div>
+  <div class="ng-step"><span>1️⃣</span><span>마이크가 교실 소리를 실시간으로 들어요 (막대가 움직여요)</span></div>
+  <div class="ng-step"><span>2️⃣</span><span>소리가 <b>기준선을 계속 넘으면</b> 화면의 💣 게이지가 점점 차올라요</span></div>
+  <div class="ng-step"><span>3️⃣</span><span>가득 차면 💥 펑! — 조용해지면 게이지가 다시 줄어들어요</span></div>
+  <div class="ng-foot">기준선은 패널 슬라이더로 조절하세요. 컴퓨터마다 마이크 감도가 달라서, 평소 수업 소리로 한 번 맞춰두면 됩니다.</div>
+  <button class="btn-go" id="ngStart">알겠어요, 측정 시작!</button>
+</div>
 <div id="nBomb" class="iv">
   <div id="bombRing"><div class="inner">💣</div></div>
   <div class="blabel" id="bombPct">0%</div>
@@ -423,15 +445,15 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
 <!-- dock -->
 <div id="dock" class="iv">
-  <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate<small>코코아팹 데스크탑</small></div></div>
+  <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate<small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
   <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
   <button class="tool" data-p="p-picker"><span class="ti">🎲</span>발표자</button>
-  <button class="tool" data-p="p-qr"><span class="ti">🔗</span>QR</button>
+  <button class="tool" data-p="p-qr"><span class="ti">🔗</span>URL</button>
   <button class="tool" data-p="p-pin"><span class="ti">📌</span>핀</button>
   <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
   <button class="tool" data-p="p-noise"><span class="ti">📢</span>소음</button>
-  <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>주석</button>
+  <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>
