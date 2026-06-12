@@ -1,5 +1,6 @@
 // ClassMate Desktop v0.2 — main process
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 
 let win = null, tray = null, origin = { x: 0, y: 0 };
@@ -85,13 +86,26 @@ function createOverlay() {
     try { clipboard.writeText(text); } catch (e) {}
   });
 
+  // 이미지 PNG로 저장 (저장 위치 선택)
+  ipcMain.handle('save-image', async (_e, { dataURL, filename }) => {
+    try {
+      const r = await dialog.showSaveDialog(win, {
+        defaultPath: filename || 'QR.png',
+        filters: [{ name: 'PNG 이미지', extensions: ['png'] }],
+      });
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(r.filePath, Buffer.from(dataURL.split(',')[1], 'base64'));
+      return { ok: true };
+    } catch (e) { return { ok: false, message: String(e) }; }
+  });
+
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
-  ipcMain.handle('shorten', async (_e, { slug, target, ttl, token }) => {
+  ipcMain.handle('shorten', async (_e, { slug, target, ttl, token, key }) => {
     try {
       const res = await fetch('https://코코아팹.kr/api/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-token': token },
-        body: JSON.stringify({ slug, target, ttl }),
+        headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
+        body: JSON.stringify({ slug, target, ttl, key }),
       });
       const text = await res.text();
       return { ok: res.ok, status: res.status, message: text };

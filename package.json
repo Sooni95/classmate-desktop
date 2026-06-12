@@ -1,7 +1,7 @@
 {
   "name": "classmate-desktop",
   "productName": "ClassMate",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "description": "코코아팹 ClassMate — 강사용 수업 보조 오버레이 (데스크탑)",
   "main": "main.js",
   "scripts": {

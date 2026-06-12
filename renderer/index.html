@@ -110,6 +110,10 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .su-copy:hover{background:var(--or);border-color:var(--or);color:#fff;}
 #suQr{display:none;justify-content:center;background:#fff;border-radius:10px;padding:12px;margin-top:10px;}
 #suQr.on{display:flex;}
+.qr-act{display:none;gap:6px;margin-top:8px;}
+.qr-act.on{display:flex;}
+.su-hint{font-size:10.5px;color:#6b7884;line-height:1.6;margin-top:9px;}
+.su-hint b{color:var(--or);}
 
 
 /* ptr panel — v0.4: 모드별 그룹 + 상태 표시로 혼동 제거 */
@@ -345,6 +349,10 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div class="pane on" id="pane-qr1">
     <input type="text" class="qr-inp" id="qrUrl" placeholder="URL 입력 (자동 생성)">
     <div id="qrbox" class="empty">URL 입력 시 자동 생성 (오프라인 작동)</div>
+    <div class="qr-act" id="qrAct">
+      <button class="su-copy" id="qrSave">💾 PNG 저장</button>
+      <button class="su-copy" id="qrCopy">📋 복사</button>
+    </div>
   </div>
   <div class="pane" id="pane-qr2">
     <input type="text" class="qr-inp" id="suTarget" placeholder="원본 URL (https://…)" style="margin-bottom:8px">
@@ -368,7 +376,12 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
         <button class="su-copy" id="suQrBtn">QR 보기</button>
       </div>
       <div id="suQr"></div>
+      <div class="qr-act" id="suQrAct">
+        <button class="su-copy" id="suQrSave">💾 PNG 저장</button>
+        <button class="su-copy" id="suQrCopy">📋 복사</button>
+      </div>
     </div>
+    <div class="su-hint">♻️ <b>QR은 그대로, 연결만 변경 가능!</b> 같은 이름으로 새 URL을 입력해 다시 만들면, 배포한 QR·주소는 그대로 두고 연결되는 곳만 바뀝니다. (이 컴퓨터에서 만든 이름만)</div>
 
   </div>
 </div>

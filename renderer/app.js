@@ -327,19 +327,19 @@ function spinWheel(names){
   gameAnim=requestAnimationFrame(tick);
 }
 
-/* --- 핀볼: 진짜 물리 시뮬 ---
-   모든 구슬이 핀에 튕기고, 회전 막대에 걸러지고, 깔때기로 모임.
-   '마지막'에 골인한 구슬의 주인이 당첨 (이름*5 = 구슬 5개) */
-const PKW=540,PKH=470;
+/* --- 핀볼: 전원 동시 투하 + 좁은 골목 몸싸움 ---
+   좁은 골(40px) 앞에서 문지기 막대와 구슬들이 엉키며 순서가 갈림.
+   마지막에 골인한 구슬의 주인이 당첨. (이름*5 = 구슬 5개)
+   연출: 골인 이펙트 / 남은 구슬 ≤3 글로우 / 마지막 1개 슬로모션 / 우승 꽃가루 */
+const PKW=540,PKH=470,PK_GAP=20;
 let pk=null;
 function pkInit(names){
   const uniq=[...new Set(names)];
   const order=[...names].sort(()=>Math.random()-.5);
-  const interval=Math.min(3.0,Math.max(1.0,58/order.length)); // 인원 많으면 촘촘히
   const balls=order.map((nm,i)=>({
     nm,col:BRAND[uniq.indexOf(nm)%BRAND.length],
-    x:60+Math.random()*(PKW-120),y:-16,
-    vx:(Math.random()-.5)*50,vy:0,r:11,done:false,live:false,rel:i*interval,slow:0
+    x:60+Math.random()*(PKW-120),y:-20-i*34,
+    vx:(Math.random()-.5)*60,vy:0,r:11,done:false,slow:0
   }));
   const pegs=[];
   for(let r=0;r<6;r++){
@@ -347,11 +347,11 @@ function pkInit(names){
     for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:92+r*38,r:6});
   }
   const paddles=[
-    {cx:PKW*0.30,cy:330,len:80,a:Math.random()*6,w:1.9},
-    {cx:PKW*0.70,cy:330,len:80,a:Math.random()*6,w:-2.2},
-    {cx:PKW/2,  cy:418,len:88,a:Math.random()*6,w:1.5},  // 골 문지기 — 구멍을 주기적으로 막음
+    {cx:PKW*0.30,cy:330,len:80,a:Math.random()*6,w:1.9,flash:0},
+    {cx:PKW*0.70,cy:330,len:80,a:Math.random()*6,w:-2.2,flash:0},
+    {cx:PKW/2,  cy:418,len:88,a:Math.random()*6,w:1.5,flash:0}, // 골 문지기
   ];
-  return {balls,pegs,paddles,arrived:[],t:0};
+  return {balls,pegs,paddles,arrived:[],fx:[]};
 }
 function collideCircle(b,cx,cy,cr,rest){
   let nx=b.x-cx,ny=b.y-cy;const d=Math.hypot(nx,ny),min=b.r+cr;
@@ -374,42 +374,44 @@ function collideSeg(b,x1,y1,x2,y2,rest){
   if(vn<0){b.vx-=(1+rest)*vn*nx;b.vy-=(1+rest)*vn*ny;}
   return true;
 }
-const PK_GAP=20;
+function pkFx(type,x,y,col,nm){pk.fx.push({type,x,y,col,nm,life:1,vy:type==='txt'?-46:0});}
 function pkStep(dt){
   const G=410,REST=0.66;
-  pk.t+=dt;
-  pk.paddles.forEach(p=>p.a+=p.w*dt);
+  pk.paddles.forEach(p=>{p.a+=p.w*dt;p.flash=Math.max(0,p.flash-dt);});
   for(const b of pk.balls){
     if(b.done)continue;
-    if(!b.live){if(pk.t>=b.rel)b.live=true;else continue;}
     b.vy+=G*dt;
-    b.vx*=0.998;b.vy*=0.999;                       // 미세 감속
+    b.vx*=0.998;b.vy*=0.999;
     const cap=Math.hypot(b.vx,b.vy);
-    if(cap>600){b.vx*=600/cap;b.vy*=600/cap;}       // 과속 방지
+    if(cap>600){b.vx*=600/cap;b.vy*=600/cap;}
     b.x+=b.vx*dt;b.y+=b.vy*dt;
     if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)*REST;}
     if(b.x>PKW-b.r){b.x=PKW-b.r;b.vx=-Math.abs(b.vx)*REST;}
-    for(const p of pk.pegs)collideCircle(b,p.x,p.y,p.r,0.7);
-    // 깔때기 + 골 통로
+    for(const p of pk.pegs){
+      if(collideCircle(b,p.x,p.y,p.r,0.7)&&Math.hypot(b.vx,b.vy)>220)
+        pkFx('spark',p.x,p.y,b.col);
+    }
     collideSeg(b,0,362,PKW/2-PK_GAP,440,0.42);
     collideSeg(b,PKW,362,PKW/2+PK_GAP,440,0.42);
     collideSeg(b,PKW/2-PK_GAP,440,PKW/2-PK_GAP,PKH,0.3);
     collideSeg(b,PKW/2+PK_GAP,440,PKW/2+PK_GAP,PKH,0.3);
-    // 회전 막대 (스피너)
     for(const p of pk.paddles){
       const hx2=Math.cos(p.a)*p.len/2,hy2=Math.sin(p.a)*p.len/2;
       if(collideSeg(b,p.cx-hx2,p.cy-hy2,p.cx+hx2,p.cy+hy2,0.5)){
         const rx=b.x-p.cx,ry=b.y-p.cy;
-        b.vx+=-ry*p.w*0.7;b.vy+=rx*p.w*0.7;   // 막대 회전이 공을 쳐냄
+        b.vx+=-ry*p.w*0.7;b.vy+=rx*p.w*0.7;
+        p.flash=0.14;
       }
     }
-    if(b.y>PKH-10){b.done=true;pk.arrived.push(b);}
-    // 끼임 방지
+    if(b.y>PKH-10){
+      b.done=true;pk.arrived.push(b);
+      pkFx('ring',PKW/2,PKH-16,b.col);
+      pkFx('txt',PKW/2,PKH-40,b.col,b.nm+' 골인!');
+    }
     const sp=Math.hypot(b.vx,b.vy);
     if(sp<12&&b.y>0){b.slow+=dt;if(b.slow>1.4){b.vx+=(Math.random()-.5)*180;b.vy-=120;b.slow=0;}}else b.slow=0;
   }
-  // 구슬끼리 충돌
-  const bs=pk.balls.filter(b=>!b.done&&b.live);
+  const bs=pk.balls.filter(b=>!b.done&&b.y>-12);
   for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
     const a=bs[i],c=bs[j];let dx=c.x-a.x,dy=c.y-a.y;
     const d=Math.hypot(dx,dy),min=a.r+c.r;
@@ -420,65 +422,112 @@ function pkStep(dt){
       if(rel<0){a.vx+=rel*dx*.9;a.vy+=rel*dy*.9;c.vx-=rel*dx*.9;c.vy-=rel*dy*.9;}
     }
   }
+  // 이펙트 수명
+  pk.fx.forEach(f=>{f.life-=dt*(f.type==='txt'?0.8:1.8);if(f.type==='txt')f.y+=f.vy*dt;});
+  pk.fx=pk.fx.filter(f=>f.life>0);
 }
 function pkDraw(){
   gx.clearRect(0,0,PKW,PKH);
+  const alive=pk.balls.filter(b=>!b.done);
   const line=(x1,y1,x2,y2)=>{gx.beginPath();gx.moveTo(x1,y1);gx.lineTo(x2,y2);gx.stroke();};
   // 깔때기
   gx.strokeStyle='#3a4654';gx.lineWidth=5;gx.lineCap='round';
   line(0,362,PKW/2-PK_GAP,440);line(PKW,362,PKW/2+PK_GAP,440);
   line(PKW/2-PK_GAP,440,PKW/2-PK_GAP,PKH-3);line(PKW/2+PK_GAP,440,PKW/2+PK_GAP,PKH-3);
-  // 골 표시
   gx.fillStyle='rgba(246,140,31,.16)';gx.fillRect(PKW/2-PK_GAP+3,442,PK_GAP*2-6,PKH-445);
-  gx.fillStyle='#F68C1F';gx.font='bold 11px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+  gx.fillStyle='#F68C1F';gx.font='bold 10px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
   gx.fillText('GOAL',PKW/2,PKH-14);
   // 핀
   gx.fillStyle='#5b6878';
   pk.pegs.forEach(p=>{gx.beginPath();gx.arc(p.x,p.y,p.r,0,7);gx.fill();});
-  // 회전 막대
+  // 회전 막대 (맞으면 번쩍)
   pk.paddles.forEach(p=>{
     const hx2=Math.cos(p.a)*p.len/2,hy2=Math.sin(p.a)*p.len/2;
-    gx.strokeStyle='#F68C1F';gx.lineWidth=7;gx.lineCap='round';
+    gx.strokeStyle=p.flash>0?'#ffffff':'#F68C1F';gx.lineWidth=7;gx.lineCap='round';
     gx.beginPath();gx.moveTo(p.cx-hx2,p.cy-hy2);gx.lineTo(p.cx+hx2,p.cy+hy2);gx.stroke();
     gx.fillStyle='#fff';gx.beginPath();gx.arc(p.cx,p.cy,4.5,0,7);gx.fill();
   });
-  // 구슬
+  // 이펙트
+  for(const f of pk.fx){
+    if(f.type==='spark'){
+      gx.globalAlpha=f.life;gx.fillStyle=f.col;
+      gx.beginPath();gx.arc(f.x,f.y,3+(1-f.life)*4,0,7);gx.fill();gx.globalAlpha=1;
+    }else if(f.type==='ring'){
+      gx.globalAlpha=f.life;gx.strokeStyle=f.col;gx.lineWidth=3;
+      gx.beginPath();gx.arc(f.x,f.y,8+(1-f.life)*36,0,7);gx.stroke();gx.globalAlpha=1;
+    }else if(f.type==='txt'){
+      gx.globalAlpha=Math.min(1,f.life*1.4);
+      gx.font='bold 14px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+      gx.lineWidth=3;gx.strokeStyle='rgba(0,0,0,.7)';gx.strokeText(f.nm,f.x,f.y);
+      gx.fillStyle='#fff';gx.fillText(f.nm,f.x,f.y);gx.globalAlpha=1;
+    }else if(f.type==='confetti'){
+      gx.globalAlpha=Math.min(1,f.life);gx.fillStyle=f.col;
+      gx.fillRect(f.x-3,f.y-3,6,6);gx.globalAlpha=1;
+    }
+  }
+  // 구슬 (남은 ≤3 글로우)
   for(const b of pk.balls){
-    if(b.done||!b.live)continue;
+    if(b.done||b.y<-10)continue;
+    if(alive.length<=3){gx.shadowColor=b.col;gx.shadowBlur=16;}
     const grad=gx.createRadialGradient(b.x-3,b.y-3,1,b.x,b.y,b.r);
     grad.addColorStop(0,'#ffffff');grad.addColorStop(.25,b.col);grad.addColorStop(1,b.col);
     gx.beginPath();gx.arc(b.x,b.y,b.r,0,7);gx.fillStyle=grad;gx.fill();
+    gx.shadowBlur=0;
     gx.strokeStyle='rgba(0,0,0,.35)';gx.lineWidth=1;gx.stroke();
     gx.font='bold 10px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
     gx.lineWidth=2.5;gx.strokeStyle='rgba(0,0,0,.65)';
     gx.strokeText(b.nm.slice(0,2),b.x,b.y);
     gx.fillStyle='#fff';gx.fillText(b.nm.slice(0,2),b.x,b.y);
   }
-  // 상태 표시
-  gx.fillStyle='#9fb0bf';gx.font='12px "Malgun Gothic"';gx.textAlign='left';gx.textBaseline='alphabetic';
-  const wait=pk.balls.filter(b=>!b.done&&!b.live).length;
-  gx.fillText('남은 구슬 '+pk.balls.filter(b=>!b.done).length+(wait?' (대기 '+wait+')':''),10,20);
-  if(pk.arrived.length){gx.textAlign='right';gx.fillText('방금 골인: '+pk.arrived.at(-1).nm,PKW-10,20);}
+  // 마지막 1개 — 두근두근 배너
+  if(alive.length===1&&pk.arrived.length){
+    const pulse=0.7+0.3*Math.sin(performance.now()/120);
+    gx.globalAlpha=pulse;
+    gx.font='bold 22px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+    gx.lineWidth=4;gx.strokeStyle='rgba(0,0,0,.75)';
+    gx.strokeText('🔥 마지막 구슬: '+alive[0].nm+' 🔥',PKW/2,42);
+    gx.fillStyle='#F68C1F';gx.fillText('🔥 마지막 구슬: '+alive[0].nm+' 🔥',PKW/2,42);
+    gx.globalAlpha=1;
+  }else{
+    gx.fillStyle='#9fb0bf';gx.font='12px "Malgun Gothic"';gx.textAlign='left';gx.textBaseline='alphabetic';
+    gx.fillText('남은 구슬 '+alive.length,10,20);
+    if(pk.arrived.length){
+      gx.textAlign='right';
+      gx.fillText('골인: '+pk.arrived.slice(-3).map(b=>b.nm).join(' → '),PKW-10,20);
+    }
+  }
 }
 function dropPlinko(){
   pk=pkInit(gameNames);
   let last=performance.now();const t0=last;
   const tick=now=>{
-    const dt=Math.min(0.032,(now-last)/1000);last=now;
+    const alive=pk.balls.filter(b=>!b.done).length;
+    const scale=alive===1?0.45:1;          // 마지막 1개 → 슬로모션
+    const dt=Math.min(0.032,(now-last)/1000)*scale;last=now;
     pkStep(dt/2);pkStep(dt/2);
     pkDraw();
-    const left=pk.balls.filter(b=>!b.done).length;
-    if(left>0&&now-t0<120000){gameAnim=requestAnimationFrame(tick);}
+    if(alive>0&&now-t0<150000){gameAnim=requestAnimationFrame(tick);}
     else{
       let w=pk.arrived.at(-1);
       if(!w){const rem=pk.balls.filter(b=>!b.done);w=rem[rem.length-1];}
       if(w){
+        // 꽃가루
+        for(let i=0;i<70;i++)pk.fx.push({type:'confetti',x:PKW/2+(Math.random()-.5)*PKW,y:-10-Math.random()*120,col:BRAND[i%BRAND.length],life:2.5,vy:0});
+        let fl=performance.now();
+        const fin=fn=>{
+          const fdt=Math.min(0.032,(fn-fl)/1000);fl=fn;
+          pk.fx.forEach(f=>{if(f.type==='confetti'){f.y+=170*fdt;f.x+=Math.sin(f.y/22)*1.4;f.life-=fdt*0.7;}});
+          pk.fx=pk.fx.filter(f=>f.life>0);
+          pkDraw();
+          gx.fillStyle='rgba(22,28,36,.82)';gx.fillRect(0,PKH/2-58,PKW,116);
+          gx.fillStyle='#F68C1F';gx.font='bold 36px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+          gx.fillText('🎉 '+w.nm,PKW/2,PKH/2-8);
+          gx.fillStyle='#fff';gx.font='14px "Malgun Gothic"';
+          gx.fillText('마지막 골인 — 당첨!',PKW/2,PKH/2+30);
+          if(pk.fx.length)gameAnim=requestAnimationFrame(fin);
+        };
+        gameAnim=requestAnimationFrame(fin);
         gRes.textContent='🎉 마지막 골인: '+w.nm+'!';
-        gx.fillStyle='rgba(22,28,36,.82)';gx.fillRect(0,PKH/2-58,PKW,116);
-        gx.fillStyle='#F68C1F';gx.font='bold 36px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
-        gx.fillText('🎉 '+w.nm,PKW/2,PKH/2-8);
-        gx.fillStyle='#fff';gx.font='14px "Malgun Gothic"';
-        gx.fillText('마지막 골인 — 당첨!',PKW/2,PKH/2+30);
       }
       beep();gGo.disabled=false;
     }
@@ -495,14 +544,41 @@ function makeQR(el,text){
 }
 function genQR(url){
   const box=$('qrbox');
-  if(!url){box.className='empty';box.textContent='URL 입력 시 자동 생성 (오프라인 작동)';return;}
+  if(!url){box.className='empty';box.textContent='URL 입력 시 자동 생성 (오프라인 작동)';$('qrAct').classList.remove('on');return;}
   box.className='';makeQR(box,url);
+  $('qrAct').classList.add('on');
 }
+// QR 이미지 추출 → 저장/복사
+function qrDataURL(box){
+  const img=box.querySelector('img');
+  if(img&&img.src)return img.src;
+  const cv=box.querySelector('canvas');
+  return cv?cv.toDataURL('image/png'):null;
+}
+async function saveQRImage(box,filename){
+  const d=qrDataURL(box);
+  if(!d){toast('QR을 먼저 생성하세요');return;}
+  const r=await window.cm.saveImage({dataURL:d,filename});
+  if(r.ok)toast('💾 QR 이미지 저장 완료');
+}
+function copyQRImage(box){
+  const d=qrDataURL(box);
+  if(!d){toast('QR을 먼저 생성하세요');return;}
+  window.cm.copyImage(d);
+  toast('📋 QR 복사됨 — 한글/PPT에 Ctrl+V');
+}
+$('qrSave').addEventListener('click',()=>saveQRImage($('qrbox'),'QR코드.png'));
+$('qrCopy').addEventListener('click',()=>copyQRImage($('qrbox')));
+$('suQrSave').addEventListener('click',()=>saveQRImage($('suQr'),'QR_'+($('suUrl').textContent.split('/')[1]||'단축주소')+'.png'));
+$('suQrCopy').addEventListener('click',()=>copyQRImage($('suQr')));
 
 /* ===== 단축주소 (코코아팹.kr) — 온라인 기능 ===== */
 const SU_BASE='코코아팹.kr';
-const SU_TOKEN_DEFAULT='kocoafab2026'; // 기본 내장 — ⚙에서 변경 가능
+const SU_TOKEN_DEFAULT='kocoafab2026';
 let suTtl=604800;
+function suKeys(){try{return JSON.parse(localStorage.getItem('su_keys')||'{}');}catch(e){return{};}}
+function suKeySave(slug,key){const m=suKeys();m[slug]=key;localStorage.setItem('su_keys',JSON.stringify(m));}
+function genKey(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,10);}
 $('suTtl').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
   $('suTtl').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');suTtl=+b.dataset.s;
@@ -518,16 +594,20 @@ $('suGo').addEventListener('click',async()=>{
   if(!slug){suSay('단축 이름을 입력하세요 (예: 수업자료)');return;}
   if(/[\/\s?#]/.test(slug)||slug.toLowerCase()==='api'){suSay('단축 이름에 공백, /, ?, # 은 쓸 수 없어요');return;}
   $('suGo').disabled=true;$('suGo').textContent='만드는 중…';suSay('');
-  const res=await window.cm.shorten({slug,target,ttl:suTtl,token});
+  const key=suKeys()[slug]||genKey();
+  const res=await window.cm.shorten({slug,target,ttl:suTtl,token,key});
   $('suGo').disabled=false;$('suGo').textContent='단축주소 만들기';
   if(res.ok){
+    suKeySave(slug,key);
+    let data={};try{data=JSON.parse(res.message);}catch(e){}
     const short=SU_BASE+'/'+slug;
     const exp=new Date(Date.now()+suTtl*1000);
     $('suUrl').textContent=short;
     $('suExp').textContent='만료: '+exp.getFullYear()+'.'+String(exp.getMonth()+1).padStart(2,'0')+'.'+String(exp.getDate()).padStart(2,'0')+' (이후 자동 삭제)';
     $('suCard').classList.add('on');$('suQr').classList.remove('on');$('suQr').innerHTML='';
-    suSay('완성! 복사하거나 QR로 띄워보세요 🎉',true);
-  }else if(res.status===409){suSay('"'+slug+'" 는 이미 사용 중이에요 — 다른 이름을 써보세요');}
+    $('suQrAct').classList.remove('on');
+    suSay(data.updated?'♻️ 기존 QR·주소 그대로 — 연결만 새 URL로 변경됐어요!':'완성! 복사하거나 QR로 띄워보세요 🎉',true);
+  }else if(res.status===409){suSay('"'+slug+'" 는 다른 곳에서 사용 중인 이름이에요 — 다른 이름을 써보세요');}
   else if(res.status===403){suSay('서버 연동 오류 (관리자 문의)');} 
   else if(res.status===0){suSay('인터넷 연결을 확인하세요 (단축주소는 온라인 기능)');}
   else{suSay('오류: '+(res.message||res.status));}
@@ -538,8 +618,8 @@ $('suCopy').addEventListener('click',()=>{
 });
 $('suQrBtn').addEventListener('click',()=>{
   const box=$('suQr');
-  if(box.classList.contains('on')){box.classList.remove('on');return;}
-  box.classList.add('on');
+  if(box.classList.contains('on')){box.classList.remove('on');$('suQrAct').classList.remove('on');return;}
+  box.classList.add('on');$('suQrAct').classList.add('on');
   // QR에는 퓨니코드 형태로 (구형 스캐너 호환), 화면 표시는 한글
   makeQR(box,new URL('https://'+$('suUrl').textContent).href);
 });
