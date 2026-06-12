@@ -162,10 +162,19 @@ pill.addEventListener('click',()=>{ if(pillMoved){pillMoved=false;return;} expan
 let tTotal=300,tLeft=300,tInt=null,tRun=false;
 const tDisp=$('tDisp');
 const fmtT=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+let floatSrc='td'; // 플로팅 창이 보여줄 것: td(타이머) / sw(스톱워치)
+function showFloat(){
+  const tf=$('tFloat');
+  if(tf.classList.contains('on'))return;
+  tf.classList.add('on');
+  const d=dockDisp();
+  tf.style.right='auto';
+  tf.style.left=(d.x+d.w-tf.offsetWidth-30)+'px';tf.style.top=(d.y+26)+'px';
+}
 function rT(){
   const cls=(tLeft===0?' done':(tLeft<=10?' warn':''));
   tDisp.textContent=fmtT(tLeft);tDisp.className='tdisp'+cls;
-  const tf=$('tfTime');tf.textContent=fmtT(tLeft);tf.className='tf'+cls;
+  if(floatSrc==='td'){const tf=$('tfTime');tf.textContent=fmtT(tLeft);tf.className='tf'+cls;}
 }
 function stopT(){clearInterval(tInt);tInt=null;tRun=false;$('tStart').textContent='시작';}
 function beep(){try{const ac=new AudioContext();[0,.2,.4].forEach(d=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;o.start(ac.currentTime+d);g.gain.setValueAtTime(.15,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d+.18);o.stop(ac.currentTime+d+.2);});}catch(e){}}
@@ -175,20 +184,43 @@ $('tStart').addEventListener('click',function(){
   if(tRun){stopT();return;}
   if(tLeft<=0)tLeft=tTotal;
   tRun=true;this.textContent='일시정지';
-  const tf=$('tFloat');
-  if(!tf.classList.contains('on')){ // 처음 띄울 때 독 모니터 우상단에
-    tf.classList.add('on');
-    const d=dockDisp();
-    tf.style.right='auto';
-    tf.style.left=(d.x+d.w-tf.offsetWidth-30)+'px';tf.style.top=(d.y+26)+'px';
-  }
+  floatSrc='td';showFloat();rT();
   tInt=setInterval(()=>{tLeft--;rT();if(tLeft<=0){stopT();beep();}},1000);
 });
 $('tReset').addEventListener('click',()=>{stopT();tLeft=tTotal;rT();});
 rT();
+
+/* ===== 스톱워치 (카운트업) ===== */
+let swSec=0,swInt=null,swRun=false;
+const fmtSW=s=>{
+  const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0');
+};
+function rSW(){
+  $('swDisp').textContent=fmtSW(swSec);
+  if(floatSrc==='sw'){const tf=$('tfTime');tf.textContent=fmtSW(swSec);tf.className='tf';}
+}
+$('swStart').addEventListener('click',function(){
+  if(swRun){clearInterval(swInt);swInt=null;swRun=false;this.textContent='계속';return;}
+  swRun=true;this.textContent='일시정지';
+  floatSrc='sw';showFloat();rSW();
+  swInt=setInterval(()=>{swSec++;rSW();},1000);
+});
+$('swReset').addEventListener('click',()=>{
+  clearInterval(swInt);swInt=null;swRun=false;swSec=0;
+  $('swStart').textContent='시작';rSW();
+});
 $('tfClose').addEventListener('click',e=>{e.stopPropagation();$('tFloat').classList.remove('on');});
-$('tfPause').addEventListener('click',e=>{e.stopPropagation();$('tStart').click();$('tfPause').textContent=tRun?'⏸':'▶';});
-$('tfReset').addEventListener('click',e=>{e.stopPropagation();$('tReset').click();$('tfPause').textContent='▶';});
+$('tfPause').addEventListener('click',e=>{
+  e.stopPropagation();
+  if(floatSrc==='sw'){$('swStart').click();$('tfPause').textContent=swRun?'⏸':'▶';}
+  else{$('tStart').click();$('tfPause').textContent=tRun?'⏸':'▶';}
+});
+$('tfReset').addEventListener('click',e=>{
+  e.stopPropagation();
+  if(floatSrc==='sw')$('swReset').click();else $('tReset').click();
+  $('tfPause').textContent='▶';
+});
 let tfSize=34;
 function setTfSize(d){tfSize=Math.min(72,Math.max(22,tfSize+d));$('tfTime').style.fontSize=tfSize+'px';}
 $('tfSm').addEventListener('click',e=>{e.stopPropagation();setTfSize(-8);});
@@ -279,6 +311,9 @@ gGo.addEventListener('click',()=>{
 const WW=540,WH=430,WCX=WW/2,WCY=WH/2+12,WR=178;
 function drawWheel(names,angle){
   gx.clearRect(0,0,WW,WH);
+  // 외곽 림
+  gx.beginPath();gx.arc(WCX,WCY,WR+11,0,7);
+  gx.strokeStyle='#2c3744';gx.lineWidth=16;gx.stroke();
   const n=names.length,step=Math.PI*2/n;
   for(let i=0;i<n;i++){
     const a0=angle+i*step,a1=a0+step;
@@ -298,6 +333,12 @@ function drawWheel(names,angle){
   gx.strokeStyle='#F68C1F';gx.lineWidth=4;gx.stroke();
   gx.font='16px serif';gx.textAlign='center';gx.textBaseline='middle';
   gx.fillText('🦋',WCX,WCY+1);
+  // 림 라이트 (천천히 역회전하는 전구 느낌)
+  for(let i=0;i<14;i++){
+    const a=-angle/3+i*Math.PI*2/14;
+    gx.beginPath();gx.arc(WCX+Math.cos(a)*(WR+11),WCY+Math.sin(a)*(WR+11),3.2,0,7);
+    gx.fillStyle=i%2?'#F68C1F':'#ffd9ad';gx.fill();
+  }
   // 포인터: 위쪽 중앙, 아래(원판)를 향함
   gx.beginPath();
   gx.moveTo(WCX,WCY-WR+16);          // 뾰족한 끝 (원판 안쪽)
@@ -427,7 +468,13 @@ function pkStep(dt){
   pk.fx=pk.fx.filter(f=>f.life>0);
 }
 function pkDraw(){
-  gx.clearRect(0,0,PKW,PKH);
+  const bg=gx.createLinearGradient(0,0,0,PKH);
+  bg.addColorStop(0,'#0d1218');bg.addColorStop(1,'#161f2a');
+  gx.fillStyle=bg;gx.fillRect(0,0,PKW,PKH);
+  // 사이드 레일
+  gx.strokeStyle='rgba(246,140,31,.35)';gx.lineWidth=4;
+  gx.beginPath();gx.moveTo(2,0);gx.lineTo(2,360);gx.stroke();
+  gx.beginPath();gx.moveTo(PKW-2,0);gx.lineTo(PKW-2,360);gx.stroke();
   const alive=pk.balls.filter(b=>!b.done);
   const line=(x1,y1,x2,y2)=>{gx.beginPath();gx.moveTo(x1,y1);gx.lineTo(x2,y2);gx.stroke();};
   // 깔때기
