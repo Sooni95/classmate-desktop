@@ -93,6 +93,18 @@ function createOverlay() {
   });
 
   // 이미지 PNG로 저장 (저장 위치 선택)
+  ipcMain.handle('save-text', async (_e, { text, filename }) => {
+    try {
+      const r = await dialog.showSaveDialog(win, {
+        defaultPath: filename || '메모.txt',
+        filters: [{ name: '텍스트 파일', extensions: ['txt'] }],
+      });
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(r.filePath, '\uFEFF' + text, 'utf8'); // BOM: 한글 메모장 호환
+      return { ok: true };
+    } catch (e) { return { ok: false, message: String(e) }; }
+  });
+
   ipcMain.handle('save-image', async (_e, { dataURL, filename }) => {
     try {
       const r = await dialog.showSaveDialog(win, {

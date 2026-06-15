@@ -312,15 +312,37 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .tl .r{background:#e84d3d;color:#e84d3d;}.tl .y{background:#ffc02e;color:#ffc02e;}.tl .g{background:#37c871;color:#37c871;}
 #lightLabel{font-size:11.5px;font-weight:700;color:#cdd8e2;min-height:16px;padding:0 6px;}
 
-/* 칠판 가리개 */
-.shade{position:fixed;z-index:46;background:#0e1318;border:1px solid rgba(246,140,31,.45);border-radius:11px;box-shadow:0 18px 50px -12px rgba(0,0,0,.7);}
-.shade .sh-bar{height:25px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 9px;background:rgba(246,140,31,.14);border-radius:10px 10px 0 0;}
-.shade .sh-bar:active{cursor:grabbing;}
-.shade .sh-bar span{font-size:10px;color:rgba(246,140,31,.85);font-weight:800;}
-.shade .sh-bar button{border:none;background:none;color:#6b7884;cursor:pointer;font-size:12px;}
-.shade .sh-bar button:hover{color:var(--red);}
-.shade .sh-logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;opacity:.09;pointer-events:none;border-radius:10px;}
-.shade .rs3{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(246,140,31,.65) 100%);border-radius:0 0 9px 0;}
+
+/* 제비뽑기 */
+#drawWrap{position:fixed;left:0;top:0;z-index:80;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:560px;}
+#drawWrap.on{display:block;}
+#drawHead{height:46px;display:flex;align-items:center;gap:10px;padding:0 11px 0 16px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));}
+#drawHead:active{cursor:grabbing;}
+#drawTitle{font-size:14px;font-weight:800;color:#fff;}
+#drawCount{flex:1;font-size:12px;color:rgba(255,255,255,.9);font-weight:700;}
+#drawClose{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
+#drawGrid{display:flex;flex-wrap:wrap;gap:8px;padding:16px;justify-content:center;max-height:62vh;overflow:auto;}
+.ticket{width:62px;height:84px;border-radius:9px;background:linear-gradient(160deg,#ffb45e,#F68C1F);cursor:pointer;position:relative;box-shadow:0 5px 14px -4px rgba(0,0,0,.5);transition:transform .12s;display:flex;align-items:center;justify-content:center;}
+.ticket::before{content:'🎟️';font-size:24px;filter:grayscale(.1);}
+.ticket:hover{transform:translateY(-4px) rotate(-2deg);}
+.ticket.open{cursor:default;background:#fff;transform:none;}
+.ticket.open::before{content:'';}
+.ticket.win{box-shadow:0 0 0 3px #F68C1F,0 8px 18px -4px rgba(246,140,31,.7);}
+.ticket .tk-txt{display:none;font-size:13px;font-weight:800;color:#3a2200;text-align:center;padding:4px;word-break:break-all;}
+.ticket.open .tk-txt{display:block;}
+.ticket .tk-win{position:absolute;top:-9px;right:-7px;font-size:17px;display:none;}
+.ticket.win .tk-win{display:block;}
+#drawResult{padding:0 16px 15px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
+
+/* 가리개 (스포트라이트형) */
+#shadeWrap{position:fixed;inset:0;z-index:78;display:none;}
+#shadeWrap.on{display:block;}
+#shadeCv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;}
+#shadeBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:79;display:flex;align-items:center;gap:14px;background:var(--dk);border:1px solid var(--line);border-radius:13px;padding:9px 15px;box-shadow:var(--shadow);}
+#shadeBar span{font-size:12px;color:#cdd8e2;}
+#shadeBar b{color:var(--or);}
+#shadeBar button{border:none;background:var(--dk2);color:#cdd8e2;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;cursor:pointer;}
+#shadeBar button:hover{background:var(--or);color:#fff;}
 
 /* 펜-글자 입력창 */
 .cvtext{position:fixed;z-index:58;min-width:36px;max-width:55vw;background:transparent;outline:2px dashed rgba(246,140,31,.85);outline-offset:3px;padding:4px;font-weight:bold;line-height:1.28;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:pre-wrap;-webkit-user-select:text;user-select:text;cursor:text;text-shadow:0 1px 3px rgba(0,0,0,.25);}
@@ -364,6 +386,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button class="tb on" id="penBtn">✏️ 펜</button>
   <button class="tb" id="hlBtn">🖍 형광</button>
   <button class="tb" id="txBtn">T 글자</button>
+  <button class="tb" id="rectBtn" title="박스 강조 (또는 펜 상태로 Ctrl+드래그)">▭ 박스</button>
   <button class="tb" id="erBtn">⬜ 지우개</button>
   <button class="tb" id="undoBtn">↩</button>
   <button class="tb danger" id="clearBtn">↺ 전체</button>
@@ -389,40 +412,49 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 </div>
 
-<div class="panel iv" id="p-picker">
-  <div class="ph">🎲 랜덤 발표자</div>
-  <div class="tabs">
-    <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button>
-  </div>
-  <div class="pane on" id="pane-nm">
-    <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
-    <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
-    <div class="pres" id="pres">— 준비 —</div><div class="hist" id="hist"></div>
-    <div class="ctrl"><button class="btn-go" id="pickBtn">뽑기!</button><button class="btn-g" id="pickRst">복원</button></div>
-  </div>
-  <div class="pane" id="pane-no">
-    <div class="nrow"><span>시작</span><input type="number" id="nFrom" value="1"><span>끝</span><input type="number" id="nTo" value="30"></div>
-    <div class="pres" id="presN">— 준비 —</div><div class="hist" id="histN"></div>
-    <button class="btn-go" id="pickN">번호 뽑기!</button>
-  </div>
-  <div class="pane" id="pane-tm">
-    <textarea class="names" id="tNames" placeholder="이름 입력 (줄바꿈)"></textarea>
-    <div class="nrow"><span>모둠 수</span><input type="number" id="tN" value="4" min="2"></div>
-    <div class="tres" id="tRes"></div>
-    <button class="btn-go" id="tBtn">모둠 나누기!</button>
-  </div>
-</div>
-
 <div class="panel iv" id="p-game">
-  <div class="ph">🎮 게이미피케이션</div>
+  <div class="ph">🎲 뽑기 · 게임</div>
   <div class="gmenu">
+    <div class="gcard" id="gcPick"><div class="gi">🙋</div><div class="gl">발표자 뽑기</div></div>
+    <div class="gcard" id="gcDraw"><div class="gi">🎟️</div><div class="gl">제비뽑기</div></div>
     <div class="gcard" id="gcWheel"><div class="gi">🎡</div><div class="gl">돌림판</div></div>
     <div class="gcard" id="gcPk"><div class="gi">🎢</div><div class="gl">핀볼</div></div>
     <div class="gcard" id="gcScore"><div class="gi">🏆</div><div class="gl">모둠 점수판</div></div>
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
-    <div class="gcard" id="gcShade"><div class="gi">⬛</div><div class="gl">칠판 가리개</div></div>
+    <div class="gcard" id="gcShade"><div class="gi">🔲</div><div class="gl">가리개</div></div>
   </div>
+
+  <div class="gcfg" id="cfgPick">
+    <div class="tabs">
+      <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button>
+    </div>
+    <div class="pane on" id="pane-nm">
+      <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
+      <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
+      <div class="pres" id="pres">— 준비 —</div><div class="hist" id="hist"></div>
+      <div class="ctrl"><button class="btn-go" id="pickBtn">뽑기!</button><button class="btn-g" id="pickRst">복원</button></div>
+    </div>
+    <div class="pane" id="pane-no">
+      <div class="nrow"><span>시작</span><input type="number" id="nFrom" value="1"><span>끝</span><input type="number" id="nTo" value="30"></div>
+      <div class="pres" id="presN">— 준비 —</div><div class="hist" id="histN"></div>
+      <button class="btn-go" id="pickN">번호 뽑기!</button>
+    </div>
+    <div class="pane" id="pane-tm">
+      <textarea class="names" id="tNames" placeholder="이름 입력 (줄바꿈)"></textarea>
+      <div class="nrow"><span>모둠 수</span><input type="number" id="tN" value="4" min="2"></div>
+      <div class="tres" id="tRes"></div>
+      <button class="btn-go" id="tBtn">모둠 나누기!</button>
+    </div>
+  </div>
+
+  <div class="gcfg" id="cfgDraw">
+    <div class="gdesc">🎟️ 제비뽑기 — 화면 가득 제비를 펼쳐두고 하나씩 뽑아요. 당첨 제비를 정하거나(예: 청소 당번 2명) 꽝/당첨을 섞을 수 있어요.</div>
+    <textarea class="names" id="drawNames" placeholder="제비 내용 (줄바꿈)&#10;예) 1번 자리, 2번 자리…&#10;비워두면 1~30 번호 제비"></textarea>
+    <div class="nrow"><span>당첨 수</span><input type="number" id="drawWin" value="1" min="1"><label style="font-size:11px;color:#9fb0bf"><input type="checkbox" id="drawShuffle" checked> 섞기</label></div>
+    <button class="btn-go" id="drawOpen">제비 펼치기</button>
+  </div>
+
   <div class="gcfg" id="cfgWheel">
     <textarea class="names" id="wheelNames" placeholder="이름을 줄바꿈으로 입력"></textarea>
     <div class="gdesc">🎡 위쪽 화살표에 멈추는 사람 당첨!</div>
@@ -436,6 +468,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 </div>
 
 <div class="panel iv" id="p-qr">
+
   <div class="ph">🔗 URL — QR · 단축주소</div>
   <div class="tabs"><button class="tab on" data-t="qr1">QR 생성</button><button class="tab" data-t="qr2">✂ 단축주소</button></div>
   <div class="pane on" id="pane-qr1">
@@ -564,6 +597,26 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 </div>
 
+<!-- 제비뽑기 모달 -->
+<div id="drawWrap" class="iv">
+  <div id="drawHead"><span id="drawTitle">🎟️ 제비뽑기</span><span id="drawCount"></span><button id="drawClose">✕</button></div>
+  <div id="drawGrid"></div>
+  <div id="drawResult"></div>
+</div>
+
+<!-- 가리개 (스포트라이트형: 화면을 덮고 드래그한 부분만 공개) -->
+<div id="shadeWrap" class="iv">
+  <canvas id="shadeCv"></canvas>
+  <div id="shadeBar">
+    <span>🔲 가리개 — 화면 위를 <b>드래그하면 그 부분만 공개</b>됩니다</span>
+    <span style="display:flex;gap:6px">
+      <button id="shadeReset">↺ 다시 가리기</button>
+      <button id="shadeMode">⭕ 원형</button>
+      <button id="shadeClose">✕ 닫기</button>
+    </span>
+  </div>
+</div>
+
 <!-- 게임 모달 -->
 <div id="gameWrap" class="iv">
   <div id="gameHead"><span id="gameTitle">🎡 돌림판</span><button id="gameClose">✕</button></div>
@@ -575,8 +628,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <div id="dock" class="iv">
   <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
   <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
-  <button class="tool" data-p="p-picker"><span class="ti">🙋</span>발표자</button>
-  <button class="tool" data-p="p-game"><span class="ti">🎮</span>게임</button>
+  <button class="tool" data-p="p-game"><span class="ti">🎲</span>뽑기·게임</button>
   <button class="tool" data-p="p-qr"><span class="ti">🔗</span>URL</button>
   <button class="tool" data-p="p-pin"><span class="ti">📌</span>핀</button>
   <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
