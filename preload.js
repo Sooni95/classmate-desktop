@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('cm', {
   saveImage: (p) => ipcRenderer.invoke('save-image', p),
   saveText: (p) => ipcRenderer.invoke('save-text', p),
   saveBinary: (p) => ipcRenderer.invoke('save-binary', p),
+  openExternal: (url) => ipcRenderer.send('open-external', url),
   quit: () => ipcRenderer.send('quit-app'),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
     .forEach(ch => ipcRenderer.on(ch, () => h(ch))),

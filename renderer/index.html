@@ -411,6 +411,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #proCta{width:100%;}
 .pro-note{font-size:10.5px;color:#6b7884;text-align:center;margin-top:11px;line-height:1.6;}
 
+
 /* 펜-글자 입력창 */
 .cvtext{position:fixed;z-index:58;min-width:36px;max-width:55vw;background:transparent;outline:2px dashed rgba(246,140,31,.85);outline-offset:3px;padding:4px;font-weight:bold;line-height:1.28;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:pre-wrap;-webkit-user-select:text;user-select:text;cursor:text;text-shadow:0 1px 3px rgba(0,0,0,.25);}
 /* 소음 작동 안내 팝업 */
@@ -490,8 +491,6 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
     <div class="gcard" id="gcShade"><div class="gi">🔲</div><div class="gl">가리개</div></div>
-    <div class="gcard prolock" data-pro="ai"><span class="pro-badge">🔒PRO</span><div class="gi">🤖</div><div class="gl">AI 교수보조</div></div>
-    <div class="gcard prolock" data-pro="seat"><span class="pro-badge">🔒PRO</span><div class="gi">🪑</div><div class="gl">자리 바꾸기</div></div>
   </div>
 
   <div class="gcfg" id="cfgPick">
@@ -628,7 +627,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="tr-wip">
       <div class="wip-ic">🎤➜🌏</div>
       <div class="wip-t">음성 실시간 번역</div>
-      <div class="wip-d">학생이 말하면 즉시 모국어로 번역해 보여주는 기능입니다.<br><b>기능 구현중</b> — 다음 업데이트에서 제공 예정이에요.</div>
+      <div class="wip-d">학생·교사가 말하면 <b>음성 인식 → AI 실시간 번역 → 자막</b>으로 보여줍니다.<br>다문화 학생과의 소통에 활용하세요.<br><span style="color:var(--amber)">기능 구현중</span> — 다음 업데이트 제공 예정</div>
     </div>
   </div>
 </div>
@@ -739,10 +738,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="proBody">
     <div class="pro-lead">🔒 이 기능은 <b>Pro 구독 전용</b>입니다.<br>아래 기능들을 모두 사용할 수 있어요.</div>
     <div class="pro-list">
-      <div class="pro-item"><span class="pi-ic">🌏</span><div><div class="pi-t">다문화 번역</div><div class="pi-d">한국어 → 8개 언어 텍스트·음성 번역. 다문화 학생 안내에 바로 활용</div></div></div>
-      <div class="pro-item"><span class="pi-ic">📋</span><div><div class="pi-t">명단 저장·불러오기</div><div class="pi-d">반별 명단을 저장해두고 뽑기·게임·자리바꾸기에 재사용</div></div></div>
+      <div class="pro-item"><span class="pi-ic">🌏</span><div><div class="pi-t">다문화 번역</div><div class="pi-d">텍스트 번역은 물론, <b style="color:#F68C1F">음성 인식 + AI 실시간 번역(자막)</b>까지. 한국어 → 8개 언어로 다문화 학생 안내</div></div></div>
       <div class="pro-item"><span class="pi-ic">🤖</span><div><div class="pi-t">AI 교수 보조</div><div class="pi-d">발문 만들기, 활동 아이디어, 즉석 퀴즈 생성 등 수업 도우미</div></div></div>
-      <div class="pro-item"><span class="pi-ic">🪑</span><div><div class="pi-t">자리 바꾸기 · 고급 게임</div><div class="pi-d">분단 자리 셔플 애니메이션과 추가 게임 모드</div></div></div>
+      <div class="pro-item"><span class="pi-ic">📋</span><div><div class="pi-t">명단 저장·불러오기</div><div class="pi-d">반별 명단을 저장해두고 발표자 뽑기·게임에 재사용</div></div></div>
     </div>
     <button class="btn-go" id="proCta">Pro 구독 안내 받기</button>
     <div class="pro-note">현재 베타 — 정식 출시 시 학교·교육청 단위 구독으로 제공 예정입니다.</div>
@@ -766,8 +764,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
   <button class="tool" data-p="p-noise"><span class="ti">📢</span>소음</button>
-  <button class="tool prolock" data-pro="trans"><span class="ti">🌏</span>다문화번역<span class="pro-badge">🔒PRO</span></button>
+
   <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
+  <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>

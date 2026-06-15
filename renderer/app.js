@@ -73,21 +73,24 @@ function isPro(){ return localStorage.getItem('cm_pro')==='1'; }
 const proWrap=$('proWrap');
 function openPro(){ proWrap.classList.add('on'); centerOnDockDisplay(proWrap); }
 $('proClose').addEventListener('click',()=>proWrap.classList.remove('on'));
-$('proCta').addEventListener('click',()=>{ proWrap.classList.remove('on'); toast('🧡 Pro 구독 안내는 코코아팹에서 곧 제공됩니다'); });
 makeDrag($('proHead'),(e,s)=>{
   if(!s){const r=proWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   proWrap.style.left=(e.clientX-s.dx)+'px';proWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='proClose');
-// data-pro 요소(잠금) 클릭 → Pro 모달 (해제 상태면 실제 기능으로)
+
+// 독 Pro 버튼 → Pro 안내 모달 (해제 시 다문화번역 패널 바로 열기)
+$('proBtn').addEventListener('click',()=>{ if(isPro())setPanel('p-trans'); else openPro(); });
+// 명단 저장(roster) 잠금 버튼
 document.querySelectorAll('[data-pro]').forEach(el=>{
-  el.addEventListener('click',e=>{
-    if(isPro()){ // 해제 시: 각 기능 실제 동작 (현재는 번역만 구현되어 있음)
-      if(el.dataset.pro==='trans')setPanel('p-trans');
-      else toast('곧 제공되는 기능이에요');
-      return;
-    }
-    e.preventDefault();e.stopPropagation();openPro();
-  });
+  el.addEventListener('click',e=>{ if(!isPro()){e.preventDefault();e.stopPropagation();openPro();} });
+});
+
+// 구독 안내 받기 → Google Forms (기본 브라우저에서 열기)
+const PRO_FORM_URL='https://forms.gle/ZK8hxnx65injpK3R8';
+$('proCta').addEventListener('click',()=>{
+  proWrap.classList.remove('on');
+  window.cm.openExternal(PRO_FORM_URL);
+  toast('📋 구독 신청 폼을 브라우저에서 열었어요');
 });
 document.querySelectorAll('.tabs').forEach(tb=>{
   const panel=tb.closest('.panel');
@@ -969,7 +972,7 @@ function addAudioToMemo(m,ed,blob){
   const box=document.createElement('div');box.className='maudio';
   const audio=document.createElement('audio');audio.controls=true;audio.src=url;
   const save=document.createElement('button');save.className='masave';save.textContent='💾';save.title='음성 파일 저장';
-  const del=document.createElement('button');del.className='madel';del.textContent='🗑';del.title='삭제';
+  const del=document.createElement('button');del.className='madel';del.textContent='✕';del.title='녹음 삭제';
   box.appendChild(audio);box.appendChild(save);box.appendChild(del);
   m.insertBefore(box,m.querySelector('.rs2'));
   save.addEventListener('click',async()=>{

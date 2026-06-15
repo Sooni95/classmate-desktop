@@ -1,5 +1,5 @@
 // ClassMate Desktop — main process (Electron)
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -173,6 +173,8 @@ function createOverlay() {
       return { ok: false, status: 0, message: String(err) };
     }
   });
+
+  ipcMain.on('open-external', (_e, url) => { try { shell.openExternal(url); } catch (e) {} });
 
   ipcMain.on('quit-app', () => app.quit());
 }
