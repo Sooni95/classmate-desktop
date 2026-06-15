@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld('cm', {
   setIgnore: (ig) => ipcRenderer.send('set-ignore', ig),
   captureScreen: () => ipcRenderer.invoke('capture-screen'),
   getDisplays: () => ipcRenderer.invoke('get-displays'),
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   copyImage: (dataURL) => ipcRenderer.send('copy-image', dataURL),
   copyText: (text) => ipcRenderer.send('copy-text', text),
   shorten: (p) => ipcRenderer.invoke('shorten', p),

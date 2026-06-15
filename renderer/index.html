@@ -26,6 +26,7 @@ body{pointer-events:none;}
 .brand .lo img{width:100%;height:100%;display:block;}
 .brand .nm{font-size:15px;color:#fff;font-weight:800;}
 .brand .nm small{display:block;font-size:9.5px;font-weight:400;color:#7c8894;margin-top:2px;}
+.vchip{font-size:9px;font-weight:700;color:var(--or);background:rgba(246,140,31,.14);border-radius:5px;padding:1px 5px;vertical-align:2px;}
 .tool{width:58px;height:56px;border:none;background:transparent;border-radius:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#aeb9c4;font-family:inherit;font-size:10.5px;transition:.13s;position:relative;}
 .tool:hover{background:var(--dk2);color:#fff;}
 .tool.on{background:var(--or);color:#fff;}
@@ -37,6 +38,8 @@ body{pointer-events:none;}
 .panel{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:65;width:330px;background:var(--dk);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);color:#e7edf3;padding:18px;display:none;}
 .panel.on{display:block;}
 .ph{font-size:13px;font-weight:600;color:#9fb0bf;margin-bottom:13px;}
+.ph::before{content:'';display:inline-block;width:15px;height:15px;border-radius:4px;background:url('../assets/logo.png') center/cover;margin-right:8px;vertical-align:-3px;}
+.panel::before,#tFloat::before,#nBomb::before,#noiseGuide::before,#camWrap::before{content:'';position:absolute;left:14px;right:14px;top:0;height:3px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,var(--or),var(--or2));}
 .tabs{display:flex;gap:4px;margin-bottom:13px;background:var(--dk2);border-radius:10px;padding:4px;}
 .tab{flex:1;border:none;background:transparent;color:#9fb0bf;font-family:inherit;font-size:11.5px;font-weight:600;border-radius:7px;padding:7px 0;cursor:pointer;}
 .tab.on{background:var(--or);color:#fff;}
@@ -203,7 +206,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #pill{position:fixed;left:0;top:0;z-index:70;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;border:none;border-radius:100px;padding:9px 18px;font-family:inherit;font-size:14px;font-weight:800;cursor:grab;box-shadow:var(--shadow);display:none;align-items:center;gap:8px;}
 #pill:active{cursor:grabbing;}
 #pill.on{display:flex;}
-#pill img{width:20px;height:20px;border-radius:6px;}
+#pill img{width:26px;height:26px;border-radius:7px;}
+#pill .pl{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;}
+#pill .pl b{font-size:14px;font-weight:800;}
+#pill .pl small{font-size:8.5px;font-weight:600;opacity:.92;}
+#pill .pl small em{font-style:normal;font-weight:800;}
 #collapseBtn{width:34px;height:34px;border:none;background:var(--dk2);border-radius:10px;cursor:pointer;color:#6b7884;font-size:13px;}
 #collapseBtn:hover{background:var(--dk3);color:#fff;}
 /* floating timer */
@@ -249,6 +256,71 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #boomEmoji{position:fixed;z-index:95;font-size:120px;pointer-events:none;display:none;transform:translate(-50%,-50%);}
 #boomEmoji.on{display:block;animation:bpop 1.4s ease-out forwards;}
 @keyframes bpop{0%{transform:translate(-50%,-50%) scale(.3);opacity:1;}55%{transform:translate(-50%,-50%) scale(1.7);}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;}}
+
+/* ===== 게이미피케이션 런처 ===== */
+.gmenu{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gcard{background:var(--dk2);border:1px solid var(--line);border-radius:12px;padding:12px 8px 10px;cursor:pointer;text-align:center;transition:.13s;}
+.gcard:hover{border-color:var(--or);transform:translateY(-2px);}
+.gcard.on{border-color:var(--or);background:rgba(246,140,31,.1);}
+.gcard .gi{font-size:22px;line-height:1;}
+.gcard .gl{font-size:11.5px;font-weight:700;color:#cdd8e2;margin-top:6px;}
+.gcfg{display:none;margin-top:11px;}
+.gcfg.on{display:block;}
+
+/* ===== 공용 플로팅 위젯 (코코아팹 톤) ===== */
+.fw{position:fixed;z-index:58;background:var(--dk);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);overflow:hidden;display:none;}
+.fw.on{display:block;}
+.fw::before{content:'';display:block;height:3px;background:linear-gradient(90deg,var(--or),var(--or2));}
+.fwh{display:flex;align-items:center;gap:8px;padding:8px 10px 7px 12px;cursor:grab;}
+.fwh:active{cursor:grabbing;}
+.fwh .ic{width:19px;height:19px;border-radius:6px;background:var(--or);display:flex;align-items:center;justify-content:center;font-size:11px;}
+.fwh .tt{flex:1;font-size:12px;font-weight:800;color:#e7edf3;}
+.fwh .x{border:none;background:none;color:#6b7884;font-size:13px;cursor:pointer;}
+.fwh .x:hover{color:var(--red);}
+
+/* 점수판 */
+#scoreW{width:236px;}
+.srow2{display:flex;align-items:center;gap:6px;padding:6px 12px;}
+.srow2.lead{background:rgba(246,140,31,.12);}
+.srow2 .nm2{flex:1;font-size:13px;font-weight:700;color:#cdd8e2;background:none;border:none;outline:none;min-width:0;font-family:inherit;}
+.srow2 .crown{font-size:13px;width:16px;}
+.srow2 .sc{font-size:20px;font-weight:800;color:var(--or);width:36px;text-align:center;font-variant-numeric:tabular-nums;}
+.srow2 .sc.pop{animation:pop .25s;}
+@keyframes pop{50%{transform:scale(1.5);}}
+.srow2 button{width:24px;height:24px;border:none;border-radius:7px;background:var(--dk2);color:#cdd8e2;cursor:pointer;font-size:13px;}
+.srow2 button:hover{background:var(--or);color:#fff;}
+#scoreAdd{display:block;margin:7px auto 10px;border:1px dashed var(--line);background:none;color:#6b7884;border-radius:8px;padding:5px 16px;font-family:inherit;font-size:11px;cursor:pointer;}
+#scoreAdd:hover{color:var(--or);border-color:var(--or);}
+
+/* 주사위 */
+#diceW{width:226px;padding-bottom:10px;}
+.dcnt{display:inline-flex;gap:4px;margin:2px 0 9px;}
+.dcnt button{width:34px;height:24px;border:1px solid var(--line);background:var(--dk2);color:#9fb0bf;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;}
+.dcnt button.on{background:var(--or);border-color:var(--or);color:#fff;}
+#diceFaces{display:flex;justify-content:center;gap:10px;margin:2px 0 8px;min-height:58px;}
+.die{width:56px;height:56px;border-radius:13px;background:#fff;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.13),0 4px 10px rgba(0,0,0,.3);}
+.die i{width:9px;height:9px;border-radius:50%;background:#222;place-self:center;visibility:hidden;}
+.die.rolling{animation:shk .09s infinite;}
+#diceTotal{font-size:12.5px;color:#9fb0bf;min-height:20px;margin-bottom:7px;text-align:center;}
+#diceTotal b{color:var(--or);font-size:17px;}
+
+/* 신호등 */
+#lightW{width:128px;text-align:center;padding-bottom:11px;}
+.tl{display:flex;flex-direction:column;gap:9px;align-items:center;background:#0f1419;border-radius:16px;padding:13px;margin:4px auto 9px;width:76px;}
+.tl button{width:46px;height:46px;border-radius:50%;border:3px solid rgba(255,255,255,.07);cursor:pointer;opacity:.2;transition:.15s;}
+.tl button.on{opacity:1;box-shadow:0 0 20px currentColor;}
+.tl .r{background:#e84d3d;color:#e84d3d;}.tl .y{background:#ffc02e;color:#ffc02e;}.tl .g{background:#37c871;color:#37c871;}
+#lightLabel{font-size:11.5px;font-weight:700;color:#cdd8e2;min-height:16px;padding:0 6px;}
+
+/* 칠판 가리개 */
+.shade{position:fixed;z-index:46;background:#0e1318;border:1px solid rgba(246,140,31,.45);border-radius:11px;box-shadow:0 18px 50px -12px rgba(0,0,0,.7);}
+.shade .sh-bar{height:25px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 9px;background:rgba(246,140,31,.14);border-radius:10px 10px 0 0;}
+.shade .sh-bar:active{cursor:grabbing;}
+.shade .sh-bar span{font-size:10px;color:rgba(246,140,31,.85);font-weight:800;}
+.shade .sh-bar button{border:none;background:none;color:#6b7884;cursor:pointer;font-size:12px;}
+.shade .sh-bar button:hover{color:var(--red);}
+.shade .sh-logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;opacity:.09;pointer-events:none;border-radius:10px;}
+.shade .rs3{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(246,140,31,.65) 100%);border-radius:0 0 9px 0;}
 
 /* 펜-글자 입력창 */
 .cvtext{position:fixed;z-index:58;min-width:36px;max-width:55vw;background:transparent;outline:2px dashed rgba(246,140,31,.85);outline-offset:3px;padding:4px;font-weight:bold;line-height:1.28;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:pre-wrap;-webkit-user-select:text;user-select:text;cursor:text;text-shadow:0 1px 3px rgba(0,0,0,.25);}
@@ -320,7 +392,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <div class="panel iv" id="p-picker">
   <div class="ph">🎲 랜덤 발표자</div>
   <div class="tabs">
-    <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button><button class="tab" data-t="wh">🎡돌림판</button><button class="tab" data-t="pk">🎢핀볼</button>
+    <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button>
   </div>
   <div class="pane on" id="pane-nm">
     <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
@@ -339,12 +411,24 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="tres" id="tRes"></div>
     <button class="btn-go" id="tBtn">모둠 나누기!</button>
   </div>
-  <div class="pane" id="pane-wh">
+</div>
+
+<div class="panel iv" id="p-game">
+  <div class="ph">🎮 게이미피케이션</div>
+  <div class="gmenu">
+    <div class="gcard" id="gcWheel"><div class="gi">🎡</div><div class="gl">돌림판</div></div>
+    <div class="gcard" id="gcPk"><div class="gi">🎢</div><div class="gl">핀볼</div></div>
+    <div class="gcard" id="gcScore"><div class="gi">🏆</div><div class="gl">모둠 점수판</div></div>
+    <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
+    <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
+    <div class="gcard" id="gcShade"><div class="gi">⬛</div><div class="gl">칠판 가리개</div></div>
+  </div>
+  <div class="gcfg" id="cfgWheel">
     <textarea class="names" id="wheelNames" placeholder="이름을 줄바꿈으로 입력"></textarea>
     <div class="gdesc">🎡 위쪽 화살표에 멈추는 사람 당첨!</div>
     <button class="btn-go" id="wheelOpen">돌림판 열기</button>
   </div>
-  <div class="pane" id="pane-pk">
+  <div class="gcfg" id="cfgPk">
     <textarea class="names" id="pkNames" placeholder="이름을 줄바꿈으로 입력&#10;김수훈*5  ← 별표로 구슬 개수 (5개)"></textarea>
     <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
@@ -432,6 +516,28 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 </div>
 
+<div id="scoreW" class="fw iv">
+  <div class="fwh"><span class="ic">🏆</span><span class="tt">모둠 점수판</span><button class="x">✕</button></div>
+  <div id="scoreRows"></div>
+  <button id="scoreAdd">＋ 모둠 추가</button>
+</div>
+<div id="diceW" class="fw iv">
+  <div class="fwh"><span class="ic">🎲</span><span class="tt">주사위</span><button class="x">✕</button></div>
+  <div style="text-align:center"><span class="dcnt"><button data-n="1" class="on">1개</button><button data-n="2">2개</button><button data-n="3">3개</button></span></div>
+  <div id="diceFaces"></div>
+  <div id="diceTotal"></div>
+  <button class="btn-go" id="diceRoll" style="width:86%;margin:0 auto 4px;display:block">굴리기!</button>
+</div>
+<div id="lightW" class="fw iv">
+  <div class="fwh"><span class="ic">🚦</span><span class="tt">신호등</span><button class="x">✕</button></div>
+  <div class="tl">
+    <button class="r" data-m="🤫 조용히 집중"></button>
+    <button class="y" data-m="🗣 짝과 소곤소곤"></button>
+    <button class="g" data-m="👥 모둠 활동"></button>
+  </div>
+  <div id="lightLabel">신호를 눌러주세요</div>
+</div>
+
 <div id="noiseAlert"></div>
 <div id="noiseGuide" class="iv">
   <div class="ng-head"><span>📢 소음 폭탄, 이렇게 작동해요</span><button id="ngClose">✕</button></div>
@@ -467,9 +573,10 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
 <!-- dock -->
 <div id="dock" class="iv">
-  <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate<small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
+  <div class="brand" id="brand"><div class="lo"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
   <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
-  <button class="tool" data-p="p-picker"><span class="ti">🎲</span>발표자</button>
+  <button class="tool" data-p="p-picker"><span class="ti">🙋</span>발표자</button>
+  <button class="tool" data-p="p-game"><span class="ti">🎮</span>게임</button>
   <button class="tool" data-p="p-qr"><span class="ti">🔗</span>URL</button>
   <button class="tool" data-p="p-pin"><span class="ti">📌</span>핀</button>
   <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
@@ -480,7 +587,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button id="quitBtn" title="종료">✕</button>
 </div>
 
-<button id="pill" class="iv"><img src="../assets/logo.png" draggable="false"> ClassMate</button>
+<button id="pill" class="iv"><img src="../assets/logo.png" draggable="false"><span class="pl"><b>ClassMate</b><small>네패스 <em>코코아팹</em> <span id="pillVer"></span></small></span></button>
 <div id="tFloat" class="iv">
   <span class="tf" id="tfTime">05:00</span>
   <span style="display:flex;flex-direction:column;gap:3px">

@@ -46,6 +46,12 @@ function createOverlay() {
   ipcMain.on('set-ignore', (_e, ig) => { if (win) win.setIgnoreMouseEvents(ig, { forward: true }); });
 
   // 디스플레이 배치 정보 (창 기준 좌표) — 1/2/3모니터 어디서든 UI를 올바른 화면에 배치
+  ipcMain.handle('get-app-info', () => {
+    let buildDate = '';
+    try { buildDate = require('./build-date.json').date || ''; } catch (e) {}
+    return { version: app.getVersion(), buildDate };
+  });
+
   ipcMain.handle('get-displays', () => {
     const pid = screen.getPrimaryDisplay().id;
     return screen.getAllDisplays().map(d => ({

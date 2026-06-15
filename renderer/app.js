@@ -105,6 +105,17 @@ async function initDockPos(){
   placePanels();
 }
 initDockPos();
+// 버전 + 빌드 날짜 표시
+(async()=>{
+  try{
+    const info=await window.cm.getAppInfo();
+    const ver='v'+info.version;
+    const dt=info.buildDate?(' · '+info.buildDate):'';
+    $('dockVer').textContent=ver;
+    $('dockVer').title='ClassMate '+ver+(info.buildDate?(' (빌드: '+info.buildDate+')'):'');
+    $('pillVer').textContent=ver+dt;
+  }catch(e){}
+})();
 // 모니터 연결/해제 시: 독이 화면 밖에 있으면 주 모니터로 복귀
 window.cm.onBoundsChanged(async()=>{
   await refreshDisplays(); fitC();
@@ -296,6 +307,123 @@ function openGame(mode){
 }
 function closeGame(){cancelAnimationFrame(gameAnim);gameWrap.classList.remove('on');gameMode=null;}
 $('gameClose').addEventListener('click',closeGame);
+/* ===== 게이미피케이션 런처 ===== */
+function gShowCfg(id){
+  ['cfgWheel','cfgPk'].forEach(c=>$(c).classList.remove('on'));
+  ['gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade'].forEach(c=>$(c).classList.remove('on'));
+  if(id)$(id).classList.add('on');
+}
+$('gcWheel').addEventListener('click',()=>{gShowCfg('gcWheel');$('cfgWheel').classList.add('on');});
+$('gcPk').addEventListener('click',()=>{gShowCfg('gcPk');$('cfgPk').classList.add('on');});
+$('gcScore').addEventListener('click',()=>{gShowCfg();openWidget('scoreW');});
+$('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
+$('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
+$('gcShade').addEventListener('click',()=>{gShowCfg();addShade();});
+
+// 플로팅 위젯 공통: 표시 + 드래그 + 닫기
+function openWidget(id){
+  const w=$(id);
+  if(!w.dataset.init){
+    makeDrag(w.querySelector('.fwh'),(e,s)=>{
+      if(!s){const r=w.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+      w.style.left=(e.clientX-s.dx)+'px';w.style.top=(e.clientY-s.dy)+'px';
+    },e=>e.target.classList.contains('x'));
+    w.querySelector('.x').addEventListener('click',()=>w.classList.remove('on'));
+    w.dataset.init='1';
+    if(id==='scoreW'){[1,2,3].forEach(()=>scoreAddRow());}
+    if(id==='diceW')diceRender(1);
+  }
+  w.classList.add('on');
+  const d=dockDisp();
+  w.style.left=(d.x+d.w/2-w.offsetWidth/2+(Math.random()*80-40))+'px';
+  w.style.top=(d.y+d.h/2-w.offsetHeight/2)+'px';
+}
+
+/* --- 모둠 점수판 --- */
+let scoreN=0;const SCORE_COL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e'];
+function scoreAddRow(name){
+  scoreN++;const i=scoreN;
+  const row=document.createElement('div');row.className='srow2';
+  row.dataset.score='0';
+  row.innerHTML=`<span class="crown"></span>
+    <span style="width:9px;height:9px;border-radius:50%;background:${SCORE_COL[(i-1)%6]}"></span>
+    <input class="nm2" value="${name||('모둠 '+i)}">
+    <button class="mn">－</button><span class="sc">0</span><button class="pl2">＋</button>`;
+  $('scoreRows').appendChild(row);
+  const sc=row.querySelector('.sc');
+  const upd=d=>{let v=+row.dataset.score+d;row.dataset.score=v;sc.textContent=v;sc.classList.remove('pop');void sc.offsetWidth;sc.classList.add('pop');scoreRank();};
+  row.querySelector('.pl2').addEventListener('click',()=>upd(1));
+  row.querySelector('.mn').addEventListener('click',()=>upd(-1));
+}
+function scoreRank(){
+  const rows=[...$('scoreRows').children];
+  const max=Math.max(...rows.map(r=>+r.dataset.score));
+  rows.forEach(r=>{
+    const lead=+r.dataset.score===max&&max>0;
+    r.classList.toggle('lead',lead);
+    r.querySelector('.crown').textContent=lead?'👑':'';
+  });
+}
+$('scoreAdd').addEventListener('click',()=>scoreAddRow());
+
+/* --- 주사위 --- */
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+let diceCount=1;
+$('diceW')&&$('diceW').querySelectorAll('.dcnt button').forEach(b=>b.addEventListener('click',()=>{
+  $('diceW').querySelectorAll('.dcnt button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');diceCount=+b.dataset.n;diceRender(diceCount);$('diceTotal').textContent='';
+}));
+function dieEl(v){
+  const d=document.createElement('div');d.className='die';
+  for(let i=0;i<9;i++){const dot=document.createElement('i');if(PIPS[v].includes(i))dot.style.visibility='visible';d.appendChild(dot);}
+  return d;
+}
+function diceRender(n,vals){
+  const wrap=$('diceFaces');wrap.innerHTML='';
+  for(let i=0;i<n;i++)wrap.appendChild(dieEl(vals?vals[i]:1));
+}
+$('diceRoll').addEventListener('click',()=>{
+  const dice=[...$('diceFaces').children];dice.forEach(d=>d.classList.add('rolling'));
+  $('diceTotal').textContent='';
+  let n=0;const iv=setInterval(()=>{
+    const vals=Array.from({length:diceCount},()=>1+Math.floor(Math.random()*6));
+    diceRender(diceCount,vals);$('diceFaces').querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));
+    if(++n>=11){clearInterval(iv);
+      const fin=Array.from({length:diceCount},()=>1+Math.floor(Math.random()*6));
+      diceRender(diceCount,fin);
+      const sum=fin.reduce((a,b)=>a+b,0);
+      $('diceTotal').innerHTML=diceCount>1?('합계 <b>'+sum+'</b>'):('<b>'+sum+'</b>');
+      beep();
+    }
+  },70);
+});
+
+/* --- 신호등 --- */
+$('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventListener('click',()=>{
+  $('lightW').querySelectorAll('.tl button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');$('lightLabel').textContent=b.dataset.m;
+}));
+
+/* --- 칠판 가리개 --- */
+function addShade(){
+  const d=dockDisp();
+  const s=document.createElement('div');s.className='shade iv';
+  s.style.cssText=`left:${d.x+d.w/2-180}px;top:${d.y+d.h/2-110}px;width:360px;height:220px;`;
+  s.innerHTML=`<div class="sh-bar"><span>🦋 가림판</span><button class="x">✕</button></div>
+    <img class="sh-logo" src="../assets/logo.png" draggable="false"><div class="rs3"></div>`;
+  document.body.appendChild(s);
+  s.querySelector('.x').addEventListener('click',()=>s.remove());
+  makeDrag(s.querySelector('.sh-bar'),(e,st)=>{
+    if(!st){const r=s.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+    s.style.left=(e.clientX-st.dx)+'px';s.style.top=(e.clientY-st.dy)+'px';
+  },e=>e.target.classList.contains('x'));
+  makeDrag(s.querySelector('.rs3'),(e,st)=>{
+    if(!st)return{sx:e.clientX,sy:e.clientY,sw:s.offsetWidth,sh:s.offsetHeight};
+    s.style.width=Math.max(120,st.sw+(e.clientX-st.sx))+'px';
+    s.style.height=Math.max(70,st.sh+(e.clientY-st.sy))+'px';
+  });
+}
+
 $('wheelOpen').addEventListener('click',()=>openGame('wheel'));
 $('plinkoOpen').addEventListener('click',()=>openGame('plinko'));
 makeDrag($('gameHead'),(e,s)=>{
