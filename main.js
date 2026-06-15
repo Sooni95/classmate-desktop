@@ -1,4 +1,4 @@
-// ClassMate Desktop v0.2 — main process
+// ClassMate Desktop — main process (Electron)
 const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -47,7 +47,7 @@ function createOverlay() {
   // 포인터/렌즈 등 활성 모드: 창에 포커스를 줘서 키보드 ESC가 먹히게
   ipcMain.on('grab-focus', () => { try { if (win) win.focusOnWebView ? win.focusOnWebView() : win.focus(); } catch (e) {} });
 
-  // 디스플레이 배치 정보 (창 기준 좌표) — 1/2/3모니터 어디서든 UI를 올바른 화면에 배치
+  // 앱 버전 + 빌드 날짜
   ipcMain.handle('get-app-info', () => {
     let buildDate = '';
     try { buildDate = require('./build-date.json').date || ''; } catch (e) {}
@@ -94,7 +94,7 @@ function createOverlay() {
     try { clipboard.writeText(text); } catch (e) {}
   });
 
-  // 이미지 PNG로 저장 (저장 위치 선택)
+  // 메모를 txt 파일로 저장 (저장 위치 선택)
   ipcMain.handle('save-text', async (_e, { text, filename }) => {
     try {
       const r = await dialog.showSaveDialog(win, {
@@ -119,6 +119,46 @@ function createOverlay() {
     } catch (e) { return { ok: false, message: String(e) }; }
   });
 
+  // 바이너리 파일 저장 (음성 .webm 등)
+  ipcMain.handle('save-binary', async (_e, { bytes, filename }) => {
+    try {
+      const r = await dialog.showSaveDialog(win, {
+        defaultPath: filename || '음성.webm',
+        filters: [{ name: '음성 파일', extensions: ['webm'] }],
+      });
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(r.filePath, Buffer.from(bytes));
+      return { ok: true };
+    } catch (e) { return { ok: false, message: String(e) }; }
+  });
+
+  // 번역 (Anthropic API, BYO Key) — 메인 프로세스에서 호출해 CORS 회피
+  ipcMain.handle('translate', async (_e, { text, lang, apiKey }) => {
+    try {
+      if (!apiKey) return { ok: false, message: 'NO_KEY' };
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: `You are a translator for Korean elementary classrooms with multicultural students. Translate the user's text into ${lang}. Output ONLY the translation, no explanations, no quotes. Keep it natural and simple enough for a child to understand.`,
+          messages: [{ role: 'user', content: text }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, status: res.status, message: (data.error && data.error.message) || '오류' };
+      const out = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      return { ok: true, text: out };
+    } catch (err) {
+      return { ok: false, message: String(err) };
+    }
+  });
+
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
   ipcMain.handle('shorten', async (_e, { slug, target, ttl, token, key }) => {
     try {
@@ -139,7 +179,7 @@ function createOverlay() {
 
 function registerShortcuts() {
   const send = ch => win && win.webContents.send(ch);
-  // v0.2: 단일 F키 (F6~F9는 대부분의 프로그램에서 비어 있음)
+  // 단일 F키 (F6~F9는 대부분의 프로그램에서 비어 있음) + 이전 조합 호환
   const map = [
     ['F6', 'hk-ring'], ['F7', 'hk-spot'], ['F8', 'hk-lens'], ['F9', 'hk-draw'],
     // 이전 조합도 호환 유지

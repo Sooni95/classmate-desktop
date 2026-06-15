@@ -66,6 +66,29 @@ function setPanel(id){
   openPanel=id; placePanels();
 }
 document.querySelectorAll('.tool[data-p]').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.p)));
+
+/* ===== Pro 잠금 시스템 ===== */
+// Pro 해제 여부 (지금은 항상 잠김 — 추후 라이선스 연동 지점)
+function isPro(){ return localStorage.getItem('cm_pro')==='1'; }
+const proWrap=$('proWrap');
+function openPro(){ proWrap.classList.add('on'); centerOnDockDisplay(proWrap); }
+$('proClose').addEventListener('click',()=>proWrap.classList.remove('on'));
+$('proCta').addEventListener('click',()=>{ proWrap.classList.remove('on'); toast('🧡 Pro 구독 안내는 코코아팹에서 곧 제공됩니다'); });
+makeDrag($('proHead'),(e,s)=>{
+  if(!s){const r=proWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  proWrap.style.left=(e.clientX-s.dx)+'px';proWrap.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='proClose');
+// data-pro 요소(잠금) 클릭 → Pro 모달 (해제 상태면 실제 기능으로)
+document.querySelectorAll('[data-pro]').forEach(el=>{
+  el.addEventListener('click',e=>{
+    if(isPro()){ // 해제 시: 각 기능 실제 동작 (현재는 번역만 구현되어 있음)
+      if(el.dataset.pro==='trans')setPanel('p-trans');
+      else toast('곧 제공되는 기능이에요');
+      return;
+    }
+    e.preventDefault();e.stopPropagation();openPro();
+  });
+});
 document.querySelectorAll('.tabs').forEach(tb=>{
   const panel=tb.closest('.panel');
   tb.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
@@ -825,6 +848,47 @@ $('qrCopy').addEventListener('click',()=>copyQRImage($('qrbox')));
 $('suQrSave').addEventListener('click',()=>saveQRImage($('suQr'),'QR_'+($('suUrl').textContent.split('/')[1]||'단축주소')+'.png'));
 $('suQrCopy').addEventListener('click',()=>copyQRImage($('suQr')));
 
+/* ===== 다문화 번역 (Anthropic API, BYO Key) ===== */
+let trLang='Vietnamese',trLangKo='베트남어';
+$('trLangs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('trLangs').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');trLang=b.dataset.l;trLangKo=b.dataset.n;
+}));
+// API 키 (기존 AI 기능과 공유: 'ai_key')
+$('trKey').value=localStorage.getItem('ai_key')||'';
+$('trGear').addEventListener('click',()=>$('trKeyRow').classList.toggle('on'));
+$('trKeySave').addEventListener('click',()=>{
+  localStorage.setItem('ai_key',$('trKey').value.trim());
+  $('trKeyRow').classList.remove('on');toast('🔑 API 키 저장됨');
+});
+function trSay(msg){$('trMsg').textContent=msg;}
+$('trGo').addEventListener('click',async()=>{
+  const text=$('trIn').value.trim();
+  const key=localStorage.getItem('ai_key')||'';
+  if(!text){trSay('번역할 문장을 입력하세요');return;}
+  if(!key){trSay('⚙ API 키를 먼저 설정하세요');$('trKeyRow').classList.add('on');return;}
+  $('trGo').disabled=true;$('trGo').textContent='번역 중…';trSay('');
+  const res=await window.cm.translate({text,lang:trLang,apiKey:key});
+  $('trGo').disabled=false;$('trGo').textContent='번역하기';
+  if(res.ok){
+    $('trOrig').textContent='🇰🇷 '+text;
+    $('trOut').textContent=res.text;
+    $('trCard').classList.add('on');
+    trSay('');
+  }else if(res.message==='NO_KEY'){trSay('⚙ API 키를 먼저 설정하세요');$('trKeyRow').classList.add('on');}
+  else if(res.status===401){trSay('API 키가 올바르지 않아요 — ⚙ 설정 확인');$('trKeyRow').classList.add('on');}
+  else{trSay('번역 오류: '+(res.message||'인터넷 연결 확인'));}
+});
+$('trCopy').addEventListener('click',()=>{window.cm.copyText($('trOut').textContent);toast('📋 번역문 복사됨');});
+$('trSpeak').addEventListener('click',()=>{
+  try{
+    const u=new SpeechSynthesisUtterance($('trOut').textContent);
+    const map={Vietnamese:'vi',Chinese:'zh-CN',Russian:'ru','Tagalog (Filipino)':'fil',Uzbek:'uz',Thai:'th',Japanese:'ja',English:'en-US'};
+    u.lang=map[trLang]||'en-US';
+    speechSynthesis.cancel();speechSynthesis.speak(u);
+  }catch(e){toast('이 환경에서는 듣기를 지원하지 않아요');}
+});
+
 /* ===== 단축주소 (코코아팹.kr) — 온라인 기능 ===== */
 const SU_BASE='코코아팹.kr';
 const SU_TOKEN_DEFAULT='kocoafab2026';
@@ -899,6 +963,24 @@ function applyFontSize(ed,dir){
     ed.style.fontSize=Math.min(56,Math.max(10,cur+dir*4))+'px';
   }
 }
+// 녹음된 오디오를 메모 안에 재생 플레이어 + 저장 버튼으로 삽입
+function addAudioToMemo(m,ed,blob){
+  const url=URL.createObjectURL(blob);
+  const box=document.createElement('div');box.className='maudio';
+  const audio=document.createElement('audio');audio.controls=true;audio.src=url;
+  const save=document.createElement('button');save.className='masave';save.textContent='💾';save.title='음성 파일 저장';
+  const del=document.createElement('button');del.className='madel';del.textContent='🗑';del.title='삭제';
+  box.appendChild(audio);box.appendChild(save);box.appendChild(del);
+  m.insertBefore(box,m.querySelector('.rs2'));
+  save.addEventListener('click',async()=>{
+    const buf=await blob.arrayBuffer();
+    const now=new Date();
+    const fn='음성_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+'.webm';
+    const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:fn});
+    if(r&&r.ok)toast('💾 음성 파일 저장 완료');
+  });
+  del.addEventListener('click',()=>{URL.revokeObjectURL(url);box.remove();});
+}
 $('memoBtn').addEventListener('click',()=>{
   mCnt++;const m=document.createElement('div');m.className='memo iv';
   const c=MCOLS[mCnt%4];
@@ -909,7 +991,7 @@ $('memoBtn').addEventListener('click',()=>{
       <button class="fbtn" data-f="-1" title="선택한 글자 작게">A-</button><button class="fbtn" data-f="1" title="선택한 글자 크게">A+</button>
       <button class="fbtn" id="mCopy" title="클립보드로 복사">📋</button>
       <button class="fbtn" id="mSave" title="txt 파일로 저장">💾</button>
-      <button class="fbtn" id="mMic" title="음성으로 받아쓰기">🎤</button>
+      <button class="fbtn" id="mMic" title="음성 녹음">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
     <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
@@ -935,27 +1017,33 @@ $('memoBtn').addEventListener('click',()=>{
     const r=await window.cm.saveText({text:t,filename:fn});
     if(r&&r.ok)toast('💾 메모 저장 완료');
   });
-  // 음성 받아쓰기 (Web Speech API)
-  const micBtn=m.querySelector('#mMic');let rec=null,recOn=false;
+  // 음성 녹음 (MediaRecorder — getUserMedia만 사용해 Electron에서 안정적)
+  const micBtn=m.querySelector('#mMic');
+  let mediaRec=null,recOn=false,recChunks=[],recStream=null,recTimer=null,recSec=0;
+  function stopRec(){
+    if(mediaRec&&mediaRec.state!=='inactive')mediaRec.stop();
+  }
   micBtn.addEventListener('mousedown',e=>e.preventDefault());
-  micBtn.addEventListener('click',()=>{
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){toast('이 환경에서는 음성인식을 지원하지 않아요');return;}
-    if(recOn){rec&&rec.stop();return;}
-    rec=new SR();rec.lang='ko-KR';rec.continuous=true;rec.interimResults=true;
-    let base=ed.innerText;
-    rec.onresult=ev=>{
-      let fin='',interim='';
-      for(let i=ev.resultIndex;i<ev.results.length;i++){
-        const tr=ev.results[i][0].transcript;
-        if(ev.results[i].isFinal)fin+=tr;else interim+=tr;
-      }
-      if(fin)base+=(base&&!base.endsWith(' ')?' ':'')+fin;
-      ed.innerText=base+(interim?(' '+interim):'');
+  micBtn.addEventListener('click',async()=>{
+    if(recOn){stopRec();return;}
+    try{
+      recStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    }catch(e){toast('🎤 마이크를 사용할 수 없어요 (권한 확인)');return;}
+    recChunks=[];
+    try{mediaRec=new MediaRecorder(recStream);}
+    catch(e){toast('이 환경에서는 녹음을 지원하지 않아요');recStream.getTracks().forEach(t=>t.stop());return;}
+    mediaRec.ondataavailable=ev=>{if(ev.data.size)recChunks.push(ev.data);};
+    mediaRec.onstop=()=>{
+      clearInterval(recTimer);recTimer=null;
+      recStream.getTracks().forEach(t=>t.stop());
+      recOn=false;micBtn.classList.remove('on');micBtn.textContent='🎤';
+      const blob=new Blob(recChunks,{type:'audio/webm'});
+      addAudioToMemo(m,ed,blob);
     };
-    rec.onend=()=>{recOn=false;micBtn.classList.remove('on');micBtn.textContent='🎤';};
-    rec.onerror=()=>{recOn=false;micBtn.classList.remove('on');micBtn.textContent='🎤';toast('음성인식 오류 — 마이크 권한 확인');};
-    rec.start();recOn=true;micBtn.classList.add('on');micBtn.textContent='⏹';toast('🎤 말하면 받아써요 (다시 누르면 중지)');
+    mediaRec.start();
+    recOn=true;recSec=0;micBtn.classList.add('on');micBtn.textContent='⏹';
+    toast('🎤 녹음 중… (다시 누르면 정지)');
+    recTimer=setInterval(()=>{recSec++;micBtn.textContent='⏹'+Math.floor(recSec/60)+':'+String(recSec%60).padStart(2,'0');},1000);
   });
   m.querySelectorAll('.fbtn').forEach(b=>{
     b.addEventListener('mousedown',e=>e.preventDefault()); // 선택 유지
@@ -1325,7 +1413,8 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
   if(e.key==='Escape'){
-    if($('noiseGuide').classList.contains('on'))$('noiseGuide').classList.remove('on');
+    if(proWrap&&proWrap.classList.contains('on'))proWrap.classList.remove('on');
+    else if($('noiseGuide').classList.contains('on'))$('noiseGuide').classList.remove('on');
     else if(drawWrap.classList.contains('on'))drawWrap.classList.remove('on');
     else if(shadeWrap.classList.contains('on'))shadeWrap.classList.remove('on');
     else if(gameWrap.classList.contains('on'))closeGame();
