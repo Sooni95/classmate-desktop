@@ -321,81 +321,76 @@ $('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
 $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
 $('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
 
-/* --- 제비뽑기 --- */
-const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0,drawOpened=0;
+/* --- 제비뽑기 (번호 표시) --- */
+const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0;
 makeDrag($('drawHead'),(e,s)=>{
   if(!s){const r=drawWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   drawWrap.style.left=(e.clientX-s.dx)+'px';drawWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='drawClose');
 $('drawClose').addEventListener('click',()=>drawWrap.classList.remove('on'));
 $('drawOpen').addEventListener('click',()=>{
-  let items=$('drawNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(!items.length)items=Array.from({length:30},(_,i)=>(i+1)+'번');
-  if(items.length>60)items.length=60;
-  const winN=Math.min(items.length,Math.max(1,parseInt($('drawWin').value)||1));
-  if($('drawShuffle').checked)items=items.sort(()=>Math.random()-.5);
-  // 당첨 위치 무작위 지정
-  const winIdx=new Set();while(winIdx.size<winN)winIdx.add(Math.floor(Math.random()*items.length));
-  drawData=items.map((t,i)=>({txt:t,win:winIdx.has(i),open:false}));
-  drawWinLeft=winN;drawOpened=0;
+  const cnt=Math.min(60,Math.max(2,parseInt($('drawCnt').value)||30));
+  const winN=Math.min(cnt,Math.max(1,parseInt($('drawWin').value)||1));
+  // 당첨 위치 무작위 (번호는 1..cnt 고정 표시, 당첨 여부만 숨김)
+  const winIdx=new Set();while(winIdx.size<winN)winIdx.add(Math.floor(Math.random()*cnt));
+  drawData=Array.from({length:cnt},(_,i)=>({no:i+1,win:winIdx.has(i),open:false}));
+  drawWinLeft=winN;
   renderDraw();
-  drawWrap.classList.add('on');
-  centerOnDockDisplay(drawWrap);
+  drawWrap.classList.add('on');centerOnDockDisplay(drawWrap);
 });
 function renderDraw(){
   $('drawCount').textContent='제비 '+drawData.length+'개 · 당첨 '+drawWinLeft+'개 남음';
-  $('drawResult').textContent='';
+  $('drawResult').textContent='학생이 번호를 부르면 그 제비를 클릭하세요';
   const g=$('drawGrid');g.innerHTML='';
   drawData.forEach((d,i)=>{
-    const t=document.createElement('div');t.className='ticket'+(d.open?' open':'')+(d.open&&d.win?' win':'');
-    t.innerHTML='<span class="tk-win">👑</span><span class="tk-txt">'+d.txt+'</span>';
+    const t=document.createElement('div');t.className='ticket';
+    t.innerHTML='<span class="tk-no">'+d.no+'</span><span class="tk-win">👑</span><span class="tk-txt"></span>';
     if(!d.open)t.addEventListener('click',()=>openTicket(i,t));
     g.appendChild(t);
   });
 }
 function openTicket(i,el){
   if(drawData[i].open)return;
-  drawData[i].open=true;drawOpened++;
+  drawData[i].open=true;
   el.classList.add('open');
-  if(drawData[i].win){el.classList.add('win');if(drawWinLeft>0)drawWinLeft--;beep();
-    $('drawResult').textContent='🎉 당첨! "'+drawData[i].txt+'"';}
-  else{$('drawResult').textContent='"'+drawData[i].txt+'" — 꽝!';}
+  const txt=el.querySelector('.tk-txt');
+  if(drawData[i].win){
+    el.classList.add('win');txt.classList.add('hit');txt.textContent='당첨';
+    if(drawWinLeft>0)drawWinLeft--;beep();
+    $('drawResult').innerHTML='🎉 <b style="color:#F68C1F">'+drawData[i].no+'번 당첨!</b>';
+  }else{
+    txt.classList.add('lose');txt.textContent='꽝';
+    $('drawResult').textContent=drawData[i].no+'번 — 꽝!';
+  }
   $('drawCount').textContent='제비 '+drawData.length+'개 · 당첨 '+drawWinLeft+'개 남음';
 }
 
-/* --- 가리개 (스포트라이트형) --- */
-const shadeWrap=$('shadeWrap'),shadeCv=$('shadeCv'),sctx=shadeCv.getContext('2d');
-let shadePaint=false,shadeShape='circle';
-function shadeFill(){
-  shadeCv.width=innerWidth;shadeCv.height=innerHeight;
-  sctx.clearRect(0,0,shadeCv.width,shadeCv.height);
-  sctx.fillStyle='rgba(12,16,22,0.93)';
-  sctx.fillRect(0,0,shadeCv.width,shadeCv.height);
-}
-function shadeReveal(x,y){
-  sctx.globalCompositeOperation='destination-out';
-  if(shadeShape==='circle'){
-    sctx.beginPath();sctx.arc(x,y,60,0,7);sctx.fill();
-  }else{
-    sctx.fillRect(x-130,y-40,260,80);
-  }
-  sctx.globalCompositeOperation='source-over';
-}
+/* --- 가리개 (커튼형) --- */
+const shadeWrap=$('shadeWrap'),shadePanel=$('shadePanel');
+let shadeHoriz=false,shadeDrag=false;
 function openShade(){
   setPanel(null);
   shadeWrap.classList.add('on');setIgnore(false);
-  shadeFill();
+  setShadeSize(shadeHoriz?55:60);
 }
-$('shadeClose').addEventListener('click',()=>{shadeWrap.classList.remove('on');});
-$('shadeReset').addEventListener('click',shadeFill);
-$('shadeMode').addEventListener('click',()=>{
-  shadeShape=shadeShape==='circle'?'rect':'circle';
-  $('shadeMode').textContent=shadeShape==='circle'?'⭕ 원형':'▭ 띠';
+function setShadeSize(pct){
+  pct=Math.max(0,Math.min(100,pct));
+  if(shadeHoriz)shadePanel.style.width=pct+'%',shadePanel.style.height='100%';
+  else shadePanel.style.height=pct+'%',shadePanel.style.width='100%';
+}
+$('shadeClose').addEventListener('click',()=>shadeWrap.classList.remove('on'));
+$('shadeFull').addEventListener('click',()=>setShadeSize(shadeHoriz?100:100));
+$('shadeDir').addEventListener('click',()=>{
+  shadeHoriz=!shadeHoriz;
+  shadeWrap.classList.toggle('horiz',shadeHoriz);
+  $('shadeDir').textContent=shadeHoriz?'⬌ 가로':'⬍ 세로';
+  setShadeSize(shadeHoriz?55:60);
 });
-shadeCv.addEventListener('pointerdown',e=>{shadePaint=true;shadeCv.setPointerCapture(e.pointerId);shadeReveal(e.clientX,e.clientY);});
-shadeCv.addEventListener('pointermove',e=>{if(shadePaint)shadeReveal(e.clientX,e.clientY);});
-shadeCv.addEventListener('pointerup',()=>shadePaint=false);
-addEventListener('resize',()=>{if(shadeWrap.classList.contains('on'))shadeFill();});
+makeDrag($('shadeHandle'),(e,s)=>{
+  if(!s)return{};
+  if(shadeHoriz)setShadeSize(e.clientX/innerWidth*100);
+  else setShadeSize(e.clientY/innerHeight*100);
+});
 
 // 플로팅 위젯 공통: 표시 + 드래그 + 닫기
 function openWidget(id){
@@ -557,7 +552,7 @@ function spinWheel(names){
    좁은 골(40px) 앞에서 문지기 막대와 구슬들이 엉키며 순서가 갈림.
    마지막에 골인한 구슬의 주인이 당첨. (이름*5 = 구슬 5개)
    연출: 골인 이펙트 / 남은 구슬 ≤3 글로우 / 마지막 1개 슬로모션 / 우승 꽃가루 */
-const PKW=540,PKH=470,PK_GAP=20;
+const PKW=540,PKH=470,PK_GAP=26;
 let pk=null;
 function pkInit(names){
   const uniq=[...new Set(names)];
@@ -568,20 +563,20 @@ function pkInit(names){
     vx:(Math.random()-.5)*60,vy:0,r:11,done:false,slow:0
   }));
   const pegs=[];
-  for(let r=0;r<7;r++){
-    const cnt=7+(r%2);
-    for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:84+r*33,r:6});
+  for(let r=0;r<5;r++){              // 핀 줄여서 범퍼가 주인공
+    const cnt=6+(r%2);
+    for(let c=0;c<cnt;c++)pegs.push({x:(PKW/(cnt+1))*(c+1),y:96+r*40,r:5});
   }
-  // 큰 범퍼(통통 튕기는 원형 장애물)
+  // 큰 범퍼(통통 강하게 튕기는 원형 장애물)
   const bumpers=[
-    {x:PKW*0.5,y:175,r:17},
-    {x:PKW*0.26,y:260,r:14},
-    {x:PKW*0.74,y:260,r:14},
+    {x:PKW*0.5, y:158,r:21},
+    {x:PKW*0.26,y:252,r:18},
+    {x:PKW*0.74,y:252,r:18},
   ];
   const paddles=[
     {cx:PKW*0.30,cy:330,len:80,a:Math.random()*6,w:1.9,flash:0},
     {cx:PKW*0.70,cy:330,len:80,a:Math.random()*6,w:-2.2,flash:0},
-    {cx:PKW/2,  cy:418,len:88,a:Math.random()*6,w:1.5,flash:0}, // 골 문지기
+    {cx:PKW/2,  cy:414,len:84,a:Math.random()*6,w:1.5,flash:0}, // 골 문지기
   ];
   return {balls,pegs,paddles,bumpers,arrived:[],fx:[]};
 }
@@ -614,9 +609,9 @@ function pkStep(dt){
   for(const b of pk.balls){
     if(b.done)continue;
     b.vy+=G*dt;
-    b.vx*=0.998;b.vy*=0.999;
+    b.vx*=0.997;b.vy*=0.998;
     const cap=Math.hypot(b.vx,b.vy);
-    if(cap>600){b.vx*=600/cap;b.vy*=600/cap;}
+    if(cap>620){b.vx*=620/cap;b.vy*=620/cap;}
     b.x+=b.vx*dt;b.y+=b.vy*dt;
     if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)*REST;}
     if(b.x>PKW-b.r){b.x=PKW-b.r;b.vx=-Math.abs(b.vx)*REST;}
@@ -625,11 +620,15 @@ function pkStep(dt){
         pkFx('spark',p.x,p.y,b.col);
     }
     for(const p of pk.bumpers){
-      if(collideCircle(b,p.x,p.y,p.r,1.15)){ // 탄성>1: 튕겨 가속
-        b.vx*=1.04;b.vy*=1.04;p.flash=0.16;
-        pkFx('ring',p.x,p.y,'#F68C1F');
-      }
       if(p.flash===undefined)p.flash=0;
+      let nx=b.x-p.x,ny=b.y-p.y;const d=Math.hypot(nx,ny),min=b.r+p.r;
+      if(d>0&&d<min){
+        nx/=d;ny/=d;b.x=p.x+nx*min;b.y=p.y+ny*min;
+        const vn=b.vx*nx+b.vy*ny;
+        if(vn<0){b.vx-=1.95*vn*nx;b.vy-=1.95*vn*ny;} // 탄성 0.95: 시원하게 튕기되 에너지 누적X
+        p.flash=0.18;
+        pkFx('ring',p.x,p.y,'#F68C1F');pkFx('spark',b.x,b.y,b.col);
+      }
     }
     collideSeg(b,0,362,PKW/2-PK_GAP,440,0.42);
     collideSeg(b,PKW,362,PKW/2+PK_GAP,440,0.42);
@@ -649,7 +648,7 @@ function pkStep(dt){
       pkFx('txt',PKW/2,PKH-40,b.col,b.nm+' 골인!');
     }
     const sp=Math.hypot(b.vx,b.vy);
-    if(sp<12&&b.y>0){b.slow+=dt;if(b.slow>1.4){b.vx+=(Math.random()-.5)*180;b.vy-=120;b.slow=0;}}else b.slow=0;
+    if(sp<12&&b.y>0){b.slow+=dt;if(b.slow>1.2){b.vx+=(Math.random()-.5)*200;b.vy-=140;b.slow=0;}}else b.slow=0;
   }
   const bs=pk.balls.filter(b=>!b.done&&b.y>-12);
   for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
@@ -910,6 +909,7 @@ $('memoBtn').addEventListener('click',()=>{
       <button class="fbtn" data-f="-1" title="선택한 글자 작게">A-</button><button class="fbtn" data-f="1" title="선택한 글자 크게">A+</button>
       <button class="fbtn" id="mCopy" title="클립보드로 복사">📋</button>
       <button class="fbtn" id="mSave" title="txt 파일로 저장">💾</button>
+      <button class="fbtn" id="mMic" title="음성으로 받아쓰기">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
     <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
@@ -934,6 +934,28 @@ $('memoBtn').addEventListener('click',()=>{
     const fn='메모_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.txt';
     const r=await window.cm.saveText({text:t,filename:fn});
     if(r&&r.ok)toast('💾 메모 저장 완료');
+  });
+  // 음성 받아쓰기 (Web Speech API)
+  const micBtn=m.querySelector('#mMic');let rec=null,recOn=false;
+  micBtn.addEventListener('mousedown',e=>e.preventDefault());
+  micBtn.addEventListener('click',()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){toast('이 환경에서는 음성인식을 지원하지 않아요');return;}
+    if(recOn){rec&&rec.stop();return;}
+    rec=new SR();rec.lang='ko-KR';rec.continuous=true;rec.interimResults=true;
+    let base=ed.innerText;
+    rec.onresult=ev=>{
+      let fin='',interim='';
+      for(let i=ev.resultIndex;i<ev.results.length;i++){
+        const tr=ev.results[i][0].transcript;
+        if(ev.results[i].isFinal)fin+=tr;else interim+=tr;
+      }
+      if(fin)base+=(base&&!base.endsWith(' ')?' ':'')+fin;
+      ed.innerText=base+(interim?(' '+interim):'');
+    };
+    rec.onend=()=>{recOn=false;micBtn.classList.remove('on');micBtn.textContent='🎤';};
+    rec.onerror=()=>{recOn=false;micBtn.classList.remove('on');micBtn.textContent='🎤';toast('음성인식 오류 — 마이크 권한 확인');};
+    rec.start();recOn=true;micBtn.classList.add('on');micBtn.textContent='⏹';toast('🎤 말하면 받아써요 (다시 누르면 중지)');
   });
   m.querySelectorAll('.fbtn').forEach(b=>{
     b.addEventListener('mousedown',e=>e.preventDefault()); // 선택 유지
@@ -1062,6 +1084,7 @@ const PS={ring:false,spot:0,size:160};
 let spotShape=1; // 1 원 / 2 사각 (스포트라이트 켜기 전 미리 선택)
 let hx=innerWidth/2,hy=innerHeight/2,ptrRAF=0;
 function syncPtr(){
+  if(PS.ring||PS.spot>0)window.cm.grabFocus();
   $('mRing').classList.toggle('on',PS.ring);
   $('mSpot').classList.toggle('on',PS.spot>0);
   $('shC').classList.toggle('on',spotShape===1);
@@ -1090,9 +1113,14 @@ function trackPtr(e){
 }
 document.addEventListener('pointerdown',e=>{
   if(!PS.ring)return;
-  const r=document.createElement('div');r.className='ripple';
-  r.style.cssText=`left:${e.clientX}px;top:${e.clientY}px;transform:translate(-50%,-50%);`;
-  document.body.appendChild(r);setTimeout(()=>r.remove(),520);
+  // 클릭 위치에 물결 + 짧은 펄스 (확실히 보이도록 2겹)
+  ['ripple','ripple ring2'].forEach((cls,i)=>{
+    const r=document.createElement('div');r.className=cls;
+    r.style.cssText=`left:${e.clientX}px;top:${e.clientY}px;transform:translate(-50%,-50%);${i?'animation-delay:.06s;':''}`;
+    document.body.appendChild(r);setTimeout(()=>r.remove(),600);
+  });
+  // 커서 링 자체도 클릭 순간 한 번 커졌다 작아짐
+  halo.classList.remove('clickpulse');void halo.offsetWidth;halo.classList.add('clickpulse');
 });
 $('mRing').addEventListener('click',()=>{PS.ring=!PS.ring;syncPtr();});
 $('mSpot').addEventListener('click',()=>{PS.spot=PS.spot>0?0:spotShape;syncPtr();});
@@ -1146,6 +1174,7 @@ async function setLens(shape){
     lz=2;
   }
   lensShape=shape;lensOn=shape>0;
+  if(lensOn)window.cm.grabFocus();
   lens2.className=(shape===2?'rect':'circle')+(lensOn?' on':'');
   if(lensOn){const d=dispAt(hx,hy);lensTip.style.left=(d.x+d.w/2)+'px';lensTip.style.top=(d.y+16)+'px';}
   lensTip.classList.toggle('on',lensOn);
@@ -1469,7 +1498,18 @@ $('nStop').addEventListener('click',()=>{
 });
 
 /* ===== 전체 끄기 & 전역 단축키 ===== */
-function allOff(){commitText();PS.ring=false;PS.spot=0;syncPtr();toggleDraw(false);if(lensOn)setLens(0);if(snipOn)endSnip();$('nStop').click();closeGame();closeCam();}
+function allOff(){
+  commitText();
+  PS.ring=false;PS.spot=0;
+  if(lensOn)setLens(0);
+  syncPtr();
+  toggleDraw(false);
+  if(snipOn)endSnip();
+  $('nStop').click();closeGame();closeCam();
+  if(drawWrap)drawWrap.classList.remove('on');
+  if(shadeWrap)shadeWrap.classList.remove('on');
+  setIgnore(true); // 클릭 통과 복구
+}
 window.cm.onHotkey(ch=>{
   switch(ch){
     case 'hk-ring': PS.ring=!PS.ring;syncPtr();break;

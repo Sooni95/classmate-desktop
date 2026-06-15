@@ -161,8 +161,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #halo{position:fixed;left:0;top:0;width:34px;height:34px;border:3px solid var(--or);border-radius:50%;box-shadow:0 0 14px rgba(246,140,31,.55);z-index:90;display:none;}
 #halo.on{display:block;}
 #halo::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;background:var(--or);border-radius:50%;transform:translate(-50%,-50%);}
-.ripple{position:fixed;width:14px;height:14px;border:3px solid var(--or);border-radius:50%;z-index:89;animation:rip .5s ease-out forwards;}
-@keyframes rip{to{transform:translate(-50%,-50%) scale(4.2);opacity:0;}}
+.ripple{position:fixed;width:16px;height:16px;border:3px solid var(--or);border-radius:50%;z-index:89;pointer-events:none;animation:rip .55s ease-out forwards;}
+.ripple.ring2{border-color:rgba(246,140,31,.5);}
+@keyframes rip{0%{opacity:.95;}to{transform:translate(-50%,-50%) scale(5);opacity:0;}}
+#halo.clickpulse{box-shadow:0 0 0 0 rgba(246,140,31,.6);animation:halopulse .4s ease-out;}
+@keyframes halopulse{0%{box-shadow:0 0 0 0 rgba(246,140,31,.6);}100%{box-shadow:0 0 0 22px rgba(246,140,31,0);}}
 
 #spot{position:fixed;inset:0;z-index:39;display:none;overflow:hidden;}
 #spot.on{display:block;}
@@ -188,6 +191,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .memo.min .mtext{display:none;}
 .memo .rs2{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(120,80,0,.5) 100%);}
 .memo .fbtn{border:none;background:rgba(0,0,0,.08);border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;color:rgba(80,50,0,.7);padding:2px 5px;}
+.memo .fbtn.on{background:var(--red);color:#fff;}
 .memo .mbar input[type=range]{width:44px;accent-color:#a07000;height:12px;}
 .pin{position:fixed;z-index:48;border-radius:8px;overflow:hidden;box-shadow:0 16px 40px -10px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.85);min-width:100px;}
 .pin .pb{height:28px;background:var(--dk);display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 9px;cursor:grab;}
@@ -323,24 +327,31 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #drawClose{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
 #drawGrid{display:flex;flex-wrap:wrap;gap:8px;padding:16px;justify-content:center;max-height:62vh;overflow:auto;}
 .ticket{width:62px;height:84px;border-radius:9px;background:linear-gradient(160deg,#ffb45e,#F68C1F);cursor:pointer;position:relative;box-shadow:0 5px 14px -4px rgba(0,0,0,.5);transition:transform .12s;display:flex;align-items:center;justify-content:center;}
-.ticket::before{content:'🎟️';font-size:24px;filter:grayscale(.1);}
+.ticket::before{content:'🎟️';font-size:22px;filter:grayscale(.1);margin-top:14px;}
+.ticket.open::before{content:'';margin:0;}
 .ticket:hover{transform:translateY(-4px) rotate(-2deg);}
 .ticket.open{cursor:default;background:#fff;transform:none;}
-.ticket.open::before{content:'';}
 .ticket.win{box-shadow:0 0 0 3px #F68C1F,0 8px 18px -4px rgba(246,140,31,.7);}
-.ticket .tk-txt{display:none;font-size:13px;font-weight:800;color:#3a2200;text-align:center;padding:4px;word-break:break-all;}
+.ticket .tk-no{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.ticket.open .tk-no{color:#9a6a1a;text-shadow:none;}
+.ticket .tk-txt{display:none;font-size:16px;font-weight:800;text-align:center;padding:4px;}
 .ticket.open .tk-txt{display:block;}
+.ticket.open .tk-txt.lose{color:#7a8794;}
+.ticket.open .tk-txt.hit{color:#F68C1F;}
 .ticket .tk-win{position:absolute;top:-9px;right:-7px;font-size:17px;display:none;}
 .ticket.win .tk-win{display:block;}
 #drawResult{padding:0 16px 15px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
 
-/* 가리개 (스포트라이트형) */
+/* 가리개 (커튼형) */
 #shadeWrap{position:fixed;inset:0;z-index:78;display:none;}
 #shadeWrap.on{display:block;}
-#shadeCv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;}
+#shadePanel{position:absolute;left:0;top:0;width:100%;height:60%;background:linear-gradient(180deg,#11171f,#0c1117);border-bottom:3px solid var(--or);box-shadow:0 14px 40px rgba(0,0,0,.5);overflow:hidden;}
+#shadeWrap.horiz #shadePanel{width:55%;height:100%;border-bottom:none;border-right:3px solid var(--or);}
+#shadeLogo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:90px;opacity:.07;border-radius:16px;pointer-events:none;}
+#shadeHandle{position:absolute;left:0;bottom:0;width:100%;height:40px;background:rgba(246,140,31,.16);border-top:1px solid rgba(246,140,31,.4);cursor:ns-resize;display:flex;align-items:center;justify-content:center;}
+#shadeWrap.horiz #shadeHandle{left:auto;right:0;top:0;width:40px;height:100%;border-top:none;border-left:1px solid rgba(246,140,31,.4);cursor:ew-resize;writing-mode:vertical-rl;}
+#shadeHandle span{font-size:12px;font-weight:700;color:rgba(246,140,31,.95);}
 #shadeBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:79;display:flex;align-items:center;gap:14px;background:var(--dk);border:1px solid var(--line);border-radius:13px;padding:9px 15px;box-shadow:var(--shadow);}
-#shadeBar span{font-size:12px;color:#cdd8e2;}
-#shadeBar b{color:var(--or);}
 #shadeBar button{border:none;background:var(--dk2);color:#cdd8e2;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;cursor:pointer;}
 #shadeBar button:hover{background:var(--or);color:#fff;}
 
@@ -449,9 +460,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 
   <div class="gcfg" id="cfgDraw">
-    <div class="gdesc">🎟️ 제비뽑기 — 화면 가득 제비를 펼쳐두고 하나씩 뽑아요. 당첨 제비를 정하거나(예: 청소 당번 2명) 꽝/당첨을 섞을 수 있어요.</div>
-    <textarea class="names" id="drawNames" placeholder="제비 내용 (줄바꿈)&#10;예) 1번 자리, 2번 자리…&#10;비워두면 1~30 번호 제비"></textarea>
-    <div class="nrow"><span>당첨 수</span><input type="number" id="drawWin" value="1" min="1"><label style="font-size:11px;color:#9fb0bf"><input type="checkbox" id="drawShuffle" checked> 섞기</label></div>
+    <div class="gdesc">🎟️ 제비뽑기 — 번호가 적힌 제비를 펼쳐둡니다. 학생이 <b style="color:#F68C1F">번호를 부르면</b> 그 제비를 뒤집어 당첨/꽝을 확인해요.</div>
+    <div class="nrow"><span>제비 개수</span><input type="number" id="drawCnt" value="30" min="2" max="60"></div>
+    <div class="nrow"><span>당첨 수</span><input type="number" id="drawWin" value="1" min="1"><span style="font-size:11px;color:#6b7884">나머지는 꽝</span></div>
     <button class="btn-go" id="drawOpen">제비 펼치기</button>
   </div>
 
@@ -604,14 +615,16 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="drawResult"></div>
 </div>
 
-<!-- 가리개 (스포트라이트형: 화면을 덮고 드래그한 부분만 공개) -->
+<!-- 가리개 (커튼형: 칠판/화면을 덮었다가 손잡이로 걷어냄) -->
 <div id="shadeWrap" class="iv">
-  <canvas id="shadeCv"></canvas>
+  <div id="shadePanel">
+    <div id="shadeHandle"><span>⬍ 손잡이를 끌어 가림판을 걷거나 덮으세요</span></div>
+    <img id="shadeLogo" src="../assets/logo.png" draggable="false">
+  </div>
   <div id="shadeBar">
-    <span>🔲 가리개 — 화면 위를 <b>드래그하면 그 부분만 공개</b>됩니다</span>
     <span style="display:flex;gap:6px">
-      <button id="shadeReset">↺ 다시 가리기</button>
-      <button id="shadeMode">⭕ 원형</button>
+      <button id="shadeDir">⬍ 세로</button>
+      <button id="shadeFull">⬛ 전체 덮기</button>
       <button id="shadeClose">✕ 닫기</button>
     </span>
   </div>

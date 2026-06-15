@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('cm', {
   setIgnore: (ig) => ipcRenderer.send('set-ignore', ig),
+  grabFocus: () => ipcRenderer.send('grab-focus'),
   captureScreen: () => ipcRenderer.invoke('capture-screen'),
   getDisplays: () => ipcRenderer.invoke('get-displays'),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
