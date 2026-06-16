@@ -19,9 +19,13 @@ function dockDisp() {
 }
 // 모달류를 독이 있는 모니터 중앙에 배치
 function centerOnDockDisplay(el) {
-  const d = dockDisp();
-  el.style.left = Math.max(d.x + 8, d.x + (d.w - el.offsetWidth) / 2) + 'px';
-  el.style.top = Math.max(d.y + 8, d.y + (d.h - el.offsetHeight) / 2) + 'px';
+  const place=()=>{
+    const d = dockDisp();
+    el.style.left = Math.max(d.x + 8, d.x + (d.w - el.offsetWidth) / 2) + 'px';
+    el.style.top = Math.max(d.y + 8, d.y + (d.h - el.offsetHeight) / 2) + 'px';
+  };
+  place();
+  requestAnimationFrame(place); // 렌더 후 크기 확정되면 재배치 (모니터 사이 걸침 방지)
 }
 
 /* ===== 클릭 통과(click-through) 관리 ===== */
@@ -584,8 +588,8 @@ function closeGame(){cancelAnimationFrame(gameAnim);gameWrap.classList.remove('o
 $('gameClose').addEventListener('click',closeGame);
 /* ===== 게이미피케이션 런처 ===== */
 function gShowCfg(id){
-  ['cfgPick','cfgDraw','cfgWheel','cfgPk'].forEach(c=>$(c).classList.remove('on'));
-  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade'].forEach(c=>$(c)&&$(c).classList.remove('on'));
+  ['cfgPick','cfgDraw','cfgWheel','cfgPk','cfgLadder'].forEach(c=>$(c).classList.remove('on'));
+  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade','gcLadder'].forEach(c=>$(c)&&$(c).classList.remove('on'));
   if(id)$(id).classList.add('on');
 }
 $('gcPick').addEventListener('click',()=>{gShowCfg('gcPick');$('cfgPick').classList.add('on');});
@@ -596,6 +600,143 @@ $('gcScore').addEventListener('click',()=>{gShowCfg();openWidget('scoreW');});
 $('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
 $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
 $('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
+$('gcLadder').addEventListener('click',()=>{gShowCfg('gcLadder');$('cfgLadder').classList.add('on');});
+
+/* ===== 사다리타기 ===== */
+const ladderWrap=$('ladderWrap'),lcv=$('ladderCv'),lx=lcv.getContext('2d');
+let ladder=null;
+makeDrag($('ladderHead'),(e,s)=>{
+  if(!s){const r=ladderWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  ladderWrap.style.left=(e.clientX-s.dx)+'px';ladderWrap.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='ladderClose');
+$('ladderClose').addEventListener('click',()=>ladderWrap.classList.remove('on'));
+$('ladderReset').addEventListener('click',()=>buildLadder());
+$('ladderOpen').addEventListener('click',()=>{
+  ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder();
+});
+function buildLadder(){
+  let tops=$('ladderTop').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(tops.length<2){toast('참가자를 2명 이상 입력하세요');return;}
+  if(tops.length>10)tops.length=10;
+  const n=tops.length;
+  let bottoms=$('ladderBottom').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!bottoms.length){ // 비면 당첨 1 + 나머지 꽝
+    bottoms=Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝');
+    bottoms=bottoms.sort(()=>Math.random()-.5);
+  }
+  while(bottoms.length<n)bottoms.push('꽝');
+  bottoms.length=n;
+  // 사다리 가로줄 무작위 생성
+  const ROWS=Math.max(6,n+3);
+  const rungs=[]; // {row, col} col~col+1 연결
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<n-1;c++){
+      if(Math.random()<0.34){
+        // 인접 중복 방지
+        if(!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))
+          rungs.push({row:r,col:c});
+      }
+    }
+  }
+  ladder={tops,bottoms,n,ROWS,rungs,revealed:{},W:lcv.width=Math.min(600,Math.max(360,n*90)),H:lcv.height=440};
+  $('ladderInfo').textContent=n+'명';
+  $('ladderResult').textContent='참가자 이름을 클릭하세요';
+  drawLadder();
+}
+function ladderX(c){return ladder.W/(ladder.n+1)*(c+1);}
+function ladderY(r){return 80+r*(ladder.H-160)/(ladder.ROWS-1);}
+function drawLadder(hl){
+  const{W,H,n,ROWS,rungs,tops,bottoms}=ladder;
+  lx.fillStyle='#0f1419';lx.fillRect(0,0,W,H);
+  // 세로줄
+  lx.strokeStyle='#3a4654';lx.lineWidth=3;
+  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),72);lx.lineTo(ladderX(c),H-72);lx.stroke();}
+  // 가로줄
+  rungs.forEach(rg=>{
+    lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();
+  });
+  // 상단 이름 버튼
+  for(let c=0;c<n;c++){
+    const x=ladderX(c);
+    lx.fillStyle=ladder.revealed[c]?'#3a4654':'#F68C1F';
+    rrect(x-38,40,76,26,8);lx.fill();
+    lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
+    lx.fillText(tops[c].slice(0,5),x,53);
+  }
+  // 하단 결과
+  for(let c=0;c<n;c++){
+    const x=ladderX(c);
+    const isHit=bottoms[c].includes('당첨')||bottoms[c].includes('🎉');
+    lx.fillStyle=isHit?'#F68C1F':'#2c3744';
+    rrect(x-38,H-66,76,26,8);lx.fill();
+    lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
+    lx.fillText(bottoms[c].slice(0,5),x,H-53);
+  }
+  // 강조 경로
+  if(hl&&hl.path){
+    lx.strokeStyle=hl.col;lx.lineWidth=5;lx.lineCap='round';lx.lineJoin='round';
+    lx.beginPath();
+    hl.path.forEach((p,i)=>{const px=ladderX(p.col),py=p.y;if(i===0)lx.moveTo(px,py);else lx.lineTo(px,py);});
+    lx.stroke();
+  }
+}
+function rrect(x,y,w,h,r){lx.beginPath();lx.moveTo(x+r,y);lx.arcTo(x+w,y,x+w,y+h,r);lx.arcTo(x+w,y+h,x,y+h,r);lx.arcTo(x,y+h,x,y,r);lx.arcTo(x,y,x+w,y,r);lx.closePath();}
+// 경로 계산 (위→아래, 가로줄 만나면 옆으로 이동)
+function ladderPath(startCol){
+  const{ROWS,rungs}=ladder;
+  let col=startCol;const path=[{col,y:72}];
+  for(let r=0;r<ROWS;r++){
+    const y=ladderY(r);
+    // 현재 칸 좌우에 이 row의 가로줄이 있나
+    const left=rungs.find(x=>x.row===r&&x.col===col-1);
+    const right=rungs.find(x=>x.row===r&&x.col===col);
+    if(right){path.push({col,y});col++;path.push({col,y});}
+    else if(left){path.push({col,y});col--;path.push({col,y});}
+  }
+  path.push({col,y:lcv.height-72});
+  return {col,path};
+}
+const LCOL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e','#4dd0e1','#ff8a65','#ba68c8','#aed581'];
+lcv.addEventListener('click',e=>{
+  if(!ladder)return;
+  const rect=lcv.getBoundingClientRect();
+  const cx=(e.clientX-rect.left)*(lcv.width/rect.width);
+  const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
+  if(cy>80)return; // 상단 이름만 클릭
+  for(let c=0;c<ladder.n;c++){
+    if(Math.abs(cx-ladderX(c))<40){
+      if(ladder.revealed[c])return;
+      runLadder(c);return;
+    }
+  }
+});
+function runLadder(startCol){
+  const{path,col}=ladderPath(startCol);
+  const colColor=LCOL[startCol%LCOL.length];
+  // 애니메이션: 경로를 점진적으로 그림
+  let step=0;
+  const anim=()=>{
+    step++;
+    const partial=path.slice(0,step+1);
+    drawLadder({path:partial,col:colColor});
+    if(step<path.length-1){gameAnim=requestAnimationFrame(anim);}
+    else{
+      ladder.revealed[startCol]=ladder.bottoms[col];
+      const r=ladder.bottoms[col];
+      $('ladderResult').innerHTML='🪜 <b>'+ladder.tops[startCol]+'</b> → <b style="color:#F68C1F">'+r+'</b>';
+      beep();
+      drawLadder({path,col:colColor});
+    }
+  };
+  gameAnim=requestAnimationFrame(anim);
+}
+$('ladderAll').addEventListener('click',()=>{
+  if(!ladder)return;
+  const res=[];
+  for(let c=0;c<ladder.n;c++){const{col}=ladderPath(c);ladder.revealed[c]=ladder.bottoms[col];res.push(ladder.tops[c]+'→'+ladder.bottoms[col]);}
+  drawLadder();
+  $('ladderResult').innerHTML=res.map(r=>'<span style="margin:0 6px">'+r+'</span>').join('');
+});
 
 /* --- 제비뽑기 (번호 표시) --- */
 const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0;
@@ -917,7 +1058,11 @@ function pkStep(dt){
       if(d>0&&d<min){
         nx/=d;ny/=d;b.x=p.x+nx*min;b.y=p.y+ny*min;
         const vn=b.vx*nx+b.vy*ny;
-        if(vn<0){b.vx-=1.95*vn*nx;b.vy-=1.95*vn*ny;} // 탄성 0.95: 시원하게 튕기되 에너지 누적X
+        if(vn<0){
+          b.vx-=2.1*vn*nx;b.vy-=2.1*vn*ny;   // 탄성↑ 시원하게 튕김
+          // 범퍼는 펑! 하고 차내는 느낌 — 법선 방향으로 추가 가속
+          b.vx+=nx*90;b.vy+=ny*90;
+        }
         p.flash=0.18;
         pkFx('ring',p.x,p.y,'#F68C1F');pkFx('spark',b.x,b.y,b.col);
       }
@@ -1530,7 +1675,8 @@ snipWrap.addEventListener('pointerup',e=>{
   const x=Math.min(sx0,e.clientX),y=Math.min(sy0,e.clientY);
   const w=Math.abs(e.clientX-sx0),h=Math.abs(e.clientY-sy0);
   sx0=undefined;
-  if(w<8||h<8){endSnip();return;}
+  if(w<8||h<8){endSnip();snipRecMode=false;return;}
+  if(snipRecMode){snipRecMode=false;endSnip();recordRegion(x,y,w,h);return;}
   const img=new Image();
   img.onload=()=>{
     const lx=x-snipB.x, ly=y-snipB.y;
@@ -1546,6 +1692,63 @@ snipWrap.addEventListener('pointerup',e=>{
   img.src=snipImgData;
 });
 $('snipBtn').addEventListener('click',startSnip);
+
+/* ===== 영역 녹화 → 핀 ===== */
+let snipRecMode=false; // snip을 녹화용으로 사용 중
+async function startSnipRec(){
+  snipRecMode=true;
+  await startSnip();
+  $('snipHint').textContent='녹화할 영역을 드래그하세요';
+}
+$('snipRecBtn').addEventListener('click',startSnipRec);
+async function recordRegion(x,y,w,h){
+  // 커서 모니터 화면 스트림 받기
+  const src=await window.cm.getScreenSource();
+  if(!src){toast('화면 녹화를 시작할 수 없어요');return;}
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:src.id,
+        maxWidth:1920,maxHeight:1080}}
+    });
+  }catch(e){toast('화면 캡처 권한이 필요해요');return;}
+  const video=document.createElement('video');video.srcObject=stream;video.muted=true;
+  await video.play();
+  // 화면 해상도 → 영역 좌표 스케일
+  const vw=video.videoWidth,vh=video.videoHeight;
+  const scX=vw/src.bounds.w, scY=vh/src.bounds.h;
+  const cropX=(x-src.bounds.x)*scX, cropY=(y-src.bounds.y)*scY, cropW=w*scX, cropH=h*scY;
+  // 크롭용 캔버스를 매 프레임 그려서 그 캔버스를 녹화
+  const cv=document.createElement('canvas');cv.width=Math.round(cropW);cv.height=Math.round(cropH);
+  const cc=cv.getContext('2d');
+  let drawing=true;
+  const drawFrame=()=>{
+    if(!drawing)return;
+    cc.drawImage(video,cropX,cropY,cropW,cropH,0,0,cv.width,cv.height);
+    requestAnimationFrame(drawFrame);
+  };
+  drawFrame();
+  const cvStream=cv.captureStream(30);
+  let rec;
+  try{rec=new MediaRecorder(cvStream,{mimeType:'video/webm'});}
+  catch(e){try{rec=new MediaRecorder(cvStream);}catch(e2){toast('녹화 미지원 환경');drawing=false;stream.getTracks().forEach(t=>t.stop());return;}}
+  const chunks=[];rec.ondataavailable=ev=>{if(ev.data.size)chunks.push(ev.data);};
+  rec.onstop=()=>{
+    drawing=false;stream.getTracks().forEach(t=>t.stop());
+    const blob=new Blob(chunks,{type:'video/webm'});
+    addPin(URL.createObjectURL(blob),'영역녹화',x,y,Math.max(160,w),true);
+    toast('📌 영역 녹화가 핀으로 고정됨 — ▶ 재생 / 💾 저장');
+    $('recStop').classList.remove('on');
+  };
+  rec.start();
+  // 정지 버튼 표시
+  const stopBtn=$('recStop');stopBtn.classList.add('on');
+  let sec=0;stopBtn.textContent='⏹ 녹화 정지 0s';
+  const tmr=setInterval(()=>{sec++;stopBtn.textContent='⏹ 녹화 정지 '+sec+'s';if(sec>=15)done();},1000);
+  const done=()=>{clearInterval(tmr);if(rec.state!=='inactive')rec.stop();};
+  stopBtn.onclick=done;
+}
 
 /* ===== 포인터: 링 / 스포트라이트 — v0.4: 모양은 별도 선택, 버튼 혼동 제거 ===== */
 const halo=$('halo'),spotEl=$('spot'),spotHole=$('spotHole');
@@ -1794,11 +1997,13 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
   if(e.key==='Escape'){
-    if(proWrap&&proWrap.classList.contains('on'))proWrap.classList.remove('on');
+    if(expWrap&&expWrap.classList.contains('on'))expWrap.classList.remove('on');
+    else if(proWrap&&proWrap.classList.contains('on'))proWrap.classList.remove('on');
     else if($('noiseGuide').classList.contains('on'))$('noiseGuide').classList.remove('on');
     else if(drawWrap.classList.contains('on'))drawWrap.classList.remove('on');
     else if(shadeWrap.classList.contains('on'))shadeWrap.classList.remove('on');
     else if(gameWrap.classList.contains('on'))closeGame();
+    else if(ladderWrap&&ladderWrap.classList.contains('on'))ladderWrap.classList.remove('on');
     else if($('camWrap').classList.contains('on'))closeCam();
     else if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();
   }

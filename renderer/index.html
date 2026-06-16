@@ -420,6 +420,43 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .gcard.prolock,.tool.prolock{position:relative;}
 
 /* Pro 안내 모달 */
+/* 사다리타기 */
+#ladderWrap{position:fixed;left:0;top:0;z-index:80;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:600px;}
+#ladderWrap.on{display:block;}
+#ladderHead{height:46px;display:flex;align-items:center;gap:10px;padding:0 11px 0 16px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));}
+#ladderHead:active{cursor:grabbing;}
+#ladderHead span:first-child{font-size:14px;font-weight:800;color:#fff;}
+#ladderInfo{flex:1;font-size:12px;color:rgba(255,255,255,.9);font-weight:700;}
+#ladderClose{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
+#ladderCv{display:block;background:#0f1419;width:100%;}
+#ladderResult{padding:10px 16px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
+#ladderFoot{display:flex;gap:8px;padding:0 14px 13px;justify-content:center;}
+
+/* 영역 녹화 정지 버튼 */
+#recStop{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:95;display:none;border:none;background:var(--red);color:#fff;border-radius:11px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);}
+#recStop.on{display:block;}
+
+/* 수업 기록 내보내기 */
+#expWrap{position:fixed;left:0;top:0;z-index:90;width:380px;background:var(--dk);border:1px solid rgba(246,140,31,.4);border-radius:20px;box-shadow:var(--shadow);display:none;overflow:hidden;}
+#expWrap.on{display:block;}
+#expHead{display:flex;align-items:center;gap:10px;padding:14px 14px 14px 18px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));}
+#expHead:active{cursor:grabbing;}
+#expHead .pro-logo img{width:24px;height:24px;border-radius:7px;display:block;}
+#expHead .pro-ttl{flex:1;font-size:15px;font-weight:800;color:#fff;}
+#expClose{border:none;background:rgba(0,0,0,.2);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
+#expBody{padding:17px 18px;}
+.exp-lead{font-size:12px;color:#9fb0bf;line-height:1.6;margin-bottom:13px;}
+.exp-lead b{color:var(--or);}
+.exp-row{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
+.exp-row span{font-size:12px;font-weight:700;color:#cdd8e2;white-space:nowrap;}
+.exp-row input{flex:1;}
+.exp-prev{font-size:11.5px;color:#9fb0bf;background:var(--dk2);border-radius:9px;padding:10px 12px;margin-bottom:12px;line-height:1.7;max-height:120px;overflow:auto;}
+.exp-prev b{color:#cdd8e2;}
+.exp-fmt{display:flex;gap:7px;margin-bottom:12px;}
+.exp-fb{flex:1;background:var(--dk2);border:1px solid var(--line);color:#9fb0bf;border-radius:9px;padding:9px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.exp-fb.on{background:var(--or);border-color:var(--or);color:#fff;}
+.exp-msg{font-size:11.5px;color:var(--amber);min-height:15px;margin-top:9px;text-align:center;}
+
 #proWrap{position:fixed;left:0;top:0;z-index:90;width:400px;background:var(--dk);border:1px solid rgba(246,140,31,.4);border-radius:20px;box-shadow:var(--shadow);display:none;overflow:hidden;}
 #proWrap.on{display:block;}
 #proHead{display:flex;align-items:center;gap:10px;padding:15px 14px 15px 18px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));}
@@ -526,6 +563,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="gcard" id="gcScore"><div class="gi">🏆</div><div class="gl">모둠 점수판</div></div>
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
+    <div class="gcard" id="gcLadder"><div class="gi">🪜</div><div class="gl">사다리타기</div></div>
     <div class="gcard" id="gcShade"><div class="gi">🔲</div><div class="gl">가리개</div></div>
   </div>
 
@@ -570,6 +608,20 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
+  <div class="gcfg" id="cfgLadder">
+    <textarea class="names" id="ladderTop" placeholder="참가자 (줄바꿈)&#10;예) 김철수, 이영희, 박민준"></textarea>
+    <textarea class="names" id="ladderBottom" placeholder="결과 (줄바꿈, 비우면 당첨/꽝 자동)&#10;예) 청소, 칠판, 우유, 통과"></textarea>
+    <div class="gdesc">🪜 참가자를 누르면 사다리를 타고 내려가 결과가 정해져요!</div>
+    <button class="btn-go" id="ladderOpen">사다리 만들기</button>
+  </div>
+</div>
+
+<!-- 사다리타기 모달 -->
+<div id="ladderWrap" class="iv">
+  <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
+  <canvas id="ladderCv"></canvas>
+  <div id="ladderResult"></div>
+  <div id="ladderFoot"><button class="btn-g" id="ladderAll">전체 결과 보기</button><button class="btn-g" id="ladderReset">다시</button></div>
 </div>
 
 <div class="panel iv" id="p-qr">
@@ -698,6 +750,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </p>
   <div class="ctrl" style="flex-direction:column;gap:7px">
     <button class="btn-go" id="snipBtn">✂ 영역 캡처 → 핀</button>
+    <button class="btn-g" id="snipRecBtn">🎬 영역 녹화 → 핀 (최대 15초)</button>
     <button class="btn-g" id="camBtn">📷 카메라 촬영 → 핀</button>
   </div>
   <p style="font-size:10.5px;color:#6b7884;margin-top:9px">캡처 전역 단축키: Ctrl+Alt+S</p>
@@ -739,6 +792,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="lightLabel">신호를 눌러주세요</div>
 </div>
 
+<button id="recStop" class="iv">⏹ 녹화 정지</button>
 <div id="noiseAlert"></div>
 <div id="noiseGuide" class="iv">
   <div class="ng-head"><span>📢 소음 폭탄, 이렇게 작동해요</span><button id="ngClose">✕</button></div>

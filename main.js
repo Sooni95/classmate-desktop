@@ -62,6 +62,21 @@ function createOverlay() {
     }));
   });
 
+  // 화면 녹화용 소스 ID (커서가 있는 모니터)
+  ipcMain.handle('get-screen-source', async () => {
+    try {
+      const pt = screen.getCursorScreenPoint();
+      const d = screen.getDisplayNearestPoint(pt);
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
+      let src = sources.find(s => s.display_id == String(d.id));
+      if (!src) {
+        const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
+        src = sources[idx] || sources[0];
+      }
+      return src ? { id: src.id, bounds: { x: d.bounds.x - origin.x, y: d.bounds.y - origin.y, w: d.bounds.width, h: d.bounds.height } } : null;
+    } catch (e) { return null; }
+  });
+
   // 커서가 있는 모니터를 캡처 → {dataURL, bounds(창 기준 좌표)}
   ipcMain.handle('capture-screen', async () => {
     const pt = screen.getCursorScreenPoint();
@@ -165,7 +180,7 @@ function createOverlay() {
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {
-      const res = await fetch('https://코코아팹.kr/api/pro-verify', {
+      const res = await fetch('https://xn--he5b17pa301b.kr/api/pro-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key }),
@@ -207,7 +222,7 @@ function createOverlay() {
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
   ipcMain.handle('shorten', async (_e, { slug, target, ttl, token, key }) => {
     try {
-      const res = await fetch('https://코코아팹.kr/api/create', {
+      const res = await fetch('https://xn--he5b17pa301b.kr/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
         body: JSON.stringify({ slug, target, ttl, key }),
