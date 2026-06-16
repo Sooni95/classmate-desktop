@@ -120,16 +120,61 @@ function createOverlay() {
   });
 
   // 바이너리 파일 저장 (음성 .webm 등)
-  ipcMain.handle('save-binary', async (_e, { bytes, filename }) => {
+  ipcMain.handle('save-binary', async (_e, { bytes, filename, ext }) => {
     try {
+      const filt = ext === 'pdf'
+        ? [{ name: 'PDF 문서', extensions: ['pdf'] }]
+        : [{ name: '파일', extensions: [ext || 'webm'] }];
       const r = await dialog.showSaveDialog(win, {
-        defaultPath: filename || '음성.webm',
-        filters: [{ name: '음성 파일', extensions: ['webm'] }],
+        defaultPath: filename || ('파일.' + (ext || 'webm')),
+        filters: filt,
       });
       if (r.canceled || !r.filePath) return { ok: false, canceled: true };
       fs.writeFileSync(r.filePath, Buffer.from(bytes));
       return { ok: true };
     } catch (e) { return { ok: false, message: String(e) }; }
+  });
+
+  // AI 교수 보조 (Anthropic Claude, BYO Key)
+  ipcMain.handle('ai-chat', async (_e, { prompt, apiKey }) => {
+    try {
+      if (!apiKey) return { ok: false, message: 'NO_KEY' };
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1500,
+          system: '당신은 한국 초등학교 교사를 돕는 수업 보조 AI입니다. 발문 만들기, 활동 아이디어, 즉석 퀴즈, 개념 설명 등을 돕습니다. 한국어로, 교실에서 바로 쓸 수 있게 간결하고 실용적으로 답하세요.',
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, status: res.status, message: (data.error && data.error.message) || '오류' };
+      const out = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      return { ok: true, text: out };
+    } catch (err) {
+      return { ok: false, message: String(err) };
+    }
+  });
+
+  // Pro 라이선스 키 검증 (Cloudflare Worker)
+  ipcMain.handle('verify-pro', async (_e, { key }) => {
+    try {
+      const res = await fetch('https://코코아팹.kr/api/pro-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok && data.valid === true, status: res.status, ...data };
+    } catch (err) {
+      return { ok: false, message: String(err) };
+    }
   });
 
   // 번역 (Anthropic API, BYO Key) — 메인 프로세스에서 호출해 CORS 회피

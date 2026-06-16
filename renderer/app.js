@@ -67,9 +67,225 @@ function setPanel(id){
 }
 document.querySelectorAll('.tool[data-p]').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.p)));
 
+/* ===== AI 교수 보조 (Claude BYO Key) ===== */
+$('aiKey').value=localStorage.getItem('ai_key')||'';
+$('aiGear').addEventListener('click',()=>$('aiKeyRow').classList.toggle('on'));
+$('aiKeySave').addEventListener('click',()=>{
+  localStorage.setItem('ai_key',$('aiKey').value.trim());
+  $('aiKeyRow').classList.remove('on');toast('🔑 API 키 저장됨');
+});
+document.querySelectorAll('.ai-quick button').forEach(b=>b.addEventListener('click',()=>{
+  $('aiIn').value=b.dataset.q;$('aiIn').focus();
+}));
+$('aiGo').addEventListener('click',async()=>{
+  const prompt=$('aiIn').value.trim();
+  const key=localStorage.getItem('ai_key')||'';
+  if(!prompt){$('aiMsg').textContent='질문을 입력하세요';return;}
+  if(!key){$('aiMsg').textContent='⚙ API 키를 먼저 설정하세요';$('aiKeyRow').classList.add('on');return;}
+  $('aiGo').disabled=true;$('aiGo').textContent='생각 중…';$('aiMsg').textContent='';
+  const r=await window.cm.aiChat({prompt,apiKey:key});
+  $('aiGo').disabled=false;$('aiGo').textContent='물어보기';
+  if(r.ok){
+    $('aiOut').textContent=r.text;$('aiOut').classList.add('on');$('aiActions').classList.add('on');
+  }else if(r.message==='NO_KEY'){$('aiMsg').textContent='⚙ API 키를 먼저 설정하세요';$('aiKeyRow').classList.add('on');}
+  else if(r.status===401){$('aiMsg').textContent='API 키가 올바르지 않아요';$('aiKeyRow').classList.add('on');}
+  else{$('aiMsg').textContent='오류: '+(r.message||'연결 확인');}
+});
+$('aiCopy').addEventListener('click',()=>{window.cm.copyText($('aiOut').textContent);toast('📋 복사됨');});
+$('aiMemo').addEventListener('click',()=>{
+  $('memoBtn').click();
+  setTimeout(()=>{const m=[...document.querySelectorAll('.memo')].pop();if(m){m.querySelector('.mtext').innerText=$('aiOut').textContent;}},50);
+});
+
+/* ===== 수업 기록 내보내기 ===== */
+const expWrap=$('expWrap');let expFmt='png';
+function collectClassData(){
+  // 메모
+  const memos=[...document.querySelectorAll('.memo')].map(m=>{
+    const t=m.querySelector('.mtext');return t?t.innerText.trim():'';
+  }).filter(Boolean);
+  // 핀 캡션
+  const pins=[...document.querySelectorAll('.pin')].map(p=>{
+    const c=p.querySelector('.pcap');const cap=c?c.innerText.trim():'';
+    const isVid=p.dataset.video==='1';
+    return {cap,isVid,img:isVid?null:(p.querySelector('img')?.src||null)};
+  });
+  // 모둠 점수
+  const scores=[...document.querySelectorAll('#scoreRows .srow2')].map(r=>({
+    name:r.querySelector('.nm2')?.value||'',score:+r.dataset.score||0
+  }));
+  return {memos,pins,scores};
+}
+function expPreview(){
+  const d=collectClassData();
+  const parts=[];
+  if(d.memos.length)parts.push('<b>메모</b> '+d.memos.length+'개');
+  const pinImg=d.pins.filter(p=>!p.isVid).length, pinVid=d.pins.filter(p=>p.isVid).length;
+  if(pinImg)parts.push('<b>핀(사진)</b> '+pinImg+'개');
+  if(pinVid)parts.push('<b>핀(영상)</b> '+pinVid+'개 — 이미지엔 표지만');
+  if(d.scores.length)parts.push('<b>모둠점수</b> '+d.scores.length+'팀');
+  $('expPrev').innerHTML=parts.length?('담길 내용: '+parts.join(' · ')):'담을 내용이 없어요. 메모·핀·점수를 먼저 화면에 띄워주세요.';
+  return d;
+}
+$('expBtn').addEventListener('click',()=>{ expPreview(); expWrap.classList.add('on'); centerOnDockDisplay(expWrap); });
+$('expClose').addEventListener('click',()=>expWrap.classList.remove('on'));
+makeDrag($('expHead'),(e,s)=>{
+  if(!s){const r=expWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  expWrap.style.left=(e.clientX-s.dx)+'px';expWrap.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='expClose');
+document.querySelectorAll('.exp-fb').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.exp-fb').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');expFmt=b.dataset.f;
+}));
+// 기록을 캔버스에 합성 (제목 + 메모 + 점수 + 핀 썸네일)
+async function renderClassCanvas(title){
+  const d=collectClassData();
+  const W=1240,M=50;let y=M;
+  // 높이 추정용 임시 측정
+  const cv=document.createElement('canvas');const c=cv.getContext('2d');
+  // 핀 이미지 먼저 로드
+  const pinImgs=await Promise.all(d.pins.filter(p=>!p.isVid&&p.img).map(p=>new Promise(res=>{
+    const im=new Image();im.onload=()=>res({im,cap:p.cap});im.onerror=()=>res(null);im.src=p.img;
+  })));
+  const goodPins=pinImgs.filter(Boolean);
+  // 대략적 높이 계산
+  let h=M+70; // 제목
+  if(d.memos.length){h+=40;d.memos.forEach(m=>{h+=Math.ceil(m.length/40)*26+18;});}
+  if(d.scores.length){h+=40+d.scores.length*34;}
+  if(goodPins.length){h+=40;goodPins.forEach(p=>{h+=300+(p.cap?40:0);});}
+  h+=M;
+  cv.width=W;cv.height=Math.max(h,400);
+  // 배경
+  c.fillStyle='#ffffff';c.fillRect(0,0,W,cv.height);
+  // 헤더 바
+  c.fillStyle='#F68C1F';c.fillRect(0,0,W,8);
+  c.fillStyle='#1a1f27';c.font='bold 30px "Malgun Gothic"';c.textBaseline='top';
+  c.fillText(title||'수업 기록',M,y);y+=42;
+  c.fillStyle='#888';c.font='14px "Malgun Gothic"';
+  const now=new Date();
+  c.fillText('ClassMate · 네패스 코코아팹 · '+now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),M,y);
+  y+=40;
+  const wrapText=(text,x,yy,maxW,lh)=>{
+    const words=text.split('');let line='';
+    for(const ch of words){
+      if(c.measureText(line+ch).width>maxW){c.fillText(line,x,yy);line=ch;yy+=lh;}
+      else line+=ch;
+    }
+    c.fillText(line,x,yy);return yy+lh;
+  };
+  // 모둠 점수
+  if(d.scores.length){
+    c.fillStyle='#F68C1F';c.font='bold 20px "Malgun Gothic"';c.fillText('🏆 모둠 점수',M,y);y+=34;
+    const mx=[...d.scores].sort((a,b)=>b.score-a.score);
+    mx.forEach((s,i)=>{
+      c.fillStyle=i===0?'#fff3e0':'#f6f8fa';c.fillRect(M,y,W-M*2,30);
+      c.fillStyle='#1a1f27';c.font='16px "Malgun Gothic"';
+      c.fillText((i===0?'👑 ':'   ')+(s.name||('모둠'+(i+1))),M+12,y+6);
+      c.fillStyle='#F68C1F';c.font='bold 16px "Malgun Gothic"';c.textAlign='right';
+      c.fillText(s.score+'점',W-M-12,y+6);c.textAlign='left';
+      y+=34;
+    });
+    y+=14;
+  }
+  // 메모
+  if(d.memos.length){
+    c.fillStyle='#F68C1F';c.font='bold 20px "Malgun Gothic"';c.fillText('📝 메모',M,y);y+=34;
+    d.memos.forEach(m=>{
+      c.fillStyle='#fff7ec';
+      const lines=Math.max(1,Math.ceil(c.measureText(m).width/(W-M*2-24)));
+      const bh=lines*26+16;
+      c.fillRect(M,y,W-M*2,bh);c.fillStyle='#F68C1F';c.fillRect(M,y,4,bh);
+      c.fillStyle='#3a2a10';c.font='16px "Malgun Gothic"';
+      wrapText(m,M+16,y+8,W-M*2-30,26);
+      y+=bh+12;
+    });
+    y+=8;
+  }
+  // 핀 사진
+  if(goodPins.length){
+    c.fillStyle='#F68C1F';c.font='bold 20px "Malgun Gothic"';c.fillText('📌 핀 (캡처·사진)',M,y);y+=34;
+    for(const p of goodPins){
+      const iw=p.im.naturalWidth,ih=p.im.naturalHeight;
+      const dw=Math.min(W-M*2,iw),dh=dw*ih/iw,dhc=Math.min(dh,280),dwc=dhc*iw/ih;
+      c.drawImage(p.im,M,y,dwc,dhc);
+      if(p.cap){c.fillStyle='#555';c.font='14px "Malgun Gothic"';c.fillText('✎ '+p.cap,M+dwc+16,y+8);}
+      y+=dhc+18;
+    }
+  }
+  return cv;
+}
+$('expGo').addEventListener('click',async()=>{
+  const d=collectClassData();
+  if(!d.memos.length&&!d.pins.length&&!d.scores.length){$('expMsg').textContent='담을 내용이 없어요';return;}
+  $('expGo').disabled=true;$('expGo').textContent='만드는 중…';$('expMsg').textContent='';
+  try{
+    const title=$('expTitle').value.trim();
+    const cv=await renderClassCanvas(title);
+    const now=new Date();
+    const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+    const base=(title?title.replace(/[\\\\/:*?"<>|]/g,'_'):'수업기록')+'_'+stamp;
+    if(expFmt==='png'){
+      const r=await window.cm.saveImage({dataURL:cv.toDataURL('image/png'),filename:base+'.png'});
+      if(r&&r.ok)$('expMsg').textContent='✅ 이미지 저장 완료';
+    }else{
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+      const img=cv.toDataURL('image/jpeg',0.92);
+      const ratio=cv.width/cv.height;
+      let iw=pw-40,ih=iw/ratio,yy=20;
+      if(ih<=ph-40){pdf.addImage(img,'JPEG',20,yy,iw,ih);}
+      else{
+        // 길면 여러 페이지로 분할
+        const pageImgH=(ph-40)*cv.width/(pw-40);
+        let sy=0,page=0;
+        while(sy<cv.height){
+          const slice=document.createElement('canvas');
+          slice.width=cv.width;slice.height=Math.min(pageImgH,cv.height-sy);
+          slice.getContext('2d').drawImage(cv,0,sy,cv.width,slice.height,0,0,cv.width,slice.height);
+          if(page>0)pdf.addPage();
+          pdf.addImage(slice.toDataURL('image/jpeg',0.92),'JPEG',20,20,iw,iw*slice.height/cv.width);
+          sy+=pageImgH;page++;
+        }
+      }
+      const buf=pdf.output('arraybuffer');
+      const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:base+'.pdf',ext:'pdf'});
+      if(r&&r.ok)$('expMsg').textContent='✅ PDF 저장 완료';
+    }
+  }catch(e){$('expMsg').textContent='오류: '+e.message;}
+  $('expGo').disabled=false;$('expGo').textContent='내보내기';
+});
+
 /* ===== Pro 잠금 시스템 ===== */
 // Pro 해제 여부 (지금은 항상 잠김 — 추후 라이선스 연동 지점)
 function isPro(){ return localStorage.getItem('cm_pro')==='1'; }
+function setProUI(){
+  const on=isPro();
+  document.querySelectorAll('.pro-badge').forEach(b=>b.style.display=on?'none':'');
+  $('proBtn').classList.toggle('prolock',!on);
+}
+// Pro 키 인증 (Cloudflare 서버 검증)
+$('proKeyGo').addEventListener('click',async()=>{
+  const key=$('proKeyIn').value.trim().toUpperCase();
+  const msg=$('proKeyMsg');
+  if(!key){msg.className='pro-key-msg err';msg.textContent='키를 입력하세요';return;}
+  $('proKeyGo').disabled=true;msg.className='pro-key-msg';msg.textContent='확인 중…';
+  const r=await window.cm.verifyPro({key});
+  $('proKeyGo').disabled=false;
+  if(r.ok){
+    localStorage.setItem('cm_pro','1');
+    localStorage.setItem('cm_pro_key',key);
+    msg.className='pro-key-msg ok';msg.textContent='✅ 인증 완료! Pro 기능이 열렸어요';
+    setProUI();
+    setTimeout(()=>{proWrap.classList.remove('on');toast('🧡 ClassMate Pro 활성화됨');},1200);
+  }else if(r.status===404||r.valid===false){
+    msg.className='pro-key-msg err';msg.textContent='유효하지 않은 키예요';
+  }else if(r.status===410){
+    msg.className='pro-key-msg err';msg.textContent='만료되었거나 정지된 키예요';
+  }else{
+    msg.className='pro-key-msg err';msg.textContent='확인 실패 — 인터넷 연결을 확인하세요';
+  }
+});
 const proWrap=$('proWrap');
 function openPro(){ proWrap.classList.add('on'); centerOnDockDisplay(proWrap); }
 $('proClose').addEventListener('click',()=>proWrap.classList.remove('on'));
@@ -80,6 +296,17 @@ makeDrag($('proHead'),(e,s)=>{
 
 // 독 Pro 버튼 → Pro 안내 모달 (해제 시 다문화번역 패널 바로 열기)
 $('proBtn').addEventListener('click',()=>{ if(isPro())setPanel('p-trans'); else openPro(); });
+// Pro 모달 안의 기능 항목 클릭 → 해제 상태면 해당 패널로
+const PRO_PANEL={'다문화 번역':'p-trans','AI 교수 보조':'p-ai'};
+document.querySelectorAll('#proWrap .pro-item').forEach(it=>{
+  it.style.cursor='pointer';
+  it.addEventListener('click',()=>{
+    if(!isPro())return;
+    const t=it.querySelector('.pi-t')?.textContent||'';
+    const pid=PRO_PANEL[t];
+    if(pid){proWrap.classList.remove('on');setPanel(pid);}
+  });
+});
 // 명단 저장(roster) 잠금 버튼
 document.querySelectorAll('[data-pro]').forEach(el=>{
   el.addEventListener('click',e=>{ if(!isPro()){e.preventDefault();e.stopPropagation();openPro();} });
@@ -131,6 +358,7 @@ async function initDockPos(){
   placePanels();
 }
 initDockPos();
+setProUI();
 // 버전 + 빌드 날짜 표시
 (async()=>{
   try{
@@ -141,6 +369,28 @@ initDockPos();
     $('pillVer').textContent=ver;
   }catch(e){}
 })();
+// 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 토스트
+(()=>{
+  let cnt=0,last=0;
+  const lo=document.querySelector('#brand .lo');
+  if(!lo)return;
+  lo.style.cursor='pointer';
+  lo.addEventListener('click',()=>{
+    const now=Date.now();
+    cnt=(now-last<800)?cnt+1:1;last=now;
+    if(cnt>=7){
+      cnt=0;
+      toast('🦋 ClassMate — 기획·개발 김수훈 · 김수관 · 네패스 코코아팹');
+    }
+  });
+})();
+// 🦋 이스터에그 2: 콘솔 크레딧 (F12로 발견)
+try{
+  console.log('%c🦋 ClassMate','color:#F68C1F;font-size:26px;font-weight:800;');
+  console.log('%c네패스 코코아팹 — 교사를 위한 올인원 수업 보조 도구','color:#9fb0bf;font-size:12px;');
+  console.log('%c기획·개발  김수훈 · 김수관','color:#F68C1F;font-size:13px;font-weight:700;');
+  console.log('%c   ∧,,,∧\\n  (  ̳• · • ̳)\\n  /    づ♥  함께 만들어요','color:#D9760F;font-size:12px;');
+}catch(e){}
 // 모니터 연결/해제 시: 독이 화면 밖에 있으면 주 모니터로 복귀
 window.cm.onBoundsChanged(async()=>{
   await refreshDisplays(); fitC();
@@ -381,11 +631,13 @@ function openTicket(i,el){
   el.classList.add('open');
   const txt=el.querySelector('.tk-txt');
   if(drawData[i].win){
-    el.classList.add('win');txt.classList.add('hit');txt.textContent='당첨';
+    el.classList.add('win');txt.classList.add('hit');
+    txt.innerHTML='<span class="tk-emo">🎉</span><span class="tk-lbl">당첨</span>';
     if(drawWinLeft>0)drawWinLeft--;beep();
     $('drawResult').innerHTML='🎉 <b style="color:#F68C1F">'+drawData[i].no+'번 당첨!</b>';
   }else{
-    txt.classList.add('lose');txt.textContent='꽝';
+    txt.classList.add('lose');
+    txt.innerHTML='<span class="tk-emo">💧</span><span class="tk-lbl">꽝</span>';
     $('drawResult').textContent=drawData[i].no+'번 — 꽝!';
   }
   $('drawCount').textContent='제비 '+drawData.length+'개 · 당첨 '+drawWinLeft+'개 남음';
@@ -393,29 +645,32 @@ function openTicket(i,el){
 
 /* --- 가리개 (커튼형) --- */
 const shadeWrap=$('shadeWrap'),shadePanel=$('shadePanel');
-let shadeHoriz=false,shadeDrag=false;
 function openShade(){
   setPanel(null);
   shadeWrap.classList.add('on');setIgnore(false);
-  setShadeSize(shadeHoriz?55:60);
-}
-function setShadeSize(pct){
-  pct=Math.max(0,Math.min(100,pct));
-  if(shadeHoriz)shadePanel.style.width=pct+'%',shadePanel.style.height='100%';
-  else shadePanel.style.height=pct+'%',shadePanel.style.width='100%';
 }
 $('shadeClose').addEventListener('click',()=>shadeWrap.classList.remove('on'));
-$('shadeFull').addEventListener('click',()=>setShadeSize(shadeHoriz?100:100));
-$('shadeDir').addEventListener('click',()=>{
-  shadeHoriz=!shadeHoriz;
-  shadeWrap.classList.toggle('horiz',shadeHoriz);
-  $('shadeDir').textContent=shadeHoriz?'⬌ 가로':'⬍ 세로';
-  setShadeSize(shadeHoriz?55:60);
-});
-makeDrag($('shadeHandle'),(e,s)=>{
-  if(!s)return{};
-  if(shadeHoriz)setShadeSize(e.clientX/innerWidth*100);
-  else setShadeSize(e.clientY/innerHeight*100);
+// 바(상단)로 이동
+makeDrag($('shadeBar'),(e,s)=>{
+  if(!s){const r=shadePanel.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  shadePanel.style.left=(e.clientX-s.dx)+'px';shadePanel.style.top=(e.clientY-s.dy)+'px';
+  shadePanel.style.right='auto';shadePanel.style.bottom='auto';
+},e=>e.target.id==='shadeClose');
+// 8방향 모서리로 자유 리사이즈
+shadePanel.querySelectorAll('.sh-rz').forEach(rz=>{
+  const dir=[...rz.classList].find(c=>c.startsWith('sh-')&&c!=='sh-rz').slice(3); // n,s,e,w,ne...
+  makeDrag(rz,(e,s)=>{
+    const r=shadePanel.getBoundingClientRect();
+    if(!s)return{x:e.clientX,y:e.clientY,l:r.left,t:r.top,w:r.width,h:r.height};
+    let{l,t,w,h}=s;const dx=e.clientX-s.x,dy=e.clientY-s.y;
+    if(dir.includes('e'))w=Math.max(80,s.w+dx);
+    if(dir.includes('s'))h=Math.max(60,s.h+dy);
+    if(dir.includes('w')){w=Math.max(80,s.w-dx);l=s.l+(s.w-w);}
+    if(dir.includes('n')){h=Math.max(60,s.h-dy);t=s.t+(s.h-h);}
+    shadePanel.style.left=l+'px';shadePanel.style.top=t+'px';
+    shadePanel.style.right='auto';shadePanel.style.bottom='auto';
+    shadePanel.style.width=w+'px';shadePanel.style.height=h+'px';
+  });
 });
 
 // 플로팅 위젯 공통: 표시 + 드래그 + 닫기
@@ -480,20 +735,28 @@ function diceRender(n,vals){
   const wrap=$('diceFaces');wrap.innerHTML='';
   for(let i=0;i<n;i++)wrap.appendChild(dieEl(vals?vals[i]:1));
 }
+let diceRolling=false;
 $('diceRoll').addEventListener('click',()=>{
-  const dice=[...$('diceFaces').children];dice.forEach(d=>d.classList.add('rolling'));
-  $('diceTotal').textContent='';
-  let n=0;const iv=setInterval(()=>{
+  if(diceRolling)return;diceRolling=true;
+  $('diceRoll').disabled=true;$('diceTotal').textContent='';
+  let n=0;const total=13;
+  const iv=setInterval(()=>{
     const vals=Array.from({length:diceCount},()=>1+Math.floor(Math.random()*6));
-    diceRender(diceCount,vals);$('diceFaces').querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));
-    if(++n>=11){clearInterval(iv);
+    diceRender(diceCount,vals);
+    $('diceFaces').querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));
+    if(++n>=total){
+      clearInterval(iv);
       const fin=Array.from({length:diceCount},()=>1+Math.floor(Math.random()*6));
       diceRender(diceCount,fin);
+      // 착지 연출
+      $('diceFaces').querySelectorAll('.die').forEach(d=>{d.classList.remove('rolling');d.classList.add('landed');});
       const sum=fin.reduce((a,b)=>a+b,0);
       $('diceTotal').innerHTML=diceCount>1?('합계 <b>'+sum+'</b>'):('<b>'+sum+'</b>');
       beep();
+      setTimeout(()=>{$('diceFaces').querySelectorAll('.die').forEach(d=>d.classList.remove('landed'));},320);
+      diceRolling=false;$('diceRoll').disabled=false;
     }
-  },70);
+  },90);
 });
 
 /* --- 신호등 --- */
@@ -516,6 +779,7 @@ gGo.addEventListener('click',()=>{
 /* --- 돌림판 (당첨 = 위쪽 중앙 포인터) --- */
 const WW=540,WH=430,WCX=WW/2,WCY=WH/2+12,WR=178;
 function drawWheel(names,angle){
+  gx.setTransform(1,0,0,1,0,0);
   gx.clearRect(0,0,WW,WH);
   // 외곽 림
   gx.beginPath();gx.arc(WCX,WCY,WR+11,0,7);
@@ -526,13 +790,15 @@ function drawWheel(names,angle){
     gx.beginPath();gx.moveTo(WCX,WCY);gx.arc(WCX,WCY,WR,a0,a1);gx.closePath();
     gx.fillStyle=BRAND[i%BRAND.length];gx.fill();
     gx.strokeStyle='rgba(0,0,0,.25)';gx.lineWidth=1;gx.stroke();
-    gx.save();gx.translate(WCX,WCY);gx.rotate(a0+step/2);
+    // 글자: 조각 중간 각도에 '수평'으로 배치 (가독성 ↑)
+    const mid=a0+step/2, rTxt=WR*0.62;
+    const tx=WCX+Math.cos(mid)*rTxt, ty=WCY+Math.sin(mid)*rTxt;
     gx.fillStyle='#fff';
     gx.font='bold '+(n>20?11:n>12?13:16)+'px "Malgun Gothic"';
-    gx.shadowColor='rgba(0,0,0,.4)';gx.shadowBlur=3;
-    gx.textAlign='right';gx.textBaseline='middle';
+    gx.shadowColor='rgba(0,0,0,.5)';gx.shadowBlur=3;
+    gx.textAlign='center';gx.textBaseline='middle';
     const label=names[i].length>6?names[i].slice(0,6)+'…':names[i];
-    gx.fillText(label,WR-12,0);gx.restore();
+    gx.fillText(label,tx,ty);gx.shadowBlur=0;
   }
   // 중심
   gx.beginPath();gx.arc(WCX,WCY,26,0,7);gx.fillStyle='#161c24';gx.fill();
@@ -691,7 +957,37 @@ function pkStep(dt){
   pk.fx.forEach(f=>{f.life-=dt*(f.type==='txt'?0.8:1.8);if(f.type==='txt')f.y+=f.vy*dt;});
   pk.fx=pk.fx.filter(f=>f.life>0);
 }
+// 핀볼 카메라 (줌/팬) — 두근두근 연출
+let pkCam={zoom:1,tx:0,ty:0,tz:1,ttx:0,tty:0};
+function pkCamUpdate(dt){
+  const alive=pk.balls.filter(b=>!b.done);
+  let tz=1,fx=PKW/2,fy=PKH/2;
+  if(alive.length===1){
+    // 마지막 1구슬: 강하게 줌인 추적
+    tz=2.1;fx=alive[0].x;fy=alive[0].y;
+  }else if(alive.length>=1){
+    // 골 근처(아래쪽)에 구슬이 모이면 살짝 줌인
+    const low=alive.filter(b=>b.y>300);
+    if(low.length){tz=1.35;fx=low.reduce((a,b)=>a+b.x,0)/low.length;fy=360;}
+  }
+  pkCam.tz=tz;
+  // 목표 중심 → 변환 오프셋 (화면 중앙에 fx,fy 오게)
+  pkCam.ttx=PKW/2-fx*tz;pkCam.tty=PKH/2-fy*tz;
+  // 부드럽게 보간
+  const k=Math.min(1,dt*4.5);
+  pkCam.zoom+=(pkCam.tz-pkCam.zoom)*k;
+  pkCam.tx+=(pkCam.ttx-pkCam.tx)*k;
+  pkCam.ty+=(pkCam.tty-pkCam.ty)*k;
+  // 경계 클램프 (줌인 시 화면 밖 빈공간 방지)
+  const z=pkCam.zoom;
+  pkCam.tx=Math.min(0,Math.max(PKW-PKW*z,pkCam.tx));
+  pkCam.ty=Math.min(0,Math.max(PKH-PKH*z,pkCam.ty));
+}
 function pkDraw(){
+  gx.setTransform(1,0,0,1,0,0);
+  gx.clearRect(0,0,PKW,PKH);
+  // 카메라 변환 적용
+  gx.setTransform(pkCam.zoom,0,0,pkCam.zoom,pkCam.tx,pkCam.ty);
   const bg=gx.createLinearGradient(0,0,0,PKH);
   bg.addColorStop(0,'#0d1218');bg.addColorStop(1,'#161f2a');
   gx.fillStyle=bg;gx.fillRect(0,0,PKW,PKH);
@@ -758,6 +1054,8 @@ function pkDraw(){
     gx.strokeText(b.nm.slice(0,2),b.x,b.y);
     gx.fillStyle='#fff';gx.fillText(b.nm.slice(0,2),b.x,b.y);
   }
+  // ===== 여기부터 화면 고정 UI (카메라 변환 해제) =====
+  gx.setTransform(1,0,0,1,0,0);
   // 마지막 1개 — 두근두근 배너
   if(alive.length===1&&pk.arrived.length){
     const pulse=0.7+0.3*Math.sin(performance.now()/120);
@@ -778,12 +1076,16 @@ function pkDraw(){
 }
 function dropPlinko(){
   pk=pkInit(gameNames);
-  let last=performance.now();const t0=last;
+  pkCam={zoom:1,tx:0,ty:0,tz:1,ttx:0,tty:0}; // 카메라 초기화
+  let last=performance.now();const t0=last;let first=true;
   const tick=now=>{
     const alive=pk.balls.filter(b=>!b.done).length;
-    const scale=alive===1?0.45:1;          // 마지막 1개 → 슬로모션
-    const dt=Math.min(0.032,(now-last)/1000)*scale;last=now;
+    const scale=alive===1?0.5:1;            // 마지막 1개 → 슬로모션
+    // 첫 프레임은 dt를 표준값으로 고정 (시작 시 느려지는 현상 방지)
+    let dt=first?0.016:(now-last)/1000;first=false;
+    dt=Math.min(0.032,dt)*scale;last=now;
     pkStep(dt/2);pkStep(dt/2);
+    pkCamUpdate(dt/scale);                   // 카메라는 실제 시간 기준
     pkDraw();
     if(alive>0&&now-t0<150000){gameAnim=requestAnimationFrame(tick);}
     else{
@@ -795,9 +1097,14 @@ function dropPlinko(){
         let fl=performance.now();
         const fin=fn=>{
           const fdt=Math.min(0.032,(fn-fl)/1000);fl=fn;
+          // 당첨 후 부드럽게 줌아웃
+          pkCam.zoom+=(1-pkCam.zoom)*Math.min(1,fdt*4);
+          pkCam.tx+=(0-pkCam.tx)*Math.min(1,fdt*4);
+          pkCam.ty+=(0-pkCam.ty)*Math.min(1,fdt*4);
           pk.fx.forEach(f=>{if(f.type==='confetti'){f.y+=170*fdt;f.x+=Math.sin(f.y/22)*1.4;f.life-=fdt*0.7;}});
           pk.fx=pk.fx.filter(f=>f.life>0);
           pkDraw();
+          gx.setTransform(1,0,0,1,0,0);
           gx.fillStyle='rgba(22,28,36,.82)';gx.fillRect(0,PKH/2-58,PKW,116);
           gx.fillStyle='#F68C1F';gx.font='bold 36px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
           gx.fillText('🎉 '+w.nm,PKW/2,PKH/2-8);
@@ -1065,19 +1372,26 @@ $('memoBtn').addEventListener('click',()=>{
   ed.focus();
 });
 
-/* ===== 핀 — v0.4: 핀 위 메모(캡션) + 카메라 ===== */
-function addPin(src,label,x,y,w){
+/* ===== 핀 — 핀 위 메모(캡션) + 카메라/영상 + 저장 ===== */
+function addPin(src,label,x,y,w,isVideo){
   const p=document.createElement('div');p.className='pin iv';
   const d=dockDisp();
   p.style.cssText=`left:${x??(d.x+200+Math.random()*160)}px;top:${y??(d.y+110+Math.random()*120)}px;width:${w??280}px;`;
-  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:5px"><button class="cap" title="핀 메모">✎</button><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div><img src="${src}" draggable="false"><div class="pcap" contenteditable="true"></div><div class="rs"></div>`;
+  const media=isVideo
+    ? `<video src="${src}" controls loop draggable="false" style="width:100%;display:block;border-radius:0 0 2px 2px;"></video>`
+    : `<img src="${src}" draggable="false">`;
+  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:5px"><button class="cap" title="핀 메모">✎</button><button class="psave" title="이미지로 저장">💾</button><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div>${media}<div class="pcap" contenteditable="true"></div><div class="rs"></div>`;
   document.body.appendChild(p);
+  p.dataset.video=isVideo?'1':'';
+  p._src=src;
   p.querySelector('.x').addEventListener('click',()=>p.remove());
   const capBtn=p.querySelector('.cap'),capEl=p.querySelector('.pcap');
   capBtn.addEventListener('click',()=>{
     capEl.classList.toggle('on');capBtn.classList.toggle('on');
     if(capEl.classList.contains('on'))capEl.focus();
   });
+  // 저장: 영상은 영상파일로, 이미지는 메모(캡션) 합성해서 PNG로
+  p.querySelector('.psave').addEventListener('click',()=>savePin(p,isVideo,capEl));
   p.querySelector('input[type=range]').addEventListener('input',e=>p.style.opacity=e.target.value/100);
   makeDrag(p.querySelector('.pb'),(e,s)=>{
     if(!s){const r=p.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
@@ -1087,6 +1401,45 @@ function addPin(src,label,x,y,w){
     if(!s)return{sx:e.clientX,sw:p.offsetWidth};
     p.style.width=Math.max(100,s.sw+(e.clientX-s.sx))+'px';
   });
+}
+// 핀 저장: 이미지는 캡션 메모를 아래 붙여 PNG 합성, 영상은 webm 저장
+async function savePin(p,isVideo,capEl){
+  const now=new Date();
+  const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+  if(isVideo){
+    try{
+      const resp=await fetch(p._src);const blob=await resp.blob();
+      const buf=await blob.arrayBuffer();
+      const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:'영상_'+stamp+'.webm'});
+      if(r&&r.ok)toast('💾 영상 저장 완료');
+    }catch(e){toast('영상 저장 실패');}
+    return;
+  }
+  // 이미지 + 메모 합성
+  const img=new Image();
+  img.onload=()=>{
+    const cap=(capEl.innerText||'').trim();
+    const pad=cap?14:0, lineH=22;
+    const lines=cap?cap.split('\n'):[];
+    const capH=cap?(pad*2+lines.length*lineH):0;
+    const cv=document.createElement('canvas');
+    cv.width=img.naturalWidth;cv.height=img.naturalHeight+capH;
+    const c=cv.getContext('2d');
+    c.fillStyle='#fff';c.fillRect(0,0,cv.width,cv.height);
+    c.drawImage(img,0,0);
+    if(cap){
+      c.fillStyle='#fff7ec';c.fillRect(0,img.naturalHeight,cv.width,capH);
+      c.fillStyle='#F68C1F';c.fillRect(0,img.naturalHeight,4,capH);
+      c.fillStyle='#3a2a10';c.font='16px "Malgun Gothic"';c.textBaseline='top';
+      lines.forEach((ln,i)=>c.fillText(ln,pad,img.naturalHeight+pad+i*lineH));
+    }
+    cv.toBlob(async b=>{
+      const buf=await b.arrayBuffer();
+      const r=await window.cm.saveImage({dataURL:cv.toDataURL('image/png'),filename:'핀_'+stamp+'.png'});
+      if(r&&r.ok)toast('💾 핀'+(cap?' (메모 포함)':'')+' 저장 완료');
+    });
+  };
+  img.src=p._src;
 }
 document.addEventListener('paste',e=>{
   const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));
@@ -1108,14 +1461,39 @@ function closeCam(){
   $('camWrap').classList.remove('on');
 }
 $('camBtn').addEventListener('click',openCam);
-$('camCancel').addEventListener('click',closeCam);
+$('camCancel').addEventListener('click',()=>{ if(camRecOn)stopCamRec(); closeCam(); });
 $('camShot').addEventListener('click',()=>{
   const v=$('camVid');
   if(!v.videoWidth){toast('카메라 준비 중…');return;}
   const cv=document.createElement('canvas');cv.width=v.videoWidth;cv.height=v.videoHeight;
   cv.getContext('2d').drawImage(v,0,0);
   addPin(cv.toDataURL('image/png'),'카메라');
-  closeCam();toast('📌 촬영 사진이 핀으로 고정됨 — ✎ 버튼으로 메모 추가');
+  closeCam();toast('📌 사진이 핀으로 고정됨 — ✎ 메모 / 💾 저장');
+});
+// 동영상 녹화 (최대 10초, 다시 누르면 정지)
+let camRec=null,camRecOn=false,camRecChunks=[],camRecTimer=null,camRecSec=0;
+function stopCamRec(){ if(camRec&&camRec.state!=='inactive')camRec.stop(); }
+$('camRec').addEventListener('click',()=>{
+  if(camRecOn){stopCamRec();return;}
+  if(!camStream){toast('카메라가 꺼져 있어요');return;}
+  camRecChunks=[];
+  try{camRec=new MediaRecorder(camStream,{mimeType:'video/webm'});}
+  catch(e){try{camRec=new MediaRecorder(camStream);}catch(e2){toast('이 환경에서는 녹화를 지원하지 않아요');return;}}
+  camRec.ondataavailable=ev=>{if(ev.data.size)camRecChunks.push(ev.data);};
+  camRec.onstop=()=>{
+    clearInterval(camRecTimer);camRecTimer=null;
+    camRecOn=false;$('camRec').textContent='🎬 녹화';$('camRec').classList.remove('on');
+    const blob=new Blob(camRecChunks,{type:'video/webm'});
+    const url=URL.createObjectURL(blob);
+    addPin(url,'영상',null,null,320,true);
+    closeCam();toast('📌 영상이 핀으로 고정됨 — ▶ 재생 / 💾 저장');
+  };
+  camRec.start();camRecOn=true;camRecSec=0;
+  $('camRec').classList.add('on');$('camRec').textContent='⏹ 0s';
+  camRecTimer=setInterval(()=>{
+    camRecSec++;$('camRec').textContent='⏹ '+camRecSec+'s';
+    if(camRecSec>=10)stopCamRec(); // 최대 10초 자동 정지
+  },1000);
 });
 
 /* ===== 영역 캡처 → 핀 ===== */

@@ -3,6 +3,7 @@
 <meta charset="UTF-8">
 <title>ClassMate Overlay</title>
 <script src="../assets/qrcode.min.js"></script>
+<script src="../assets/jspdf.min.js"></script>
 <style>
 :root{
   /* 코코아팹 브랜드 오렌지 #F68C1F */
@@ -118,6 +119,16 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .su-hint{font-size:10.5px;color:#6b7884;line-height:1.6;margin-top:9px;}
 .su-hint b{color:var(--or);}
 
+
+/* AI 교수 보조 */
+.ai-quick{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;}
+.ai-quick button{background:var(--dk2);border:1px solid var(--line);color:#cdd8e2;border-radius:8px;padding:8px 6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;}
+.ai-quick button:hover{background:rgba(246,140,31,.12);border-color:var(--or);}
+.ai-msg{font-size:11.5px;min-height:14px;margin-top:8px;color:var(--amber);text-align:center;}
+.ai-out{display:none;margin-top:8px;background:var(--dk2);border-radius:11px;padding:13px;font-size:13px;color:#e7edf3;line-height:1.65;max-height:280px;overflow:auto;white-space:pre-wrap;}
+.ai-out.on{display:block;}
+.ai-actions{display:none;gap:6px;margin-top:8px;}
+.ai-actions.on{display:flex;}
 
 /* 다문화 번역 */
 .tr-langs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:9px 0;}
@@ -329,7 +340,16 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #diceFaces{display:flex;justify-content:center;gap:10px;margin:2px 0 8px;min-height:58px;}
 .die{width:56px;height:56px;border-radius:13px;background:#fff;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.13),0 4px 10px rgba(0,0,0,.3);}
 .die i{width:9px;height:9px;border-radius:50%;background:#222;place-self:center;visibility:hidden;}
-.die.rolling{animation:shk .09s infinite;}
+.die.rolling{animation:diceroll .5s ease-in-out infinite;}
+@keyframes diceroll{
+  0%{transform:translateY(0) rotate(0deg) scale(1);}
+  25%{transform:translateY(-22px) rotate(180deg) scale(1.08);}
+  50%{transform:translateY(0) rotate(360deg) scale(1);}
+  75%{transform:translateY(-12px) rotate(520deg) scale(1.04);}
+  100%{transform:translateY(0) rotate(720deg) scale(1);}
+}
+.die.landed{animation:diceland .3s ease-out;}
+@keyframes diceland{0%{transform:translateY(-16px) scale(1.12);}60%{transform:translateY(0) scale(.94);}100%{transform:translateY(0) scale(1);}}
 #diceTotal{font-size:12.5px;color:#9fb0bf;min-height:20px;margin-bottom:7px;text-align:center;}
 #diceTotal b{color:var(--or);font-size:17px;}
 
@@ -363,22 +383,30 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .ticket.open .tk-txt{display:block;}
 .ticket.open .tk-txt.lose{color:#7a8794;}
 .ticket.open .tk-txt.hit{color:#F68C1F;}
+.ticket .tk-emo{display:block;font-size:22px;line-height:1;}
+.ticket .tk-lbl{display:block;font-size:12px;font-weight:800;margin-top:2px;}
 .ticket .tk-win{position:absolute;top:-9px;right:-7px;font-size:17px;display:none;}
 .ticket.win .tk-win{display:block;}
 #drawResult{padding:0 16px 15px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
 
-/* 가리개 (커튼형) */
+/* 가리개 (자유 박스) */
 #shadeWrap{position:fixed;inset:0;z-index:78;display:none;}
 #shadeWrap.on{display:block;}
-#shadePanel{position:absolute;left:0;top:0;width:100%;height:60%;background:linear-gradient(180deg,#11171f,#0c1117);border-bottom:3px solid var(--or);box-shadow:0 14px 40px rgba(0,0,0,.5);overflow:hidden;}
-#shadeWrap.horiz #shadePanel{width:55%;height:100%;border-bottom:none;border-right:3px solid var(--or);}
-#shadeLogo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:90px;opacity:.07;border-radius:16px;pointer-events:none;}
-#shadeHandle{position:absolute;left:0;bottom:0;width:100%;height:40px;background:rgba(246,140,31,.16);border-top:1px solid rgba(246,140,31,.4);cursor:ns-resize;display:flex;align-items:center;justify-content:center;}
-#shadeWrap.horiz #shadeHandle{left:auto;right:0;top:0;width:40px;height:100%;border-top:none;border-left:1px solid rgba(246,140,31,.4);cursor:ew-resize;writing-mode:vertical-rl;}
-#shadeHandle span{font-size:12px;font-weight:700;color:rgba(246,140,31,.95);}
-#shadeBar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:79;display:flex;align-items:center;gap:14px;background:var(--dk);border:1px solid var(--line);border-radius:13px;padding:9px 15px;box-shadow:var(--shadow);}
-#shadeBar button{border:none;background:var(--dk2);color:#cdd8e2;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;cursor:pointer;}
-#shadeBar button:hover{background:var(--or);color:#fff;}
+#shadePanel{position:absolute;left:12%;top:14%;width:60%;height:55%;background:linear-gradient(160deg,#11171f,#0c1117);border:2px solid var(--or);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden;}
+#shadeBar{position:absolute;left:0;top:0;width:100%;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 11px;background:rgba(246,140,31,.16);cursor:grab;}
+#shadeBar:active{cursor:grabbing;}
+#shadeBar .sh-grip{font-size:11px;font-weight:700;color:rgba(246,140,31,.95);}
+#shadeBar #shadeClose{border:none;background:rgba(0,0,0,.25);width:22px;height:22px;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;}
+#shadeLogo{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:84px;opacity:.08;border-radius:14px;pointer-events:none;}
+.sh-rz{position:absolute;z-index:2;}
+.sh-rz.sh-n{top:-4px;left:14px;right:14px;height:8px;cursor:ns-resize;}
+.sh-rz.sh-s{bottom:-4px;left:14px;right:14px;height:8px;cursor:ns-resize;}
+.sh-rz.sh-e{right:-4px;top:14px;bottom:14px;width:8px;cursor:ew-resize;}
+.sh-rz.sh-w{left:-4px;top:14px;bottom:14px;width:8px;cursor:ew-resize;}
+.sh-rz.sh-ne{right:-5px;top:-5px;width:16px;height:16px;cursor:nesw-resize;}
+.sh-rz.sh-nw{left:-5px;top:-5px;width:16px;height:16px;cursor:nwse-resize;}
+.sh-rz.sh-se{right:-5px;bottom:-5px;width:16px;height:16px;cursor:nwse-resize;}
+.sh-rz.sh-sw{left:-5px;bottom:-5px;width:16px;height:16px;cursor:nesw-resize;}
 
 /* 명단 저장 Pro 버튼 */
 .roster-pro{width:100%;background:var(--dk2);border:1px dashed rgba(246,140,31,.5);color:#9fb0bf;border-radius:9px;padding:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px;}
@@ -410,6 +438,14 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .pro-item .pi-d{font-size:11.5px;color:#9fb0bf;line-height:1.5;margin-top:2px;}
 #proCta{width:100%;}
 .pro-note{font-size:10.5px;color:#6b7884;text-align:center;margin-top:11px;line-height:1.6;}
+.pro-key{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+.pro-key-t{font-size:11.5px;color:#9fb0bf;margin-bottom:7px;text-align:center;}
+.pro-key-row{display:flex;gap:6px;}
+.pro-key-row input{flex:1;min-width:0;text-transform:uppercase;}
+.pro-key-row button{border:none;background:var(--or);color:#fff;border-radius:8px;padding:0 16px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;}
+.pro-key-row button:hover{background:var(--or2);}
+.pro-key-msg{font-size:11px;min-height:14px;margin-top:7px;text-align:center;}
+.pro-key-msg.ok{color:#37c871;}.pro-key-msg.err{color:var(--red);}
 
 
 /* 펜-글자 입력창 */
@@ -592,6 +628,29 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="pStat">현재: <b>꺼짐</b></div>
 </div>
 
+<div class="panel iv" id="p-ai">
+  <div class="ph">🤖 AI 교수 보조</div>
+  <div class="ai-quick">
+    <button data-q="다음 수업 도입에 쓸 흥미로운 발문 3개 만들어줘. 주제: ">💡 발문 만들기</button>
+    <button data-q="초등학생 대상 활동 아이디어 3가지 알려줘. 주제: ">🎨 활동 아이디어</button>
+    <button data-q="다음 주제로 초등학생용 O/X 퀴즈 5개 만들어줘. 주제: ">❓ 퀴즈 생성</button>
+    <button data-q="다음 개념을 초등학생도 이해하게 쉽게 설명해줘: ">📖 쉽게 설명</button>
+  </div>
+  <textarea class="names" id="aiIn" placeholder="무엇이든 물어보세요&#10;예) 분수의 덧셈을 쉽게 설명하는 방법"></textarea>
+  <button class="btn-go" id="aiGo">물어보기</button>
+  <div class="ai-msg" id="aiMsg"></div>
+  <div class="ai-out" id="aiOut"></div>
+  <div class="ai-actions" id="aiActions">
+    <button class="su-copy" id="aiCopy">📋 복사</button>
+    <button class="su-copy" id="aiMemo">📝 메모로</button>
+  </div>
+  <button class="su-gear" id="aiGear">⚙ API 키 설정 (Claude)</button>
+  <div class="tr-key" id="aiKeyRow">
+    <input type="password" id="aiKey" placeholder="Anthropic API 키 (sk-ant-...)">
+    <button class="btn-g" id="aiKeySave" style="padding:9px 14px">저장</button>
+  </div>
+</div>
+
 <div class="panel iv" id="p-trans">
   <div class="ph">🌏 다문화 번역</div>
   <div class="tabs"><button class="tab on" data-t="txt">📝 텍스트</button><button class="tab" data-t="voice">🎤 음성 실시간</button></div>
@@ -701,7 +760,8 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <div id="camWrap" class="iv">
   <video id="camVid" autoplay muted playsinline></video>
   <div class="cfoot">
-    <button class="btn-go" id="camShot" style="flex:2">📸 촬영 → 핀</button>
+    <button class="btn-go" id="camShot" style="flex:2">📸 사진 → 핀</button>
+    <button class="btn-g" id="camRec" style="flex:2">🎬 녹화</button>
     <button class="btn-g" id="camCancel" style="flex:1">취소</button>
   </div>
 </div>
@@ -716,15 +776,35 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <!-- 가리개 (커튼형: 칠판/화면을 덮었다가 손잡이로 걷어냄) -->
 <div id="shadeWrap" class="iv">
   <div id="shadePanel">
-    <div id="shadeHandle"><span>⬍ 손잡이를 끌어 가림판을 걷거나 덮으세요</span></div>
+    <div id="shadeBar">
+      <span class="sh-grip">✥ 끌어서 이동</span>
+      <button id="shadeClose">✕</button>
+    </div>
     <img id="shadeLogo" src="../assets/logo.png" draggable="false">
+    <div class="sh-rz sh-e"></div><div class="sh-rz sh-s"></div>
+    <div class="sh-rz sh-se"></div><div class="sh-rz sh-w"></div>
+    <div class="sh-rz sh-n"></div><div class="sh-rz sh-sw"></div>
+    <div class="sh-rz sh-ne"></div><div class="sh-rz sh-nw"></div>
   </div>
-  <div id="shadeBar">
-    <span style="display:flex;gap:6px">
-      <button id="shadeDir">⬍ 세로</button>
-      <button id="shadeFull">⬛ 전체 덮기</button>
-      <button id="shadeClose">✕ 닫기</button>
-    </span>
+</div>
+
+<!-- 수업 기록 내보내기 모달 -->
+<div id="expWrap" class="iv">
+  <div id="expHead">
+    <span class="pro-logo"><img src="../assets/logo.png"></span>
+    <span class="pro-ttl">📋 수업 기록 내보내기</span>
+    <button id="expClose">✕</button>
+  </div>
+  <div id="expBody">
+    <div class="exp-lead">현재 화면에 떠 있는 <b>메모·핀·모둠 점수</b>를 한 장으로 모아 저장합니다.</div>
+    <label class="exp-row"><span>제목</span><input type="text" id="expTitle" placeholder="예) 3학년 2반 5교시 국어"></label>
+    <div class="exp-prev" id="expPrev"></div>
+    <div class="exp-fmt">
+      <button class="exp-fb on" data-f="png">🖼 이미지(PNG)</button>
+      <button class="exp-fb" data-f="pdf">📄 PDF</button>
+    </div>
+    <button class="btn-go" id="expGo">내보내기</button>
+    <div class="exp-msg" id="expMsg"></div>
   </div>
 </div>
 
@@ -739,10 +819,18 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="pro-lead">🔒 이 기능은 <b>Pro 구독 전용</b>입니다.<br>아래 기능들을 모두 사용할 수 있어요.</div>
     <div class="pro-list">
       <div class="pro-item"><span class="pi-ic">🌏</span><div><div class="pi-t">다문화 번역</div><div class="pi-d">텍스트 번역은 물론, <b style="color:#F68C1F">음성 인식 + AI 실시간 번역(자막)</b>까지. 한국어 → 8개 언어로 다문화 학생 안내</div></div></div>
-      <div class="pro-item"><span class="pi-ic">🤖</span><div><div class="pi-t">AI 교수 보조</div><div class="pi-d">발문 만들기, 활동 아이디어, 즉석 퀴즈 생성 등 수업 도우미</div></div></div>
+      <div class="pro-item"><span class="pi-ic">🤖</span><div><div class="pi-t">AI 교수 보조</div><div class="pi-d">AI로 검색·발문 생성·활동 아이디어·즉석 퀴즈. 엔진은 Claude / GPT 선택 사용</div></div></div>
       <div class="pro-item"><span class="pi-ic">📋</span><div><div class="pi-t">명단 저장·불러오기</div><div class="pi-d">반별 명단을 저장해두고 발표자 뽑기·게임에 재사용</div></div></div>
     </div>
     <button class="btn-go" id="proCta">Pro 구독 안내 받기</button>
+    <div class="pro-key">
+      <div class="pro-key-t">이미 Pro 키가 있으신가요?</div>
+      <div class="pro-key-row">
+        <input type="text" id="proKeyIn" placeholder="CM-XXXX-XXXX-XXXX" autocomplete="off">
+        <button id="proKeyGo">인증</button>
+      </div>
+      <div class="pro-key-msg" id="proKeyMsg"></div>
+    </div>
     <div class="pro-note">현재 베타 — 정식 출시 시 학교·교육청 단위 구독으로 제공 예정입니다.</div>
   </div>
 </div>
@@ -767,6 +855,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
   <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
   <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
+  <button class="tool" id="expBtn"><span class="ti">📋</span>기록저장</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>
