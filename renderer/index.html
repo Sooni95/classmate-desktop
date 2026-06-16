@@ -233,6 +233,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .pin .pb{height:28px;background:var(--dk);display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 9px;cursor:grab;}
 .pin .pb .lbl{font-size:10.5px;color:#9fb0bf;max-width:86px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .pin .pb .x,.pin .pb .cap{border:none;background:none;color:#7c8894;font-size:13px;cursor:pointer;}
+.pin .pb .vplay,.pin .pb .vloop,.pin .pb .psave{border:none;background:none;color:#7c8894;font-size:12px;cursor:pointer;}
+.pin .pb .vplay:hover,.pin .pb .psave:hover{color:var(--or);}
+.pin .pb .vloop{opacity:.4;}.pin .pb .vloop.on{opacity:1;}
 .pin .pb .x:hover{color:var(--red);}
 .pin .pb .cap:hover,.pin .pb .cap.on{color:var(--or);}
 .pin img{display:block;width:100%;}
@@ -433,7 +436,8 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #ladderFoot{display:flex;gap:8px;padding:0 14px 13px;justify-content:center;}
 
 /* 영역 녹화 정지 버튼 */
-#recStop{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:95;display:none;border:none;background:var(--red);color:#fff;border-radius:11px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);}
+#recStop{position:fixed;left:0;top:0;z-index:95;display:none;border:none;background:var(--red);color:#fff;border-radius:11px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);animation:recpulse 1.2s infinite;}
+@keyframes recpulse{50%{box-shadow:0 0 0 8px rgba(232,77,61,.25);}}
 #recStop.on{display:block;}
 
 /* 수업 기록 내보내기 */
@@ -609,9 +613,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
   <div class="gcfg" id="cfgLadder">
-    <textarea class="names" id="ladderTop" placeholder="참가자 (줄바꿈)&#10;예) 김철수, 이영희, 박민준"></textarea>
-    <textarea class="names" id="ladderBottom" placeholder="결과 (줄바꿈, 비우면 당첨/꽝 자동)&#10;예) 청소, 칠판, 우유, 통과"></textarea>
-    <div class="gdesc">🪜 참가자를 누르면 사다리를 타고 내려가 결과가 정해져요!</div>
+    <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="10"></div>
+    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">위·아래 칸을 클릭해 직접 이름·결과를 입력</b>하세요. 위 또는 아래 어느 쪽을 눌러도 경로를 따라갑니다.</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
     <button class="btn-go" id="ladderOpen">사다리 만들기</button>
   </div>
 </div>
@@ -908,8 +912,8 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button class="tool" data-p="p-noise"><span class="ti">📢</span>소음</button>
 
   <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
-  <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
   <button class="tool" id="expBtn"><span class="ti">📋</span>기록저장</button>
+  <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>

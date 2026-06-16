@@ -188,7 +188,7 @@ function createOverlay() {
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok && data.valid === true, status: res.status, ...data };
     } catch (err) {
-      return { ok: false, message: String(err) };
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
     }
   });
 
@@ -230,7 +230,7 @@ function createOverlay() {
       const text = await res.text();
       return { ok: res.ok, status: res.status, message: text };
     } catch (err) {
-      return { ok: false, status: 0, message: String(err) };
+      return { ok: false, status: 0, message: 'NET:' + String(err && err.message || err) };
     }
   });
 

@@ -118,7 +118,21 @@ function collectClassData(){
   const scores=[...document.querySelectorAll('#scoreRows .srow2')].map(r=>({
     name:r.querySelector('.nm2')?.value||'',score:+r.dataset.score||0
   }));
-  return {memos,pins,scores};
+  // 필기(펜) — 캔버스에 그린 내용이 있으면 포함
+  let drawImg=null;
+  try{
+    const dcv=$('dc');
+    if(dcv&&dcv.width&&dcv.height){
+      // 빈 캔버스인지 검사 (성능 위해 샘플링)
+      const tmp=document.createElement('canvas');tmp.width=dcv.width;tmp.height=dcv.height;
+      tmp.getContext('2d').drawImage(dcv,0,0);
+      const dt=tmp.getContext('2d').getImageData(0,0,tmp.width,tmp.height).data;
+      let hasInk=false;
+      for(let i=3;i<dt.length;i+=400){if(dt[i]>10){hasInk=true;break;}}
+      if(hasInk)drawImg=dcv.toDataURL('image/png');
+    }
+  }catch(e){}
+  return {memos,pins,scores,drawImg};
 }
 function expPreview(){
   const d=collectClassData();
@@ -128,7 +142,8 @@ function expPreview(){
   if(pinImg)parts.push('<b>핀(사진)</b> '+pinImg+'개');
   if(pinVid)parts.push('<b>핀(영상)</b> '+pinVid+'개 — 이미지엔 표지만');
   if(d.scores.length)parts.push('<b>모둠점수</b> '+d.scores.length+'팀');
-  $('expPrev').innerHTML=parts.length?('담길 내용: '+parts.join(' · ')):'담을 내용이 없어요. 메모·핀·점수를 먼저 화면에 띄워주세요.';
+  if(d.drawImg)parts.push('<b>필기</b> 포함');
+  $('expPrev').innerHTML=parts.length?('담길 내용: '+parts.join(' · ')):'담을 내용이 없어요. 메모·핀·점수·필기를 먼저 화면에 띄워주세요.';
   return d;
 }
 $('expBtn').addEventListener('click',()=>{ expPreview(); expWrap.classList.add('on'); centerOnDockDisplay(expWrap); });
@@ -152,10 +167,16 @@ async function renderClassCanvas(title){
     const im=new Image();im.onload=()=>res({im,cap:p.cap});im.onerror=()=>res(null);im.src=p.img;
   })));
   const goodPins=pinImgs.filter(Boolean);
+  // 필기 이미지 로드
+  let drawImage=null;
+  if(d.drawImg){
+    drawImage=await new Promise(res=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src=d.drawImg;});
+  }
   // 대략적 높이 계산
   let h=M+70; // 제목
   if(d.memos.length){h+=40;d.memos.forEach(m=>{h+=Math.ceil(m.length/40)*26+18;});}
   if(d.scores.length){h+=40+d.scores.length*34;}
+  if(drawImage){h+=40+Math.min(500,(W-M*2)*drawImage.naturalHeight/drawImage.naturalWidth);}
   if(goodPins.length){h+=40;goodPins.forEach(p=>{h+=300+(p.cap?40:0);});}
   h+=M;
   cv.width=W;cv.height=Math.max(h,400);
@@ -205,6 +226,15 @@ async function renderClassCanvas(title){
     });
     y+=8;
   }
+  // 필기(펜)
+  if(drawImage){
+    c.fillStyle='#F68C1F';c.font='bold 20px "Malgun Gothic"';c.fillText('✏️ 필기',M,y);y+=34;
+    const iw=W-M*2, ih=iw*drawImage.naturalHeight/drawImage.naturalWidth, ihc=Math.min(ih,500), iwc=ihc*drawImage.naturalWidth/drawImage.naturalHeight;
+    // 필기는 투명 배경이라 연한 배경 깔고
+    c.fillStyle='#f6f8fa';c.fillRect(M,y,iwc,ihc);
+    c.drawImage(drawImage,M,y,iwc,ihc);
+    y+=ihc+18;
+  }
   // 핀 사진
   if(goodPins.length){
     c.fillStyle='#F68C1F';c.font='bold 20px "Malgun Gothic"';c.fillText('📌 핀 (캡처·사진)',M,y);y+=34;
@@ -220,7 +250,7 @@ async function renderClassCanvas(title){
 }
 $('expGo').addEventListener('click',async()=>{
   const d=collectClassData();
-  if(!d.memos.length&&!d.pins.length&&!d.scores.length){$('expMsg').textContent='담을 내용이 없어요';return;}
+  if(!d.memos.length&&!d.pins.length&&!d.scores.length&&!d.drawImg){$('expMsg').textContent='담을 내용이 없어요';return;}
   $('expGo').disabled=true;$('expGo').textContent='만드는 중…';$('expMsg').textContent='';
   try{
     const title=$('expTitle').value.trim();
@@ -287,7 +317,7 @@ $('proKeyGo').addEventListener('click',async()=>{
   }else if(r.status===410){
     msg.className='pro-key-msg err';msg.textContent='만료되었거나 정지된 키예요';
   }else{
-    msg.className='pro-key-msg err';msg.textContent='확인 실패 — 인터넷 연결을 확인하세요';
+    msg.className='pro-key-msg err';msg.textContent=(r.message&&r.message.startsWith('NET:'))?('서버 연결 실패: '+r.message.slice(4)):'확인 실패 — 인터넷 연결을 확인하세요';
   }
 });
 const proWrap=$('proWrap');
@@ -604,7 +634,8 @@ $('gcLadder').addEventListener('click',()=>{gShowCfg('gcLadder');$('cfgLadder').
 
 /* ===== 사다리타기 ===== */
 const ladderWrap=$('ladderWrap'),lcv=$('ladderCv'),lx=lcv.getContext('2d');
-let ladder=null;
+let ladder=null,ladderBusy=false;
+const LCOL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e','#4dd0e1','#ff8a65','#ba68c8','#aed581'];
 makeDrag($('ladderHead'),(e,s)=>{
   if(!s){const r=ladderWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   ladderWrap.style.left=(e.clientX-s.dx)+'px';ladderWrap.style.top=(e.clientY-s.dy)+'px';
@@ -615,115 +646,146 @@ $('ladderOpen').addEventListener('click',()=>{
   ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder();
 });
 function buildLadder(){
-  let tops=$('ladderTop').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(tops.length<2){toast('참가자를 2명 이상 입력하세요');return;}
-  if(tops.length>10)tops.length=10;
-  const n=tops.length;
-  let bottoms=$('ladderBottom').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(!bottoms.length){ // 비면 당첨 1 + 나머지 꽝
-    bottoms=Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝');
-    bottoms=bottoms.sort(()=>Math.random()-.5);
+  const n=Math.min(10,Math.max(2,parseInt($('ladderCnt').value)||4));
+  const auto=$('ladderAuto').checked;
+  const tops=Array.from({length:n},(_,i)=>'');           // 빈 칸 (클릭해 입력)
+  let bottoms;
+  if(auto){
+    bottoms=Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝').sort(()=>Math.random()-.5);
+  }else{
+    bottoms=Array.from({length:n},()=>'');               // 빈 칸 (클릭해 입력)
   }
-  while(bottoms.length<n)bottoms.push('꽝');
-  bottoms.length=n;
-  // 사다리 가로줄 무작위 생성
-  const ROWS=Math.max(6,n+3);
-  const rungs=[]; // {row, col} col~col+1 연결
+  // 사다리 가로줄 무작위
+  const ROWS=Math.max(7,n+4);
+  const rungs=[];
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<n-1;c++){
-      if(Math.random()<0.34){
-        // 인접 중복 방지
-        if(!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))
-          rungs.push({row:r,col:c});
-      }
+      if(Math.random()<0.34&&!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))
+        rungs.push({row:r,col:c});
     }
   }
-  ladder={tops,bottoms,n,ROWS,rungs,revealed:{},W:lcv.width=Math.min(600,Math.max(360,n*90)),H:lcv.height=440};
-  $('ladderInfo').textContent=n+'명';
-  $('ladderResult').textContent='참가자 이름을 클릭하세요';
+  lcv.width=Math.min(640,Math.max(380,n*92));lcv.height=460;
+  ladder={tops,bottoms,n,ROWS,rungs,revealed:{},auto};
+  $('ladderInfo').textContent=n+'명 · 칸을 눌러 이름/결과 입력';
+  $('ladderResult').textContent='위·아래 칸을 클릭해 입력하고, 이름 칸을 누르면 출발해요';
   drawLadder();
 }
-function ladderX(c){return ladder.W/(ladder.n+1)*(c+1);}
-function ladderY(r){return 80+r*(ladder.H-160)/(ladder.ROWS-1);}
+function ladderX(c){return lcv.width/(ladder.n+1)*(c+1);}
+function ladderY(r){return 86+r*(lcv.height-180)/(ladder.ROWS-1);}
+function rrect(x,y,w,h,r){lx.beginPath();lx.moveTo(x+r,y);lx.arcTo(x+w,y,x+w,y+h,r);lx.arcTo(x+w,y+h,x,y+h,r);lx.arcTo(x,y+h,x,y,r);lx.arcTo(x,y,x+w,y,r);lx.closePath();}
 function drawLadder(hl){
-  const{W,H,n,ROWS,rungs,tops,bottoms}=ladder;
+  const{W,H}=({W:lcv.width,H:lcv.height});
+  const{n,ROWS,rungs,tops,bottoms}=ladder;
   lx.fillStyle='#0f1419';lx.fillRect(0,0,W,H);
-  // 세로줄
   lx.strokeStyle='#3a4654';lx.lineWidth=3;
-  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),72);lx.lineTo(ladderX(c),H-72);lx.stroke();}
-  // 가로줄
-  rungs.forEach(rg=>{
-    lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();
-  });
-  // 상단 이름 버튼
+  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),78);lx.lineTo(ladderX(c),H-78);lx.stroke();}
+  rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
+  // 상단 이름 칸
   for(let c=0;c<n;c++){
     const x=ladderX(c);
-    lx.fillStyle=ladder.revealed[c]?'#3a4654':'#F68C1F';
-    rrect(x-38,40,76,26,8);lx.fill();
+    lx.fillStyle=ladder.revealed[c]!==undefined?'#3a4654':'#F68C1F';
+    rrect(x-40,42,80,28,8);lx.fill();
     lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
-    lx.fillText(tops[c].slice(0,5),x,53);
+    lx.fillText(tops[c]||'이름?',x,56);
   }
-  // 하단 결과
+  // 하단 결과 칸
   for(let c=0;c<n;c++){
     const x=ladderX(c);
-    const isHit=bottoms[c].includes('당첨')||bottoms[c].includes('🎉');
+    const isHit=(bottoms[c]||'').includes('당첨')||(bottoms[c]||'').includes('🎉');
     lx.fillStyle=isHit?'#F68C1F':'#2c3744';
-    rrect(x-38,H-66,76,26,8);lx.fill();
+    rrect(x-40,H-70,80,28,8);lx.fill();
     lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
-    lx.fillText(bottoms[c].slice(0,5),x,H-53);
+    lx.fillText(bottoms[c]||'결과?',x,H-56);
   }
-  // 강조 경로
-  if(hl&&hl.path){
+  if(hl&&hl.path&&hl.path.length){
     lx.strokeStyle=hl.col;lx.lineWidth=5;lx.lineCap='round';lx.lineJoin='round';
     lx.beginPath();
     hl.path.forEach((p,i)=>{const px=ladderX(p.col),py=p.y;if(i===0)lx.moveTo(px,py);else lx.lineTo(px,py);});
     lx.stroke();
+    // 현재 위치 구슬
+    const last=hl.path[hl.path.length-1];
+    lx.fillStyle=hl.col;lx.beginPath();lx.arc(ladderX(last.col),last.y,8,0,7);lx.fill();
+    lx.fillStyle='#fff';lx.beginPath();lx.arc(ladderX(last.col)-2,last.y-2,2.5,0,7);lx.fill();
   }
 }
-function rrect(x,y,w,h,r){lx.beginPath();lx.moveTo(x+r,y);lx.arcTo(x+w,y,x+w,y+h,r);lx.arcTo(x+w,y+h,x,y+h,r);lx.arcTo(x,y+h,x,y,r);lx.arcTo(x,y,x+w,y,r);lx.closePath();}
-// 경로 계산 (위→아래, 가로줄 만나면 옆으로 이동)
-function ladderPath(startCol){
+// 경로 계산 — dir: 'down'(위→아래) / 'up'(아래→위)
+function ladderPath(startCol,dir){
   const{ROWS,rungs}=ladder;
-  let col=startCol;const path=[{col,y:72}];
-  for(let r=0;r<ROWS;r++){
+  let col=startCol;
+  const path=[];
+  const rowOrder=dir==='up'?[...Array(ROWS).keys()].reverse():[...Array(ROWS).keys()];
+  path.push({col,y:dir==='up'?(lcv.height-78):78});
+  for(const r of rowOrder){
     const y=ladderY(r);
-    // 현재 칸 좌우에 이 row의 가로줄이 있나
     const left=rungs.find(x=>x.row===r&&x.col===col-1);
     const right=rungs.find(x=>x.row===r&&x.col===col);
     if(right){path.push({col,y});col++;path.push({col,y});}
     else if(left){path.push({col,y});col--;path.push({col,y});}
   }
-  path.push({col,y:lcv.height-72});
+  path.push({col,y:dir==='up'?78:(lcv.height-78)});
   return {col,path};
 }
-const LCOL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e','#4dd0e1','#ff8a65','#ba68c8','#aed581'];
+// 칸 클릭: 이름/결과 입력 or 출발
 lcv.addEventListener('click',e=>{
-  if(!ladder)return;
+  if(!ladder||ladderBusy)return;
   const rect=lcv.getBoundingClientRect();
   const cx=(e.clientX-rect.left)*(lcv.width/rect.width);
   const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
-  if(cy>80)return; // 상단 이름만 클릭
   for(let c=0;c<ladder.n;c++){
-    if(Math.abs(cx-ladderX(c))<40){
-      if(ladder.revealed[c])return;
-      runLadder(c);return;
+    if(Math.abs(cx-ladderX(c))<42){
+      // 상단(이름)
+      if(cy<86){
+        if(ladder.revealed[c]!==undefined)return;
+        if(!ladder.tops[c]){ // 이름 비었으면 입력
+          const v=prompt('참가자 '+(c+1)+' 이름:',ladder.tops[c]||'');
+          if(v!==null){ladder.tops[c]=v.trim().slice(0,6);drawLadder();}
+          return;
+        }
+        runLadder(c,'down');return;
+      }
+      // 하단(결과)
+      if(cy>lcv.height-86){
+        if(!ladder.auto){
+          const v=prompt('결과 '+(c+1)+':',ladder.bottoms[c]||'');
+          if(v!==null){ladder.bottoms[c]=v.trim().slice(0,6);drawLadder();}
+          return;
+        }
+        // auto 모드: 아래에서 위로 거꾸로 타기
+        runLadder(c,'up');return;
+      }
     }
   }
 });
-function runLadder(startCol){
-  const{path,col}=ladderPath(startCol);
+function runLadder(startCol,dir){
+  if(ladderBusy)return;ladderBusy=true;
+  const{path,col}=ladderPath(startCol,dir);
   const colColor=LCOL[startCol%LCOL.length];
-  // 애니메이션: 경로를 점진적으로 그림
-  let step=0;
-  const anim=()=>{
-    step++;
-    const partial=path.slice(0,step+1);
-    drawLadder({path:partial,col:colColor});
-    if(step<path.length-1){gameAnim=requestAnimationFrame(anim);}
+  // 느리게: 세그먼트 사이를 보간하며 그림
+  let seg=0,t=0;
+  const SEG_TIME=dir==='up'?0.34:0.34; // 세그먼트당 시간(초) — 두근두근
+  let last=performance.now();
+  const anim=now=>{
+    const dt=Math.min(0.05,(now-last)/1000);last=now;
+    t+=dt/SEG_TIME;
+    while(t>=1&&seg<path.length-1){t-=1;seg++;}
+    // 현재까지의 경로 + 보간된 마지막 점
+    const drawn=path.slice(0,seg+1).map(p=>({col:p.col,y:p.y}));
+    if(seg<path.length-1){
+      const a=path[seg],b=path[seg+1];
+      drawn.push({col:a.col+(b.col-a.col)*t, y:a.y+(b.y-a.y)*t});
+    }
+    drawLadder({path:drawn,col:colColor});
+    if(seg<path.length-1){gameAnim=requestAnimationFrame(anim);}
     else{
-      ladder.revealed[startCol]=ladder.bottoms[col];
-      const r=ladder.bottoms[col];
-      $('ladderResult').innerHTML='🪜 <b>'+ladder.tops[startCol]+'</b> → <b style="color:#F68C1F">'+r+'</b>';
+      ladderBusy=false;
+      if(dir==='up'){
+        // 아래→위: 출발은 결과칸, 도착은 이름칸
+        const who=col; ladder.revealed[who]=ladder.bottoms[startCol];
+        $('ladderResult').innerHTML='🪜 <b style="color:#F68C1F">'+(ladder.bottoms[startCol]||'결과')+'</b> ← <b>'+(ladder.tops[who]||('참가자'+(who+1)))+'</b>';
+      }else{
+        ladder.revealed[startCol]=ladder.bottoms[col];
+        $('ladderResult').innerHTML='🪜 <b>'+(ladder.tops[startCol]||('참가자'+(startCol+1)))+'</b> → <b style="color:#F68C1F">'+(ladder.bottoms[col]||'결과')+'</b>';
+      }
       beep();
       drawLadder({path,col:colColor});
     }
@@ -731,11 +793,11 @@ function runLadder(startCol){
   gameAnim=requestAnimationFrame(anim);
 }
 $('ladderAll').addEventListener('click',()=>{
-  if(!ladder)return;
+  if(!ladder||ladderBusy)return;
   const res=[];
-  for(let c=0;c<ladder.n;c++){const{col}=ladderPath(c);ladder.revealed[c]=ladder.bottoms[col];res.push(ladder.tops[c]+'→'+ladder.bottoms[col]);}
+  for(let c=0;c<ladder.n;c++){const{col}=ladderPath(c,'down');ladder.revealed[c]=ladder.bottoms[col];res.push((ladder.tops[c]||('참가'+(c+1)))+'→'+(ladder.bottoms[col]||'?'));}
   drawLadder();
-  $('ladderResult').innerHTML=res.map(r=>'<span style="margin:0 6px">'+r+'</span>').join('');
+  $('ladderResult').innerHTML=res.map(r=>'<span style="margin:0 6px;white-space:nowrap">'+r+'</span>').join('');
 });
 
 /* --- 제비뽑기 (번호 표시) --- */
@@ -1381,7 +1443,7 @@ $('suGo').addEventListener('click',async()=>{
     suSay(data.updated?'♻️ 기존 QR·주소 그대로 — 연결만 새 URL로 변경됐어요!':'완성! 복사하거나 QR로 띄워보세요 🎉',true);
   }else if(res.status===409){suSay('"'+slug+'" 는 다른 곳에서 사용 중인 이름이에요 — 다른 이름을 써보세요');}
   else if(res.status===403){suSay('서버 연동 오류 (관리자 문의)');} 
-  else if(res.status===0){suSay('인터넷 연결을 확인하세요 (단축주소는 온라인 기능)');}
+  else if(res.status===0){suSay((res.message&&res.message.startsWith('NET:'))?('서버 연결 실패: '+res.message.slice(4)):'인터넷 연결을 확인하세요');}
   else{suSay('오류: '+(res.message||res.status));}
 });
 $('suCopy').addEventListener('click',()=>{
@@ -1523,13 +1585,30 @@ function addPin(src,label,x,y,w,isVideo){
   const d=dockDisp();
   p.style.cssText=`left:${x??(d.x+200+Math.random()*160)}px;top:${y??(d.y+110+Math.random()*120)}px;width:${w??280}px;`;
   const media=isVideo
-    ? `<video src="${src}" controls loop draggable="false" style="width:100%;display:block;border-radius:0 0 2px 2px;"></video>`
+    ? `<video src="${src}" loop autoplay muted draggable="false" style="width:100%;display:block;border-radius:0 0 2px 2px;cursor:pointer;"></video>`
     : `<img src="${src}" draggable="false">`;
-  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:5px"><button class="cap" title="핀 메모">✎</button><button class="psave" title="이미지로 저장">💾</button><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div>${media}<div class="pcap" contenteditable="true"></div><div class="rs"></div>`;
+  const vidCtrls=isVideo
+    ? `<button class="vplay" title="재생/일시정지">⏸</button><button class="vloop on" title="무한반복">🔁</button>`
+    : '';
+  p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:5px">${vidCtrls}<button class="cap" title="핀 메모">✎</button><button class="psave" title="저장">💾</button><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div>${media}<div class="pcap" contenteditable="true"></div><div class="rs"></div>`;
   document.body.appendChild(p);
   p.dataset.video=isVideo?'1':'';
   p._src=src;
   p.querySelector('.x').addEventListener('click',()=>p.remove());
+  if(isVideo){
+    const vid=p.querySelector('video'),playBtn=p.querySelector('.vplay'),loopBtn=p.querySelector('.vloop');
+    vid.muted=false; // 녹화엔 소리 없지만 재생은 자유
+    const sync=()=>playBtn.textContent=vid.paused?'▶':'⏸';
+    playBtn.addEventListener('click',()=>{vid.paused?vid.play():vid.pause();sync();});
+    vid.addEventListener('click',()=>{vid.paused?vid.play():vid.pause();sync();});
+    vid.addEventListener('play',sync);vid.addEventListener('pause',sync);
+    loopBtn.addEventListener('click',()=>{
+      vid.loop=!vid.loop;loopBtn.classList.toggle('on',vid.loop);
+      toast(vid.loop?'🔁 무한반복 켜짐':'무한반복 꺼짐');
+      if(vid.loop&&vid.paused)vid.play();
+    });
+    vid.addEventListener('ended',()=>{if(!vid.loop)sync();});
+  }
   const capBtn=p.querySelector('.cap'),capEl=p.querySelector('.pcap');
   capBtn.addEventListener('click',()=>{
     capEl.classList.toggle('on');capBtn.classList.toggle('on');
@@ -1744,6 +1823,11 @@ async function recordRegion(x,y,w,h){
   rec.start();
   // 정지 버튼 표시
   const stopBtn=$('recStop');stopBtn.classList.add('on');
+  requestAnimationFrame(()=>{
+    const dd=dockDisp();
+    stopBtn.style.left=(dd.x+(dd.w-stopBtn.offsetWidth)/2)+'px';
+    stopBtn.style.top=(dd.y+dd.h-stopBtn.offsetHeight-30)+'px';
+  });
   let sec=0;stopBtn.textContent='⏹ 녹화 정지 0s';
   const tmr=setInterval(()=>{sec++;stopBtn.textContent='⏹ 녹화 정지 '+sec+'s';if(sec>=15)done();},1000);
   const done=()=>{clearInterval(tmr);if(rec.state!=='inactive')rec.stop();};
