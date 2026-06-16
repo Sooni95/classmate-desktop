@@ -406,12 +406,12 @@ setProUI();
 // 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 토스트
 (()=>{
   let cnt=0,last=0;
-  const lo=document.querySelector('#brand .lo');
+  const lo=$('eggLogo');
   if(!lo)return;
-  lo.style.cursor='pointer';
-  lo.addEventListener('click',()=>{
+  lo.addEventListener('click',e=>{
+    e.stopPropagation();
     const now=Date.now();
-    cnt=(now-last<800)?cnt+1:1;last=now;
+    cnt=(now-last<1200)?cnt+1:1;last=now; // 1.2초로 넉넉하게
     if(cnt>=7){
       cnt=0;
       toast('🦋 ClassMate — 기획·개발 김수훈 · 김수관 · 네패스 코코아팹');

@@ -180,7 +180,7 @@ function createOverlay() {
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {
-      const res = await net.fetch('https://xn--he5b17pa301b.kr/api/pro-verify', {
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/pro-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key }),
@@ -222,7 +222,7 @@ function createOverlay() {
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
   ipcMain.handle('shorten', async (_e, { slug, target, ttl, token, key }) => {
     try {
-      const res = await net.fetch('https://xn--he5b17pa301b.kr/api/create', {
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
         body: JSON.stringify({ slug, target, ttl, key }),
