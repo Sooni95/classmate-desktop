@@ -1,5 +1,5 @@
 // ClassMate Desktop — main process (Electron)
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog, shell } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog, shell, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -154,7 +154,7 @@ function createOverlay() {
   ipcMain.handle('ai-chat', async (_e, { prompt, apiKey }) => {
     try {
       if (!apiKey) return { ok: false, message: 'NO_KEY' };
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await net.fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ function createOverlay() {
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {
-      const res = await fetch('https://xn--he5b17pa301b.kr/api/pro-verify', {
+      const res = await net.fetch('https://xn--he5b17pa301b.kr/api/pro-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key }),
@@ -196,7 +196,7 @@ function createOverlay() {
   ipcMain.handle('translate', async (_e, { text, lang, apiKey }) => {
     try {
       if (!apiKey) return { ok: false, message: 'NO_KEY' };
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await net.fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +222,7 @@ function createOverlay() {
   // 단축URL 생성 — 메인 프로세스에서 호출 (렌더러 CORS 제약 없음)
   ipcMain.handle('shorten', async (_e, { slug, target, ttl, token, key }) => {
     try {
-      const res = await fetch('https://xn--he5b17pa301b.kr/api/create', {
+      const res = await net.fetch('https://xn--he5b17pa301b.kr/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
         body: JSON.stringify({ slug, target, ttl, key }),
