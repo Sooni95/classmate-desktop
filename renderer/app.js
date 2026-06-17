@@ -457,39 +457,43 @@ document.querySelectorAll('[data-pro]').forEach(el=>{
 // 명단 저장·불러오기 (Pro) — localStorage 'cm_rosters'
 $('rosterBtn').addEventListener('click',()=>{
   if(!isPro())return; // 잠금은 위 핸들러가 처리
-  const rosters=JSON.parse(localStorage.getItem('cm_rosters')||'{}');
-  const names=Object.keys(rosters);
-  let menu='📋 명단 관리\\n\\n';
-  if(names.length)menu+='저장된 명단: '+names.join(', ')+'\\n\\n';
-  menu+='무엇을 할까요?\\n1 = 현재 명단 저장\\n2 = 불러오기\\n3 = 삭제';
-  const c=prompt(menu,'1');
-  if(c===null)return;
-  if(c==='1'){
-    const cur=$('nameList').value.trim();
-    if(!cur){toast('저장할 명단이 비어있어요');return;}
-    const nm=prompt('명단 이름 (예: 3학년 2반):','');
-    if(!nm)return;
-    rosters[nm.trim()]=cur;
-    localStorage.setItem('cm_rosters',JSON.stringify(rosters));
-    toast('💾 "'+nm.trim()+'" 명단 저장됨');
-  }else if(c==='2'){
-    if(!names.length){toast('저장된 명단이 없어요');return;}
-    const nm=prompt('불러올 명단 이름:\\n'+names.join(', '),names[0]);
-    if(nm&&rosters[nm.trim()]){
-      $('nameList').value=rosters[nm.trim()];
-      loadN();
-      toast('📂 "'+nm.trim()+'" 불러옴');
-    }else if(nm){toast('그 이름의 명단이 없어요');}
-  }else if(c==='3'){
-    if(!names.length){toast('삭제할 명단이 없어요');return;}
-    const nm=prompt('삭제할 명단 이름:\\n'+names.join(', '),'');
-    if(nm&&rosters[nm.trim()]){
-      delete rosters[nm.trim()];
-      localStorage.setItem('cm_rosters',JSON.stringify(rosters));
-      toast('🗑 "'+nm.trim()+'" 삭제됨');
-    }
-  }
+  openRosterModal();
 });
+function getRosters(){try{return JSON.parse(localStorage.getItem('cm_rosters')||'{}');}catch(e){return {};}}
+function saveRosters(r){localStorage.setItem('cm_rosters',JSON.stringify(r));}
+function openRosterModal(){
+  $('rosterModal').classList.add('on');
+  $('rmName').value='';
+  renderRosterList();
+}
+function renderRosterList(){
+  const rosters=getRosters();const names=Object.keys(rosters);
+  const list=$('rmList');list.innerHTML='';
+  if(!names.length){list.innerHTML='<div class="rm-empty">저장된 명단이 없어요.<br>위에서 현재 명단을 저장해보세요.</div>';return;}
+  names.forEach(nm=>{
+    const cnt=rosters[nm].split('\\n').filter(s=>s.trim()).length;
+    const row=document.createElement('div');row.className='rm-item';
+    row.innerHTML='<span class="rm-nm"></span><span class="rm-cnt">'+cnt+'명</span><button class="rm-load">불러오기</button><button class="rm-del">삭제</button>';
+    row.querySelector('.rm-nm').textContent=nm;
+    row.querySelector('.rm-load').addEventListener('click',()=>{
+      $('nameList').value=rosters[nm];loadN();
+      $('rosterModal').classList.remove('on');toast('📂 "'+nm+'" 불러옴');
+    });
+    row.querySelector('.rm-del').addEventListener('click',()=>{
+      const r=getRosters();delete r[nm];saveRosters(r);renderRosterList();toast('🗑 "'+nm+'" 삭제됨');
+    });
+    list.appendChild(row);
+  });
+}
+$('rmSave').addEventListener('click',()=>{
+  const nm=$('rmName').value.trim();
+  const cur=$('nameList').value.trim();
+  if(!nm){toast('명단 이름을 입력하세요');return;}
+  if(!cur){toast('저장할 명단이 비어있어요 (이름 목록을 먼저 입력)');return;}
+  const r=getRosters();r[nm]=cur;saveRosters(r);
+  $('rmName').value='';renderRosterList();toast('💾 "'+nm+'" 저장됨');
+});
+$('rmClose').addEventListener('click',()=>$('rosterModal').classList.remove('on'));
 
 // 구독 안내 받기 → Google Forms (기본 브라우저에서 열기)
 const PRO_FORM_URL='https://forms.gle/ZK8hxnx65injpK3R8';
@@ -781,6 +785,26 @@ $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
 $('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
 $('gcLadder').addEventListener('click',()=>{gShowCfg('gcLadder');$('cfgLadder').classList.add('on');});
 
+/* ===== 입력 모달 (Electron prompt 대체) ===== */
+let _askCb=null;
+function askInput(label,initial,cb){
+  $('imLabel').textContent=label;
+  $('imInput').value=initial||'';
+  _askCb=cb;
+  $('inputModal').classList.add('on');
+  setTimeout(()=>{$('imInput').focus();$('imInput').select();},50);
+}
+$('imOk').addEventListener('click',()=>{
+  const v=$('imInput').value.trim();
+  $('inputModal').classList.remove('on');
+  if(_askCb)_askCb(v);_askCb=null;
+});
+$('imCancel').addEventListener('click',()=>{$('inputModal').classList.remove('on');_askCb=null;});
+$('imInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();$('imOk').click();}
+  else if(e.key==='Escape'){e.preventDefault();$('imCancel').click();}
+});
+
 /* ===== 사다리타기 ===== */
 const ladderWrap=$('ladderWrap'),lcv=$('ladderCv'),lx=lcv.getContext('2d');
 let ladder=null,ladderBusy=false;
@@ -876,14 +900,16 @@ lcv.addEventListener('click',e=>{
   for(let c=0;c<ladder.n;c++){
     if(Math.abs(cx-ladderX(c))<42){
       if(Math.abs(cy-(ladderTopY()-30))<22){
-        const v=prompt('참가자 '+(c+1)+' 이름:',ladder.tops[c]||'');
-        if(v!==null){ladder.tops[c]=v.trim().slice(0,6);ladder.results=null;drawLadder();}
+        askInput('참가자 '+(c+1)+' 이름',ladder.tops[c]||'',v=>{
+          ladder.tops[c]=v.slice(0,6);ladder.results=null;drawLadder();
+        });
         return;
       }
       if(Math.abs(cy-(ladderBotY()+30))<22){
-        if(ladder.auto){toast('결과 자동 모드예요. 수동 입력하려면 설정에서 자동을 끄세요');return;}
-        const v=prompt('결과 '+(c+1)+':',ladder.bottoms[c]||'');
-        if(v!==null){ladder.bottoms[c]=v.trim().slice(0,6);ladder.results=null;drawLadder();}
+        if(ladder.auto){toast('결과 자동 모드예요. 설정에서 자동을 끄면 직접 입력 가능');return;}
+        askInput('결과 '+(c+1),ladder.bottoms[c]||'',v=>{
+          ladder.bottoms[c]=v.slice(0,6);ladder.results=null;drawLadder();
+        });
         return;
       }
     }
