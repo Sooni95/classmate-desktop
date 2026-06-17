@@ -310,9 +310,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
 /* memo & pin */
 .memo{position:fixed;z-index:48;width:210px;border-radius:5px 5px 9px 9px;box-shadow:0 12px 32px -8px rgba(120,80,0,.45);overflow:hidden;}
-.memo .mbar{height:26px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 7px;}
-.memo .mbtn2{border:none;background:none;font-size:15px;cursor:pointer;color:rgba(80,50,0,.5);}
-.memo .mbtn2:hover{color:var(--red);}
+.memo .mbar{height:34px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 8px;gap:6px;}
+.memo .mbtn2{border:none;background:rgba(0,0,0,.12);border-radius:6px;width:24px;height:24px;font-size:15px;font-weight:800;cursor:pointer;color:rgba(60,40,0,.85);display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+.memo .mbtn2:hover{background:var(--red);color:#fff;}
 .memo .mtext{width:100%;font-family:inherit;font-size:14px;line-height:1.5;padding:9px 11px 12px;color:#5a3d00;min-height:90px;outline:none;-webkit-user-select:text;user-select:text;cursor:text;word-break:break-all;overflow:auto;max-height:380px;}
 .memo .mtext:empty::before{content:attr(data-ph);color:rgba(90,61,0,.4);}
 .memo.min .mtext{display:none;}
@@ -321,7 +321,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .memo .maudio audio{height:30px;flex:1;min-width:0;}
 .memo .maudio button{border:none;background:rgba(0,0,0,.1);border-radius:6px;font-size:12px;cursor:pointer;color:rgba(80,50,0,.8);padding:4px 7px;}
 .memo .maudio button:hover{background:rgba(0,0,0,.2);}
-.memo .fbtn{border:none;background:rgba(0,0,0,.08);border-radius:5px;font-size:10px;font-weight:800;cursor:pointer;color:rgba(80,50,0,.7);padding:2px 5px;}
+.memo .fbtn{border:none;background:rgba(0,0,0,.14);border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;color:rgba(50,33,0,.9);padding:4px 7px;}
 .memo .fbtn.on{background:var(--red);color:#fff;}
 .memo .mbar input[type=range]{width:44px;accent-color:#a07000;height:12px;}
 .pin{position:fixed;z-index:48;border-radius:8px;overflow:hidden;box-shadow:0 16px 40px -10px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.85);min-width:100px;}
@@ -709,7 +709,8 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
   <div class="gcfg" id="cfgLadder">
     <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="10"></div>
-    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">위·아래 칸을 클릭해 직접 이름·결과를 입력</b>하세요. 위 또는 아래 어느 쪽을 눌러도 경로를 따라갑니다.</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
+    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">위·아래 칸을 클릭하면 바로 입력</b>돼요. (Enter로 확정)</div>
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
     <button class="btn-go" id="ladderOpen">사다리 만들기</button>
   </div>
@@ -794,6 +795,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div class="ai-actions" id="aiActions">
     <button class="su-copy" id="aiCopy">📋 복사</button>
     <button class="su-copy" id="aiMemo">📝 메모로</button>
+    <button class="su-copy" id="aiSave">💾 저장</button>
   </div>
   <button class="su-gear" id="aiGear">⚙ API 키 설정 (Claude)</button>
   <div class="tr-key" id="aiKeyRow">

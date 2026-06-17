@@ -197,6 +197,16 @@ $('aiGo').addEventListener('click',async()=>{
   else{$('aiMsg').textContent='오류: '+(r.message||'연결 확인');}
 });
 $('aiCopy').addEventListener('click',()=>{window.cm.copyText($('aiOut').textContent);toast('📋 복사됨');});
+$('aiSave').addEventListener('click',async()=>{
+  const q=$('aiIn').value.trim();
+  const a=$('aiOut').textContent;
+  if(!a){toast('저장할 답변이 없어요');return;}
+  const content='[질문]\\n'+q+'\\n\\n[AI 답변]\\n'+a+'\\n\\n— ClassMate AI 교수보조';
+  const now=new Date();
+  const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+  const r=await window.cm.saveText({text:content,filename:'AI보조_'+stamp+'.txt'});
+  if(r&&r.ok)toast('💾 저장 완료');
+});
 $('aiMemo').addEventListener('click',()=>{
   $('memoBtn').click();
   setTimeout(()=>{const m=[...document.querySelectorAll('.memo')].pop();if(m){m.querySelector('.mtext').innerText=$('aiOut').textContent;}},50);
@@ -498,7 +508,12 @@ function renderRosterList(){
     row.querySelector('.rm-nm').textContent=nm;
     row.querySelector('.rm-load').addEventListener('click',()=>{
       $('nameList').value=rosters[nm];loadN();
-      $('rosterModal').classList.remove('on');toast('📂 "'+nm+'" 불러옴');
+      // 다른 게임에도 반영
+      const names=splitNames(rosters[nm]);
+      if($('wheelNames'))$('wheelNames').value=names.join('\\n');
+      if($('pkNames'))$('pkNames').value=names.join('\\n');
+      if($('tNames'))$('tNames').value=names.join('\\n');
+      $('rosterModal').classList.remove('on');toast('📂 "'+nm+'" 불러옴 (모든 게임에 반영)');
     });
     row.querySelector('.rm-del').addEventListener('click',()=>{
       const r=getRosters();delete r[nm];saveRosters(r);renderRosterList();toast('🗑 "'+nm+'" 삭제됨');
@@ -898,12 +913,16 @@ $('ladderOpen').addEventListener('click',()=>{
   ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder(false);
 });
 function buildLadder(keep){
-  const n=Math.min(10,Math.max(2,parseInt($('ladderCnt').value)||4));
+  const useRoster=$('ladderUseRoster')&&$('ladderUseRoster').checked;
+  let rosterNames=[];
+  if(useRoster){rosterNames=splitNames($('nameList').value);}
+  const n=useRoster&&rosterNames.length?Math.min(10,rosterNames.length):Math.min(10,Math.max(2,parseInt($('ladderCnt').value)||4));
   const auto=$('ladderAuto').checked;
   let tops,bottoms;
   if(keep&&ladder&&ladder.n===n){tops=ladder.tops.slice();bottoms=ladder.bottoms.slice();}
   else{
-    tops=Array.from({length:n},()=>'');
+    tops=useRoster&&rosterNames.length?rosterNames.slice(0,n):Array.from({length:n},()=>'');
+    while(tops.length<n)tops.push('');
     bottoms=auto?makeAutoResults(n):Array.from({length:n},()=>'');
   }
   // 사다리 가로줄 무작위 (매번 새로)
@@ -915,7 +934,7 @@ function buildLadder(keep){
   lcv.width=Math.min(660,Math.max(400,n*94));lcv.height=470;
   ladder={tops,bottoms,n,ROWS,rungs,auto,results:null};
   $('ladderInfo').textContent=n+'명';
-  $('ladderResult').textContent='위·아래 칸을 클릭해 입력하고, [사다리 시작]을 누르세요';
+  $('ladderResult').textContent='칸을 클릭해 입력 (Enter 확정) · [사다리 시작]을 누르세요';
   drawLadder();
 }
 function makeAutoResults(n){return Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝').sort(()=>Math.random()-.5);}
@@ -970,30 +989,46 @@ function pathFor(startCol){
   return {endCol:col,path};
 }
 // 칸 클릭: 위/아래 입력
-lcv.addEventListener('click',e=>{
-  if(!ladder||ladderBusy)return;
+function ladderEditAt(c,kind){
+  // 캔버스 좌표 → 화면 좌표
+  const rect=lcv.getBoundingClientRect();
+  const sx=rect.left+ladderX(c)*(rect.width/lcv.width);
+  const sy=rect.top+(kind==='top'?(ladderTopY()-30):(ladderBotY()+30))*(rect.height/lcv.height);
+  const inp=document.createElement('input');
+  inp.type='text';inp.maxLength=6;inp.className='ladder-edit iv';
+  inp.value=(kind==='top'?ladder.tops[c]:ladder.bottoms[c])||'';
+  inp.style.cssText=`position:fixed;left:${sx-40}px;top:${sy-15}px;width:80px;height:30px;z-index:200;text-align:center;font-weight:700;border:2px solid #F68C1F;border-radius:8px;background:#fff;color:#222;font-family:inherit;font-size:13px;`;
+  document.body.appendChild(inp);
+  inp.focus();inp.select();
+  const commit=()=>{
+    const v=inp.value.trim().slice(0,6);
+    if(kind==='top')ladder.tops[c]=v;else ladder.bottoms[c]=v;
+    ladder.results=null;drawLadder();
+    if(inp.parentNode)inp.remove();
+  };
+  inp.addEventListener('keydown',ev=>{
+    if(ev.key==='Enter'){ev.preventDefault();commit();}
+    else if(ev.key==='Escape'){ev.preventDefault();inp.remove();}
+  });
+  inp.addEventListener('blur',commit);
+}
+function ladderHit(e){
   const rect=lcv.getBoundingClientRect();
   const cx=(e.clientX-rect.left)*(lcv.width/rect.width);
   const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
   for(let c=0;c<ladder.n;c++){
     if(Math.abs(cx-ladderX(c))<44){
-      // 상단 이름 영역 (박스 주변 넉넉히)
-      if(cy<ladderTopY()){
-        askInput('참가자 '+(c+1)+' 이름',ladder.tops[c]||'',v=>{
-          ladder.tops[c]=v.slice(0,6);ladder.results=null;drawLadder();
-        });
-        return;
-      }
-      // 하단 결과 영역
-      if(cy>ladderBotY()){
-        if(ladder.auto){toast('결과 자동 모드예요. 설정에서 자동을 끄면 직접 입력 가능');return;}
-        askInput('결과 '+(c+1),ladder.bottoms[c]||'',v=>{
-          ladder.bottoms[c]=v.slice(0,6);ladder.results=null;drawLadder();
-        });
-        return;
-      }
+      if(cy<ladderTopY())return {c,kind:'top'};
+      if(cy>ladderBotY())return {c,kind:'bottom'};
     }
   }
+  return null;
+}
+lcv.addEventListener('click',e=>{
+  if(!ladder||ladderBusy)return;
+  const hit=ladderHit(e);if(!hit)return;
+  if(hit.kind==='bottom'&&ladder.auto){toast('결과 자동 모드예요. 설정에서 자동을 끄면 직접 입력 가능');return;}
+  ladderEditAt(hit.c,hit.kind);
 });
 // 시작: 전원 동시에 경로 그리며 결과 확정
 function runLadderAll(){
@@ -2335,7 +2370,10 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
   if(e.key==='Escape'){
-    if(expWrap&&expWrap.classList.contains('on'))expWrap.classList.remove('on');
+    const curPanel=document.querySelector('.panel.on');
+    if($('proMenu')&&$('proMenu').classList.contains('on'))$('proMenu').classList.remove('on');
+    else if($('rosterModal')&&$('rosterModal').classList.contains('on'))$('rosterModal').classList.remove('on');
+    else if(expWrap&&expWrap.classList.contains('on'))expWrap.classList.remove('on');
     else if(proWrap&&proWrap.classList.contains('on'))proWrap.classList.remove('on');
     else if($('noiseGuide').classList.contains('on'))$('noiseGuide').classList.remove('on');
     else if(drawWrap.classList.contains('on'))drawWrap.classList.remove('on');
@@ -2343,6 +2381,7 @@ document.addEventListener('keydown',e=>{
     else if(gameWrap.classList.contains('on'))closeGame();
     else if(ladderWrap&&ladderWrap.classList.contains('on'))ladderWrap.classList.remove('on');
     else if($('camWrap').classList.contains('on'))closeCam();
+    else if(curPanel)setPanel(null); // AI보조·번역 등 열린 패널 닫기
     else if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();
   }
 });
