@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('cm', {
   verifyPro: (p) => ipcRenderer.invoke('verify-pro', p),
   aiChat: (p) => ipcRenderer.invoke('ai-chat', p),
   aiProxy: (p) => ipcRenderer.invoke('ai-proxy', p),
+  sttProxy: (p) => ipcRenderer.invoke('stt-proxy', p),
   saveImage: (p) => ipcRenderer.invoke('save-image', p),
   saveText: (p) => ipcRenderer.invoke('save-text', p),
   saveBinary: (p) => ipcRenderer.invoke('save-binary', p),

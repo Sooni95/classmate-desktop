@@ -177,6 +177,23 @@ function createOverlay() {
     }
   });
 
+  // 음성 인식 (Whisper 프록시, Pro 전용) — 오디오 바이너리 전송
+  ipcMain.handle('stt-proxy', async (_e, { bytes, proKey }) => {
+    try {
+      const buf = Buffer.from(bytes);
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/stt?proKey=' + encodeURIComponent(proKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: buf,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+      return { ok: true, text: data.text };
+    } catch (err) {
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
+
   // AI 프록시 (Pro 전용, 회사 키로 서버가 대신 호출) — 키 입력 불필요
   ipcMain.handle('ai-proxy', async (_e, { prompt, system, proKey, max_tokens }) => {
     try {

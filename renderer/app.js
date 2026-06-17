@@ -96,53 +96,90 @@ async function callAI({prompt,system,max_tokens}){
   return await window.cm.aiChat({prompt,system,apiKey:key});
 }
 
-/* ===== 음성 실시간 자막 ===== */
-let vcRec=null,vcOn=false;
-const capBar=$('capBar');
+/* ===== 음성 실시간 자막 (Whisper 서버 방식) ===== */
+const capBox=$('capBox');
+let vcOn=false,vcRecorder=null,vcStream=null,vcChunks=[],vcLoop=null;
+// 자막 박스 이동
+makeDrag($('capBoxBar'),(e,s)=>{
+  if(!s){const r=capBox.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  capBox.style.left=(e.clientX-s.dx)+'px';capBox.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='capBoxClose');
+// 자막 박스 크기조절
+makeDrag(capBox.querySelector('.cb-rs'),(e,s)=>{
+  if(!s){const r=capBox.getBoundingClientRect();return{x:e.clientX,y:e.clientY,w:r.width,h:r.height};}
+  capBox.style.width=Math.max(280,s.w+(e.clientX-s.x))+'px';
+  capBox.style.height=Math.max(110,s.h+(e.clientY-s.y))+'px';
+});
+$('capBoxClose').addEventListener('click',()=>{stopVC();});
+function vcLangsSel(){return [...$('vcLangs').querySelectorAll('input:checked')].map(c=>({v:c.value,label:c.parentElement.textContent.trim()}));}
 function applyCapStyle(){
-  const size=$('vcSize').value+'px';
-  capBar.style.fontSize=size;
-  const bgOn=$('vcBgOn').checked, bg=$('vcBg').value, fg=$('vcFg').value;
-  [$('capOrig'),$('capTrans')].forEach(el=>{
-    el.style.color=fg;
-    el.style.background=bgOn?bg:'transparent';
-    el.style.textShadow=bgOn?'none':'0 2px 6px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9)';
-  });
+  const size=$('vcSize').value+'px';capBox.style.fontSize=size;
+  const bgOn=$('vcBgOn').checked,bg=$('vcBg').value,fg=$('vcFg').value;
+  const shadow=bgOn?'none':'0 2px 6px rgba(0,0,0,.95),0 0 3px rgba(0,0,0,.95)';
+  $('capOrig').style.color=fg;$('capOrig').style.background=bgOn?bg:'transparent';$('capOrig').style.textShadow=shadow;
+  capBox.querySelectorAll('.cap-line').forEach(el=>{el.style.color=fg;el.style.background=bgOn?bg:'transparent';el.style.textShadow=shadow;});
 }
 ['vcSize','vcBg','vcFg','vcBgOn'].forEach(id=>$(id).addEventListener('input',applyCapStyle));
-async function vcTranslate(text){
-  $('capOrig').textContent=text;
-  const lang=$('vcLang').value;
-  const sys='Translate the Korean text into '+lang+'. Output ONLY the translation, no notes. Simple and natural.';
-  const r=await callAI({prompt:text,system:sys,max_tokens:512});
-  if(r.ok)$('capTrans').textContent=r.text;
-  else if(r.message==='NO_KEY'){$('vcMsg').textContent='⚙ Pro 인증 또는 API 키 필요';stopVC();}
+// 인식된 한국어 → 원문 표시 + 선택 언어들로 번역
+async function vcProcess(koText){
+  if(!koText)return;
+  $('capOrig').textContent='🇰🇷 '+koText;
+  const langs=vcLangsSel();
+  const list=$('capTransList');list.innerHTML='';
+  // 각 언어 줄 미리 만들기
+  const rows={};
+  langs.forEach(l=>{
+    const d=document.createElement('div');d.className='cap-line';d.innerHTML='<span class="cap-flag">'+l.label.split(' ')[0]+'</span>…';
+    list.appendChild(d);rows[l.v]=d;
+  });
+  applyCapStyle();
+  // 병렬 번역
+  await Promise.all(langs.map(async l=>{
+    const sys='Translate the Korean text into '+l.v+'. Output ONLY the translation, no notes. Simple and natural.';
+    const r=await callAI({prompt:koText,system:sys,max_tokens:400});
+    if(rows[l.v])rows[l.v].innerHTML='<span class="cap-flag">'+l.label.split(' ')[0]+'</span>'+(r.ok?r.text:'(번역 실패)');
+    applyCapStyle();
+  }));
 }
-function startVC(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){$('vcMsg').textContent='이 환경에서는 음성 인식을 지원하지 않아요';return;}
-  vcRec=new SR();vcRec.lang='ko-KR';vcRec.continuous=true;vcRec.interimResults=true;
-  let lastFinal='';
-  vcRec.onresult=e=>{
-    let interim='',final='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal)final+=t;else interim+=t;
+// 녹음 사이클: 4초씩 녹음 → Whisper → 처리 → 반복
+async function vcCycle(){
+  if(!vcOn)return;
+  vcChunks=[];
+  try{vcRecorder=new MediaRecorder(vcStream,{mimeType:'audio/webm'});}
+  catch(e){try{vcRecorder=new MediaRecorder(vcStream);}catch(e2){$('vcMsg').textContent='녹음 미지원 환경';stopVC();return;}}
+  vcRecorder.ondataavailable=ev=>{if(ev.data.size)vcChunks.push(ev.data);};
+  vcRecorder.onstop=async()=>{
+    if(!vcOn)return;
+    const blob=new Blob(vcChunks,{type:'audio/webm'});
+    if(blob.size>2000){ // 무음 제외
+      const buf=await blob.arrayBuffer();
+      const proKey=localStorage.getItem('cm_pro_key')||'';
+      const r=await window.cm.sttProxy({bytes:Array.from(new Uint8Array(buf)),proKey});
+      if(r.ok&&r.text)vcProcess(r.text);
+      else if(r.message&&r.message.includes('OPENAI'))$('vcMsg').textContent='서버에 음성인식 키 설정 필요';
     }
-    if(interim)$('capOrig').textContent=interim;
-    if(final&&final.trim()&&final!==lastFinal){lastFinal=final;vcTranslate(final.trim());}
+    if(vcOn)vcCycle(); // 다음 사이클
   };
-  vcRec.onerror=ev=>{$('vcMsg').textContent='음성 인식 오류: '+ev.error;};
-  vcRec.onend=()=>{if(vcOn)try{vcRec.start();}catch(e){}}; // 자동 재시작
-  try{vcRec.start();}catch(e){}
-  vcOn=true;capBar.classList.add('on');applyCapStyle();
-  $('vcToggle').textContent='⏹ 자막 정지';$('vcToggle').classList.add('rec');
-  $('capOrig').textContent='🎤 듣고 있어요…';$('capTrans').textContent='';
-  $('vcMsg').textContent='';
+  vcRecorder.start();
+  vcLoop=setTimeout(()=>{if(vcRecorder&&vcRecorder.state!=='inactive')vcRecorder.stop();},4000);
+}
+async function startVC(){
+  if(!isPro()){$('vcMsg').textContent='음성 자막은 Pro 기능이에요';return;}
+  try{vcStream=await navigator.mediaDevices.getUserMedia({audio:true});}
+  catch(e){$('vcMsg').textContent='마이크 권한이 필요해요';return;}
+  vcOn=true;capBox.classList.add('on');
+  if(!capBox.style.left){const d=dockDisp();capBox.style.left=(d.x+d.w*0.2)+'px';capBox.style.top=(d.y+d.h*0.7)+'px';}
+  applyCapStyle();
+  $('capOrig').textContent='🎤 듣고 있어요…';$('capTransList').innerHTML='';
+  $('vcToggle').textContent='⏹ 자막 정지';$('vcToggle').classList.add('rec');$('vcMsg').textContent='';
+  vcCycle();
 }
 function stopVC(){
-  vcOn=false;if(vcRec)try{vcRec.stop();}catch(e){}
-  capBar.classList.remove('on');
+  vcOn=false;
+  if(vcLoop)clearTimeout(vcLoop);
+  if(vcRecorder&&vcRecorder.state!=='inactive')try{vcRecorder.stop();}catch(e){}
+  if(vcStream)vcStream.getTracks().forEach(t=>t.stop());
+  capBox.classList.remove('on');
   $('vcToggle').textContent='🎤 자막 시작';$('vcToggle').classList.remove('rec');
 }
 $('vcToggle').addEventListener('click',()=>vcOn?stopVC():startVC());
@@ -487,7 +524,7 @@ makeDrag($('brand'),(e,start)=>{
   const p=clampDock(e.clientX-start.dx,e.clientY-start.dy,start.w,start.h);
   dock.style.left=p.x+'px';dock.style.top=p.y+'px';
   placePanels();
-});
+},e=>e.target.closest('#eggLogo')); // 로고 클릭 시 드래그 안 함 (이스터에그용)
 // 시작 위치: 주 모니터 하단 중앙 (멀티모니터 합산 중앙 ✕)
 async function initDockPos(){
   await refreshDisplays();
@@ -515,7 +552,7 @@ setProUI();
   let cnt=0,last=0;
   const lo=$('eggLogo');
   if(!lo)return;
-  lo.addEventListener('click',e=>{
+  lo.addEventListener('pointerdown',e=>{
     e.stopPropagation();
     const now=Date.now();
     cnt=(now-last<1500)?cnt+1:1;last=now; // 1.5초로 넉넉하게
@@ -523,7 +560,7 @@ setProUI();
     if(cnt>=7){
       cnt=0;
       const eg=$('eggCredit');eg.classList.add('on');
-      setTimeout(()=>eg.classList.remove('on'),4000);
+      setTimeout(()=>eg.classList.remove('on'),4500);
     }
   });
   // 모달 클릭하면 바로 닫기

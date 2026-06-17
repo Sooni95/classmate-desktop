@@ -148,11 +148,24 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .vc-msg{font-size:11.5px;color:var(--amber);min-height:14px;margin-top:8px;text-align:center;}
 #vcToggle.rec{background:var(--red);}
 
-/* 실시간 자막 오버레이 */
-#capBar{position:fixed;left:0;bottom:6%;width:100%;z-index:88;display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none;padding:0 5%;box-sizing:border-box;}
-#capBar.on{display:flex;}
-#capOrig,#capTrans{max-width:90%;text-align:center;padding:6px 20px;border-radius:12px;font-weight:800;line-height:1.35;word-break:keep-all;}
-#capOrig{font-size:.62em;opacity:.92;}
+/* 음성 언어 복수선택 */
+.vc-langs{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;flex:1;}
+.vc-langs label{font-size:11px;color:#cdd8e2;display:flex;align-items:center;gap:4px;cursor:pointer;}
+.vc-langs input{accent-color:var(--or);}
+
+/* 실시간 자막 박스 (이동/크기조절) */
+#capBox{position:fixed;left:0;top:0;z-index:88;display:none;flex-direction:column;background:rgba(0,0,0,.001);min-width:320px;min-height:120px;width:60%;}
+#capBox.on{display:flex;}
+#capBoxBar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(246,140,31,.85);border-radius:8px 8px 0 0;cursor:grab;}
+#capBoxBar:active{cursor:grabbing;}
+#capBoxBar .cb-grip{font-size:11px;font-weight:700;color:#fff;}
+#capBoxBar #capBoxClose{border:none;background:rgba(0,0,0,.25);width:20px;height:20px;border-radius:5px;color:#fff;font-size:11px;cursor:pointer;}
+#capBody{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:16px;overflow:auto;}
+#capOrig{font-size:.6em;opacity:.9;font-weight:700;text-align:center;padding:4px 16px;border-radius:10px;line-height:1.3;word-break:keep-all;}
+#capTransList{display:flex;flex-direction:column;gap:6px;align-items:center;width:100%;}
+.cap-line{font-weight:800;text-align:center;padding:5px 18px;border-radius:11px;line-height:1.35;word-break:keep-all;}
+.cap-line .cap-flag{font-size:.6em;opacity:.7;margin-right:6px;}
+.cb-rs{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--or) 50%);border-radius:0 0 6px 0;}
 
 /* AI 교수 보조 */
 .ai-quick{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;}
@@ -773,23 +786,22 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     </div>
   </div>
   <div class="pane" id="pane-voice">
-    <div class="vc-row">
-      <span>번역 언어</span>
-      <select id="vcLang">
-        <option value="Vietnamese">🇻🇳 베트남어</option>
-        <option value="Chinese">🇨🇳 중국어</option>
-        <option value="Russian">🇷🇺 러시아어</option>
-        <option value="Tagalog (Filipino)">🇵🇭 필리핀어</option>
-        <option value="Uzbek">🇺🇿 우즈베크어</option>
-        <option value="Thai">🇹🇭 태국어</option>
-        <option value="Japanese">🇯🇵 일본어</option>
-        <option value="English">🇺🇸 영어</option>
-      </select>
+    <div class="vc-row" style="align-items:flex-start"><span>번역 언어<br><small style="font-weight:400;color:#6b7884">(복수 선택)</small></span>
+      <div class="vc-langs" id="vcLangs">
+        <label><input type="checkbox" value="Vietnamese" checked> 🇻🇳 베트남</label>
+        <label><input type="checkbox" value="Chinese"> 🇨🇳 중국</label>
+        <label><input type="checkbox" value="Russian"> 🇷🇺 러시아</label>
+        <label><input type="checkbox" value="Tagalog (Filipino)"> 🇵🇭 필리핀</label>
+        <label><input type="checkbox" value="Uzbek"> 🇺🇿 우즈베크</label>
+        <label><input type="checkbox" value="Thai"> 🇹🇭 태국</label>
+        <label><input type="checkbox" value="Japanese"> 🇯🇵 일본</label>
+        <label><input type="checkbox" value="English"> 🇺🇸 영어</label>
+      </div>
     </div>
     <button class="btn-go" id="vcToggle">🎤 자막 시작</button>
-    <div class="vc-hint">말하면 화면 하단에 <b>원문 + 번역 자막</b>이 큼직하게 표시돼요.</div>
+    <div class="vc-hint">말하면 <b>음성 인식 → 번역</b>되어 자막 박스에 표시돼요. 박스는 <b>드래그로 이동</b>, 크기 조절 가능.</div>
     <div class="vc-set">
-      <div class="vc-row"><span>자막 크기</span><input type="range" id="vcSize" min="20" max="64" value="34"></div>
+      <div class="vc-row"><span>자막 크기</span><input type="range" id="vcSize" min="18" max="60" value="30"></div>
       <div class="vc-row"><span>배경색</span><input type="color" id="vcBg" value="#000000"><span style="flex:1"></span><label class="vc-ck"><input type="checkbox" id="vcBgOn" checked> 배경</label></div>
       <div class="vc-row"><span>글자색</span><input type="color" id="vcFg" value="#ffffff"></div>
     </div>
@@ -797,10 +809,14 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 </div>
 
-<!-- 실시간 자막 오버레이 -->
-<div id="capBar" class="iv">
-  <div id="capOrig"></div>
-  <div id="capTrans"></div>
+<!-- 실시간 자막 박스 (이동/크기조절 가능) -->
+<div id="capBox" class="iv">
+  <div id="capBoxBar"><span class="cb-grip">✥ 자막</span><button id="capBoxClose">✕</button></div>
+  <div id="capBody">
+    <div id="capOrig"></div>
+    <div id="capTransList"></div>
+  </div>
+  <div class="cb-rs"></div>
 </div>
 
 <div class="panel iv" id="p-pin">
