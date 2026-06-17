@@ -4,6 +4,7 @@
 <title>ClassMate Overlay</title>
 <script src="../assets/qrcode.min.js"></script>
 <script src="../assets/jspdf.min.js"></script>
+<script src="../assets/xlsx.mini.min.js"></script>
 <style>
 :root{
   /* 코코아팹 브랜드 오렌지 #F68C1F */
@@ -119,6 +120,23 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .su-hint{font-size:10.5px;color:#6b7884;line-height:1.6;margin-top:9px;}
 .su-hint b{color:var(--or);}
 
+
+/* Pro 기능 메뉴 */
+#proMenu{position:fixed;z-index:95;display:none;flex-direction:column;gap:3px;background:var(--dk);border:1px solid var(--or);border-radius:12px;padding:6px;box-shadow:var(--shadow);min-width:180px;}
+#proMenu.on{display:flex;}
+#proMenu button{border:none;background:none;color:#e7edf3;text-align:left;padding:10px 13px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+#proMenu button:hover{background:rgba(246,140,31,.15);}
+
+/* 명단 드롭존 */
+#rmDrop{border:2px dashed rgba(246,140,31,.5);border-radius:12px;padding:20px 14px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:9px;}
+#rmDrop.drag{border-color:var(--or);background:rgba(246,140,31,.12);}
+#rmDrop .rd-ic{font-size:30px;}
+#rmDrop .rd-t{font-size:12.5px;color:#cdd8e2;font-weight:600;margin-top:6px;}
+#rmDrop .rd-s{font-size:11px;color:#9fb0bf;margin-top:4px;}
+.rd-pick{border:none;background:none;color:var(--or);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;}
+.rm-tmpl{width:100%;border:none;background:var(--dk2);color:#9fb0bf;border-radius:8px;padding:9px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-bottom:12px;}
+.rm-tmpl:hover{background:rgba(246,140,31,.12);color:#fff;}
+.rm-or{text-align:center;font-size:10.5px;color:#6b7884;margin-bottom:10px;}
 
 /* 명단 관리 모달 */
 #rosterModal{position:fixed;inset:0;z-index:128;display:none;align-items:center;justify-content:center;background:rgba(8,11,15,.6);}
@@ -654,7 +672,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     </div>
     <div class="pane on" id="pane-nm">
       <button class="roster-pro prolock" data-pro="roster" id="rosterBtn">📋 명단 저장·불러오기 <span class="pro-badge">🔒PRO</span></button>
-      <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
+      <textarea class="names" id="nameList" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)&#10;예) 김철수, 이영희, 박민준"></textarea>
       <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
       <div class="pres" id="pres">— 준비 —</div><div class="hist" id="hist"></div>
       <div class="ctrl"><button class="btn-go" id="pickBtn">뽑기!</button><button class="btn-g" id="pickRst">복원</button></div>
@@ -680,12 +698,12 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   </div>
 
   <div class="gcfg" id="cfgWheel">
-    <textarea class="names" id="wheelNames" placeholder="이름을 줄바꿈으로 입력"></textarea>
+    <textarea class="names" id="wheelNames" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)&#10;예) 김철수, 이영희, 박민준"></textarea>
     <div class="gdesc">🎡 위쪽 화살표에 멈추는 사람 당첨!</div>
     <button class="btn-go" id="wheelOpen">돌림판 열기</button>
   </div>
   <div class="gcfg" id="cfgPk">
-    <textarea class="names" id="pkNames" placeholder="이름을 줄바꿈으로 입력&#10;김수훈*5  ← 별표로 구슬 개수 (5개)"></textarea>
+    <textarea class="names" id="pkNames" placeholder="이름 입력 (줄바꿈/콤마 구분)&#10;김철수, 이영희&#10;김수훈*5 ← 별표로 구슬 개수"></textarea>
     <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
@@ -700,7 +718,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 <!-- 사다리타기 모달 -->
 <div id="ladderWrap" class="iv">
   <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
-  <canvas id="ladderCv"></canvas>
+  <canvas id="ladderCv" class="iv"></canvas>
   <div id="ladderResult"></div>
   <div id="ladderFoot"><button class="btn-go" id="ladderStart">🪜 사다리 시작</button><button class="btn-g" id="ladderReset">다시 타기</button></div>
 </div>
@@ -1044,9 +1062,22 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     <div class="egg-thx">함께 만들어 갑니다 🧡</div>
   </div>
 </div>
+<div id="proMenu" class="iv">
+  <button data-act="trans">🌏 다문화 번역</button>
+  <button data-act="ai">🤖 AI 교수 보조</button>
+  <button data-act="roster">📋 명단 저장·불러오기</button>
+</div>
 <div id="rosterModal" class="iv">
   <div class="rm-card">
     <div class="rm-head"><span>📋 명단 관리</span><button id="rmClose">✕</button></div>
+    <div id="rmDrop">
+      <div class="rd-ic">📄</div>
+      <div class="rd-t">엑셀 명단을 여기로 끌어다 놓으세요</div>
+      <div class="rd-s">.xlsx 파일 · 또는 <button id="rmPick" class="rd-pick">파일 선택</button></div>
+      <input type="file" id="rmFile" accept=".xlsx,.xls,.csv" hidden>
+    </div>
+    <button id="rmTemplate" class="rm-tmpl">📥 양식 다운로드 (이름·번호·모둠·가중치)</button>
+    <div class="rm-or">— 또는 직접 저장 —</div>
     <div class="rm-save">
       <input type="text" id="rmName" placeholder="명단 이름 (예: 3학년 2반)" maxlength="20">
       <button id="rmSave">💾 현재 명단 저장</button>

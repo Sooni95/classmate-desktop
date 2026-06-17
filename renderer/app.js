@@ -437,7 +437,28 @@ makeDrag($('proHead'),(e,s)=>{
 },e=>e.target.id==='proClose');
 
 // 독 Pro 버튼 → Pro 안내 모달 (해제 시 다문화번역 패널 바로 열기)
-$('proBtn').addEventListener('click',()=>{ if(isPro())setPanel('p-trans'); else openPro(); });
+$('proBtn').addEventListener('click',()=>{
+  if(!isPro()){openPro();return;}
+  // Pro 인증됨 → 기능 메뉴 표시 (Pro 버튼 위에)
+  const menu=$('proMenu');
+  if(menu.classList.contains('on')){menu.classList.remove('on');return;}
+  const r=$('proBtn').getBoundingClientRect();
+  menu.classList.add('on');
+  menu.style.left=Math.max(8,r.left+r.width/2-90)+'px';
+  menu.style.top=(r.top-menu.offsetHeight-8)+'px';
+});
+$('proMenu').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('proMenu').classList.remove('on');
+  const act=b.dataset.act;
+  if(act==='trans')setPanel('p-trans');
+  else if(act==='ai')setPanel('p-ai');
+  else if(act==='roster')openRosterModal();
+}));
+// 메뉴 바깥 클릭 시 닫기
+document.addEventListener('click',e=>{
+  if($('proMenu').classList.contains('on')&&!e.target.closest('#proMenu')&&e.target.id!=='proBtn'&&!e.target.closest('#proBtn'))
+    $('proMenu').classList.remove('on');
+});
 // Pro 모달 안의 기능 항목 클릭 → 해제 상태면 해당 패널로
 const PRO_PANEL={'다문화 번역':'p-trans','AI 교수 보조':'p-ai'};
 document.querySelectorAll('#proWrap .pro-item').forEach(it=>{
@@ -494,6 +515,61 @@ $('rmSave').addEventListener('click',()=>{
   $('rmName').value='';renderRosterList();toast('💾 "'+nm+'" 저장됨');
 });
 $('rmClose').addEventListener('click',()=>$('rosterModal').classList.remove('on'));
+
+// ── 엑셀 명단 가져오기 (드래그앤드롭 + 파일선택) ──
+$('rmTemplate').addEventListener('click',async()=>{
+  const r=await window.cm.saveTemplate();
+  if(r&&r.ok)toast('📥 양식을 저장했어요');
+});
+const rmDrop=$('rmDrop');
+$('rmPick').addEventListener('click',e=>{e.stopPropagation();$('rmFile').click();});
+rmDrop.addEventListener('click',()=>$('rmFile').click());
+$('rmFile').addEventListener('change',e=>{if(e.target.files[0])parseRosterFile(e.target.files[0]);});
+['dragenter','dragover'].forEach(ev=>rmDrop.addEventListener(ev,e=>{e.preventDefault();rmDrop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>rmDrop.addEventListener(ev,e=>{e.preventDefault();rmDrop.classList.remove('drag');}));
+rmDrop.addEventListener('drop',e=>{
+  const f=e.dataTransfer.files[0];
+  if(f)parseRosterFile(f);
+});
+function parseRosterFile(file){
+  const name=file.name.toLowerCase();
+  if(!/\.(xlsx|xls|csv)$/.test(name)){toast('xlsx 또는 csv 파일을 올려주세요');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!rows.length){toast('빈 파일이에요');return;}
+      // 헤더 찾기 (이름 열 위치)
+      let head=rows[0].map(x=>String(x).trim());
+      const colName=head.findIndex(h=>/이름|성명|name/i.test(h));
+      const colNo=head.findIndex(h=>/번호|no|번/i.test(h));
+      const colTeam=head.findIndex(h=>/모둠|조|팀|team|group/i.test(h));
+      const colW=head.findIndex(h=>/가중치|개수|weight|count/i.test(h));
+      const ni=colName>=0?colName:0; // 이름 못 찾으면 첫 열
+      const data=rows.slice(colName>=0?1:0).filter(r=>String(r[ni]||'').trim());
+      if(!data.length){toast('이름 데이터가 없어요');return;}
+      // 발표자 명단(nameList)에 이름 채우기
+      const names=data.map(r=>String(r[ni]).trim());
+      $('nameList').value=names.join('\\n');loadN();
+      // 핀볼: 가중치 반영 (이름*N)
+      if(colW>=0){
+        const pk=data.map(r=>{const w=parseInt(r[colW])||1;return w>1?String(r[ni]).trim()+'*'+Math.min(10,w):String(r[ni]).trim();});
+        if($('pkNames'))$('pkNames').value=pk.join('\\n');
+      }else if($('pkNames'))$('pkNames').value=names.join('\\n');
+      // 돌림판도 채우기
+      if($('wheelNames'))$('wheelNames').value=names.join('\\n');
+      // 모둠 정보가 있으면 안내
+      let msg='📂 '+names.length+'명 불러옴';
+      if(colTeam>=0)msg+=' (모둠 정보 포함)';
+      toast(msg);
+      // 저장 이름 자동 추천
+      if(!$('rmName').value)$('rmName').value=file.name.replace(/\\.(xlsx|xls|csv)$/i,'');
+    }catch(err){toast('파일을 읽지 못했어요: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // 구독 안내 받기 → Google Forms (기본 브라우저에서 열기)
 const PRO_FORM_URL='https://forms.gle/ZK8hxnx65injpK3R8';
@@ -706,10 +782,12 @@ makeDrag($('tFloat'),(e,s)=>{
 /* ===== 발표자 (공용 명단 = 돌림판/핀볼도 사용) ===== */
 let pool=[],orig=[],pHist=[],nHist=[];
 const pres=$('pres'),hist=$('hist');
-function loadN(){orig=$('nameList').value.split('\n').map(s=>s.trim()).filter(Boolean);pool=[...orig];}
+// 이름 분리: 줄바꿈 + 콤마(,， 둘 다) 인식
+function splitNames(str){return (str||'').split(/[\n,，]/).map(s=>s.trim()).filter(Boolean);}
+function loadN(){orig=splitNames($('nameList').value);pool=[...orig];}
 function candidates(){loadIfStale();return $('noRep').checked?pool:orig;}
 function loadIfStale(){ // textarea 변경분 반영하되 pool 유지
-  const cur=$('nameList').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const cur=splitNames($('nameList').value);
   if(JSON.stringify(cur)!==JSON.stringify(orig)){orig=cur;pool=[...orig];}
 }
 function recordWin(p){
@@ -732,7 +810,7 @@ $('pickN').addEventListener('click',()=>{
   });
 });
 $('tBtn').addEventListener('click',()=>{
-  const names=$('tNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const names=splitNames($('tNames').value);
   const n=parseInt($('tN').value)||4;
   if(names.length<n){$('tRes').textContent='인원이 팀 수보다 적습니다';return;}
   const sh=[...names].sort(()=>Math.random()-.5);
@@ -748,7 +826,7 @@ const BRAND=['#F68C1F','#FFB45E','#D9760F','#5b8def','#34c759','#e05544','#a78bf
 // "이름*5" → 구슬 5개 (withCount=true일 때)
 function parseNames(txt,withCount){
   const out=[];
-  txt.split('\n').map(s=>s.trim()).filter(Boolean).forEach(line=>{
+  splitNames(txt).forEach(line=>{
     const m=line.match(/^(.*?)\s*\*\s*(\d+)$/);
     if(m&&withCount){const n=Math.min(10,Math.max(1,+m[2]));for(let i=0;i<n;i++)out.push(m[1].trim());}
     else out.push((m?m[1]:line).trim());
@@ -898,14 +976,16 @@ lcv.addEventListener('click',e=>{
   const cx=(e.clientX-rect.left)*(lcv.width/rect.width);
   const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
   for(let c=0;c<ladder.n;c++){
-    if(Math.abs(cx-ladderX(c))<42){
-      if(Math.abs(cy-(ladderTopY()-30))<22){
+    if(Math.abs(cx-ladderX(c))<44){
+      // 상단 이름 영역 (박스 주변 넉넉히)
+      if(cy<ladderTopY()){
         askInput('참가자 '+(c+1)+' 이름',ladder.tops[c]||'',v=>{
           ladder.tops[c]=v.slice(0,6);ladder.results=null;drawLadder();
         });
         return;
       }
-      if(Math.abs(cy-(ladderBotY()+30))<22){
+      // 하단 결과 영역
+      if(cy>ladderBotY()){
         if(ladder.auto){toast('결과 자동 모드예요. 설정에서 자동을 끄면 직접 입력 가능');return;}
         askInput('결과 '+(c+1),ladder.bottoms[c]||'',v=>{
           ladder.bottoms[c]=v.slice(0,6);ladder.results=null;drawLadder();

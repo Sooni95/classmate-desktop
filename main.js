@@ -269,6 +269,20 @@ function createOverlay() {
 
   ipcMain.on('open-external', (_e, url) => { try { shell.openExternal(url); } catch (e) {} });
 
+  // 명단 양식 다운로드
+  ipcMain.handle('save-template', async () => {
+    try {
+      const src = require('path').join(__dirname, 'assets', 'roster_template.xlsx');
+      const r = await dialog.showSaveDialog(win, {
+        defaultPath: 'ClassMate_명단양식.xlsx',
+        filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+      });
+      if (r.canceled || !r.filePath) return { ok: false };
+      require('fs').copyFileSync(src, r.filePath);
+      return { ok: true };
+    } catch (err) { return { ok: false, message: String(err) }; }
+  });
+
   ipcMain.on('quit-app', () => app.quit());
 }
 
