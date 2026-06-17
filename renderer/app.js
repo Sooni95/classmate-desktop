@@ -168,7 +168,8 @@ async function startVC(){
   try{vcStream=await navigator.mediaDevices.getUserMedia({audio:true});}
   catch(e){$('vcMsg').textContent='마이크 권한이 필요해요';return;}
   vcOn=true;capBox.classList.add('on');
-  if(!capBox.style.left){const d=dockDisp();capBox.style.left=(d.x+d.w*0.2)+'px';capBox.style.top=(d.y+d.h*0.7)+'px';}
+  if(!capBox.style.width){capBox.style.width='560px';capBox.style.height='200px';}
+  if(!capBox.style.left){const d=dockDisp();capBox.style.left=(d.x+(d.w-560)/2)+'px';capBox.style.top=(d.y+d.h*0.62)+'px';}
   applyCapStyle();
   $('capOrig').textContent='🎤 듣고 있어요…';$('capTransList').innerHTML='';
   $('vcToggle').textContent='⏹ 자막 정지';$('vcToggle').classList.add('rec');$('vcMsg').textContent='';
@@ -547,7 +548,7 @@ setProUI();
     $('pillVer').textContent=ver;
   }catch(e){}
 })();
-// 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 모달
+// 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 모달 (조용히)
 (()=>{
   let cnt=0,last=0;
   const lo=$('eggLogo');
@@ -555,15 +556,15 @@ setProUI();
   lo.addEventListener('pointerdown',e=>{
     e.stopPropagation();
     const now=Date.now();
-    cnt=(now-last<1500)?cnt+1:1;last=now; // 1.5초로 넉넉하게
-    if(cnt>=3&&cnt<7)toast('🦋 '+cnt+'/7…'); // 진행 힌트
+    cnt=(now-last<1500)?cnt+1:1;last=now;
     if(cnt>=7){
       cnt=0;
-      const eg=$('eggCredit');eg.classList.add('on');
+      const eg=$('eggCredit');
+      eg.classList.add('on');
+      centerOnDockDisplay(eg.querySelector('.egg-card')); // 독 모니터 중앙
       setTimeout(()=>eg.classList.remove('on'),4500);
     }
   });
-  // 모달 클릭하면 바로 닫기
   $('eggCredit').addEventListener('click',()=>$('eggCredit').classList.remove('on'));
 })();
 // 🦋 이스터에그 2: 콘솔 크레딧 (F12로 발견)
@@ -1489,11 +1490,14 @@ $('suQrSave').addEventListener('click',()=>saveQRImage($('suQr'),'QR_'+($('suUrl
 $('suQrCopy').addEventListener('click',()=>copyQRImage($('suQr')));
 
 /* ===== 다문화 번역 (Anthropic API, BYO Key) ===== */
-let trLang='Vietnamese',trLangKo='베트남어';
+// 텍스트 번역: 복수 언어 토글
 $('trLangs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-  $('trLangs').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on');trLang=b.dataset.l;trLangKo=b.dataset.n;
+  b.classList.toggle('on'); // 복수 선택
 }));
+function trSelLangs(){
+  const sel=[...$('trLangs').querySelectorAll('button.on')].map(b=>({v:b.dataset.l,flag:b.dataset.n}));
+  return sel.length?sel:[{v:'Vietnamese',flag:'🇻🇳'}];
+}
 // API 키 (기존 AI 기능과 공유: 'ai_key')
 $('trKey').value=localStorage.getItem('ai_key')||'';
 $('trGear').addEventListener('click',()=>$('trKeyRow').classList.toggle('on'));
@@ -1505,28 +1509,50 @@ function trSay(msg){$('trMsg').textContent=msg;}
 $('trGo').addEventListener('click',async()=>{
   const text=$('trIn').value.trim();
   if(!text){trSay('번역할 문장을 입력하세요');return;}
+  const langs=trSelLangs();
+  const toCap=$('trToCap').checked;
   $('trGo').disabled=true;$('trGo').textContent='번역 중…';trSay('');
-  const sys='You are a translator for Korean elementary classrooms. Translate the user text into '+trLang+'. Output ONLY the translation, no explanations, no quotes. Keep it natural and simple for a child.';
-  const res=await callAI({prompt:text,system:sys,max_tokens:1024});
+  // 자막 박스 모드
+  if(toCap){
+    if(!isPro()&&!(localStorage.getItem('ai_key'))){trSay('⚙ Pro 인증 또는 API 키 필요');$('trGo').disabled=false;$('trGo').textContent='번역하기';return;}
+    capBox.classList.add('on');
+    if(!capBox.style.width){capBox.style.width='560px';capBox.style.height='200px';}
+    if(!capBox.style.left){const d=dockDisp();capBox.style.left=(d.x+(d.w-560)/2)+'px';capBox.style.top=(d.y+d.h*0.6)+'px';}
+    $('capOrig').textContent='🇰🇷 '+text;
+    const list=$('capTransList');list.innerHTML='';
+    const rows={};
+    langs.forEach(l=>{const d=document.createElement('div');d.className='cap-line';d.innerHTML='<span class="cap-flag">'+l.flag+'</span>…';list.appendChild(d);rows[l.v]=d;});
+    applyCapStyle();
+  }
+  // 결과 카드용
+  $('trOrig').textContent='🇰🇷 '+text;
+  const outParts=[];
+  await Promise.all(langs.map(async l=>{
+    const sys='Translate the Korean text into '+l.v+'. Output ONLY the translation, no explanations, no quotes. Natural and simple for a child.';
+    const res=await callAI({prompt:text,system:sys,max_tokens:1024});
+    const t=res.ok?res.text:'(번역 실패)';
+    outParts.push(l.flag+' '+t);
+    if(toCap){const r=$('capTransList').querySelector('.cap-line');} // noop
+    if(toCap&&capBox.classList.contains('on')){
+      const list=$('capTransList');
+      // 해당 언어 줄 갱신
+      [...list.querySelectorAll('.cap-line')].forEach(()=>{});
+    }
+    if(toCap){
+      const rowsAll=$('capTransList').querySelectorAll('.cap-line');
+      // flag로 매칭
+      rowsAll.forEach(rw=>{if(rw.querySelector('.cap-flag').textContent===l.flag)rw.innerHTML='<span class="cap-flag">'+l.flag+'</span>'+t;});
+      applyCapStyle();
+    }
+    if(res.message==='NO_KEY'){trSay('⚙ Pro 인증을 하거나 API 키를 설정하세요');$('trKeyRow').classList.add('on');}
+  }));
   $('trGo').disabled=false;$('trGo').textContent='번역하기';
-  if(res.ok){
-    $('trOrig').textContent='🇰🇷 '+text;
-    $('trOut').textContent=res.text;
-    $('trCard').classList.add('on');
-    trSay('');
-  }else if(res.message==='NO_KEY'){trSay('⚙ Pro 인증을 하거나 API 키를 설정하세요');$('trKeyRow').classList.add('on');}
-  else if(res.status===401){trSay('API 키가 올바르지 않아요 — ⚙ 설정 확인');$('trKeyRow').classList.add('on');}
-  else{trSay('번역 오류: '+(res.message||'인터넷 연결 확인'));}
+  if(outParts.length){
+    $('trOut').innerHTML=outParts.map(p=>'<div style="margin:4px 0">'+p+'</div>').join('');
+    $('trCard').classList.add('on');trSay('');
+  }
 });
-$('trCopy').addEventListener('click',()=>{window.cm.copyText($('trOut').textContent);toast('📋 번역문 복사됨');});
-$('trSpeak').addEventListener('click',()=>{
-  try{
-    const u=new SpeechSynthesisUtterance($('trOut').textContent);
-    const map={Vietnamese:'vi',Chinese:'zh-CN',Russian:'ru','Tagalog (Filipino)':'fil',Uzbek:'uz',Thai:'th',Japanese:'ja',English:'en-US'};
-    u.lang=map[trLang]||'en-US';
-    speechSynthesis.cancel();speechSynthesis.speak(u);
-  }catch(e){toast('이 환경에서는 듣기를 지원하지 않아요');}
-});
+$('trCopy').addEventListener('click',()=>{window.cm.copyText($('trOut').innerText);toast('📋 복사됨');});
 
 /* ===== 단축주소 (코코아팹.kr) — 온라인 기능 ===== */
 const SU_BASE='코코아팹.kr';

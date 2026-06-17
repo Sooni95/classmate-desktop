@@ -122,9 +122,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 
 /* 이스터에그 크레딧 */
 #eggCredit{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(8,11,15,.72);backdrop-filter:blur(3px);}
-#eggCredit.on{display:flex;animation:eggFade .4s;}
+#eggCredit.on{display:block;animation:eggFade .4s;}
 @keyframes eggFade{from{opacity:0}to{opacity:1}}
-.egg-card{background:linear-gradient(160deg,#1a2129,#10151b);border:2px solid var(--or);border-radius:24px;padding:38px 50px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);}
+.egg-card{position:absolute;background:linear-gradient(160deg,#1a2129,#10151b);border:2px solid var(--or);border-radius:24px;padding:38px 50px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);}
 .egg-fly{font-size:60px;animation:eggFloat 2.4s ease-in-out infinite;}
 @keyframes eggFloat{50%{transform:translateY(-12px) rotate(-8deg);}}
 .egg-ttl{font-size:34px;font-weight:900;color:#fff;margin-top:6px;letter-spacing:-.5px;}
@@ -760,23 +760,23 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div class="pane on" id="pane-txt">
     <textarea class="names" id="trIn" placeholder="번역할 한국어 문장을 입력하세요&#10;예) 내일 준비물은 색종이와 풀이에요"></textarea>
     <div class="tr-langs" id="trLangs">
-      <button data-l="Vietnamese" data-n="베트남어" class="on">🇻🇳 베트남어</button>
-      <button data-l="Chinese" data-n="중국어">🇨🇳 중국어</button>
-      <button data-l="Russian" data-n="러시아어">🇷🇺 러시아어</button>
-      <button data-l="Tagalog (Filipino)" data-n="필리핀어">🇵🇭 필리핀어</button>
-      <button data-l="Uzbek" data-n="우즈베크어">🇺🇿 우즈베크어</button>
-      <button data-l="Thai" data-n="태국어">🇹🇭 태국어</button>
-      <button data-l="Japanese" data-n="일본어">🇯🇵 일본어</button>
-      <button data-l="English" data-n="영어">🇺🇸 영어</button>
+      <button data-l="Vietnamese" data-n="🇻🇳" class="on">🇻🇳 베트남어</button>
+      <button data-l="Chinese" data-n="🇨🇳">🇨🇳 중국어</button>
+      <button data-l="Russian" data-n="🇷🇺">🇷🇺 러시아어</button>
+      <button data-l="Tagalog (Filipino)" data-n="🇵🇭">🇵🇭 필리핀어</button>
+      <button data-l="Uzbek" data-n="🇺🇿">🇺🇿 우즈베크어</button>
+      <button data-l="Thai" data-n="🇹🇭">🇹🇭 태국어</button>
+      <button data-l="Japanese" data-n="🇯🇵">🇯🇵 일본어</button>
+      <button data-l="English" data-n="🇺🇸">🇺🇸 영어</button>
     </div>
+    <label class="vc-ck" style="margin:6px 0 9px"><input type="checkbox" id="trToCap"> 큰 자막 박스로 표시</label>
     <button class="btn-go" id="trGo">번역하기</button>
     <div class="tr-msg" id="trMsg"></div>
     <div class="tr-card" id="trCard">
       <div class="tr-orig" id="trOrig"></div>
       <div class="tr-out" id="trOut"></div>
       <div class="tr-actions">
-        <button class="su-copy" id="trCopy">📋 번역문 복사</button>
-        <button class="su-copy" id="trSpeak">🔊 듣기</button>
+        <button class="su-copy" id="trCopy">📋 복사</button>
       </div>
     </div>
     <button class="su-gear" id="trGear">⚙ API 키 설정</button>
