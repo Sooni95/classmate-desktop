@@ -177,6 +177,22 @@ function createOverlay() {
     }
   });
 
+  // AI 프록시 (Pro 전용, 회사 키로 서버가 대신 호출) — 키 입력 불필요
+  ipcMain.handle('ai-proxy', async (_e, { prompt, system, proKey, max_tokens }) => {
+    try {
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, system, proKey, max_tokens }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+      return { ok: true, text: data.text };
+    } catch (err) {
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
+
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {

@@ -120,6 +120,40 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .su-hint b{color:var(--or);}
 
 
+/* 이스터에그 크레딧 */
+#eggCredit{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(8,11,15,.72);backdrop-filter:blur(3px);}
+#eggCredit.on{display:flex;animation:eggFade .4s;}
+@keyframes eggFade{from{opacity:0}to{opacity:1}}
+.egg-card{background:linear-gradient(160deg,#1a2129,#10151b);border:2px solid var(--or);border-radius:24px;padding:38px 50px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);}
+.egg-fly{font-size:60px;animation:eggFloat 2.4s ease-in-out infinite;}
+@keyframes eggFloat{50%{transform:translateY(-12px) rotate(-8deg);}}
+.egg-ttl{font-size:34px;font-weight:900;color:#fff;margin-top:6px;letter-spacing:-.5px;}
+.egg-ttl::after{content:" Pro";color:var(--or);}
+.egg-sub{font-size:13px;color:#9fb0bf;margin-top:8px;}
+.egg-names{font-size:15px;color:#cdd8e2;margin-top:22px;line-height:1.7;}
+.egg-names b{color:var(--or);font-size:21px;font-weight:800;}
+.egg-thx{font-size:13px;color:#7c8894;margin-top:20px;}
+
+/* 음성 실시간 자막 */
+.vc-row{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.vc-row>span:first-child{font-size:12px;font-weight:700;color:#cdd8e2;white-space:nowrap;min-width:54px;}
+.vc-row select{flex:1;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;}
+.vc-row input[type=range]{flex:1;accent-color:var(--or);}
+.vc-row input[type=color]{width:38px;height:28px;border:none;border-radius:6px;background:none;cursor:pointer;}
+.vc-ck{font-size:11.5px;color:#9fb0bf;display:flex;align-items:center;gap:4px;cursor:pointer;}
+.vc-ck input{accent-color:var(--or);}
+.vc-hint{font-size:11.5px;color:#9fb0bf;line-height:1.6;margin:8px 0 12px;}
+.vc-hint b{color:var(--or);}
+.vc-set{border-top:1px solid var(--line);padding-top:11px;margin-top:4px;}
+.vc-msg{font-size:11.5px;color:var(--amber);min-height:14px;margin-top:8px;text-align:center;}
+#vcToggle.rec{background:var(--red);}
+
+/* 실시간 자막 오버레이 */
+#capBar{position:fixed;left:0;bottom:6%;width:100%;z-index:88;display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none;padding:0 5%;box-sizing:border-box;}
+#capBar.on{display:flex;}
+#capOrig,#capTrans{max-width:90%;text-align:center;padding:6px 20px;border-radius:12px;font-weight:800;line-height:1.35;word-break:keep-all;}
+#capOrig{font-size:.62em;opacity:.92;}
+
 /* AI 교수 보조 */
 .ai-quick{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;}
 .ai-quick button{background:var(--dk2);border:1px solid var(--line);color:#cdd8e2;border-radius:8px;padding:8px 6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;}
@@ -576,7 +610,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
       <button class="tab on" data-t="nm">이름</button><button class="tab" data-t="no">번호</button><button class="tab" data-t="tm">모둠</button>
     </div>
     <div class="pane on" id="pane-nm">
-      <button class="roster-pro prolock" data-pro="roster">📋 명단 저장·불러오기 <span class="pro-badge">🔒PRO</span></button>
+      <button class="roster-pro prolock" data-pro="roster" id="rosterBtn">📋 명단 저장·불러오기 <span class="pro-badge">🔒PRO</span></button>
       <textarea class="names" id="nameList" placeholder="이름을 줄바꿈으로 입력"></textarea>
       <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
       <div class="pres" id="pres">— 준비 —</div><div class="hist" id="hist"></div>
@@ -625,7 +659,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
   <canvas id="ladderCv"></canvas>
   <div id="ladderResult"></div>
-  <div id="ladderFoot"><button class="btn-g" id="ladderAll">전체 결과 보기</button><button class="btn-g" id="ladderReset">다시</button></div>
+  <div id="ladderFoot"><button class="btn-go" id="ladderStart">🪜 사다리 시작</button><button class="btn-g" id="ladderReset">다시 타기</button></div>
 </div>
 
 <div class="panel iv" id="p-qr">
@@ -739,12 +773,34 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
     </div>
   </div>
   <div class="pane" id="pane-voice">
-    <div class="tr-wip">
-      <div class="wip-ic">🎤➜🌏</div>
-      <div class="wip-t">음성 실시간 번역</div>
-      <div class="wip-d">학생·교사가 말하면 <b>음성 인식 → AI 실시간 번역 → 자막</b>으로 보여줍니다.<br>다문화 학생과의 소통에 활용하세요.<br><span style="color:var(--amber)">기능 구현중</span> — 다음 업데이트 제공 예정</div>
+    <div class="vc-row">
+      <span>번역 언어</span>
+      <select id="vcLang">
+        <option value="Vietnamese">🇻🇳 베트남어</option>
+        <option value="Chinese">🇨🇳 중국어</option>
+        <option value="Russian">🇷🇺 러시아어</option>
+        <option value="Tagalog (Filipino)">🇵🇭 필리핀어</option>
+        <option value="Uzbek">🇺🇿 우즈베크어</option>
+        <option value="Thai">🇹🇭 태국어</option>
+        <option value="Japanese">🇯🇵 일본어</option>
+        <option value="English">🇺🇸 영어</option>
+      </select>
     </div>
+    <button class="btn-go" id="vcToggle">🎤 자막 시작</button>
+    <div class="vc-hint">말하면 화면 하단에 <b>원문 + 번역 자막</b>이 큼직하게 표시돼요.</div>
+    <div class="vc-set">
+      <div class="vc-row"><span>자막 크기</span><input type="range" id="vcSize" min="20" max="64" value="34"></div>
+      <div class="vc-row"><span>배경색</span><input type="color" id="vcBg" value="#000000"><span style="flex:1"></span><label class="vc-ck"><input type="checkbox" id="vcBgOn" checked> 배경</label></div>
+      <div class="vc-row"><span>글자색</span><input type="color" id="vcFg" value="#ffffff"></div>
+    </div>
+    <div class="vc-msg" id="vcMsg"></div>
   </div>
+</div>
+
+<!-- 실시간 자막 오버레이 -->
+<div id="capBar" class="iv">
+  <div id="capOrig"></div>
+  <div id="capTrans"></div>
 </div>
 
 <div class="panel iv" id="p-pin">
@@ -932,6 +988,15 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
       <button class="tx" id="tfLg" title="크게" style="font-size:13px">A+</button>
     </span>
   </span>
+</div>
+<div id="eggCredit" class="iv">
+  <div class="egg-card">
+    <div class="egg-fly">🦋</div>
+    <div class="egg-ttl">ClassMate</div>
+    <div class="egg-sub">네패스 코코아팹 · 교사를 위한 올인원 수업 보조 도구</div>
+    <div class="egg-names">기획 · 개발<br><b>김수훈 · 김수관</b></div>
+    <div class="egg-thx">함께 만들어 갑니다 🧡</div>
+  </div>
 </div>
 <div id="toast"></div>
 <script src="app.js"></script>

@@ -81,17 +81,80 @@ $('aiKeySave').addEventListener('click',()=>{
 document.querySelectorAll('.ai-quick button').forEach(b=>b.addEventListener('click',()=>{
   $('aiIn').value=b.dataset.q;$('aiIn').focus();
 }));
+// 통합 AI 호출: Pro 인증 시 회사 키(프록시), 아니면 개인 키
+async function callAI({prompt,system,max_tokens}){
+  if(isPro()){
+    const proKey=localStorage.getItem('cm_pro_key')||'';
+    if(proKey){
+      const r=await window.cm.aiProxy({prompt,system,proKey,max_tokens});
+      if(r.ok)return r;
+      // 프록시 실패 시 개인키로 폴백 (있으면)
+    }
+  }
+  const key=localStorage.getItem('ai_key')||'';
+  if(!key)return {ok:false,message:'NO_KEY'};
+  return await window.cm.aiChat({prompt,system,apiKey:key});
+}
+
+/* ===== 음성 실시간 자막 ===== */
+let vcRec=null,vcOn=false;
+const capBar=$('capBar');
+function applyCapStyle(){
+  const size=$('vcSize').value+'px';
+  capBar.style.fontSize=size;
+  const bgOn=$('vcBgOn').checked, bg=$('vcBg').value, fg=$('vcFg').value;
+  [$('capOrig'),$('capTrans')].forEach(el=>{
+    el.style.color=fg;
+    el.style.background=bgOn?bg:'transparent';
+    el.style.textShadow=bgOn?'none':'0 2px 6px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9)';
+  });
+}
+['vcSize','vcBg','vcFg','vcBgOn'].forEach(id=>$(id).addEventListener('input',applyCapStyle));
+async function vcTranslate(text){
+  $('capOrig').textContent=text;
+  const lang=$('vcLang').value;
+  const sys='Translate the Korean text into '+lang+'. Output ONLY the translation, no notes. Simple and natural.';
+  const r=await callAI({prompt:text,system:sys,max_tokens:512});
+  if(r.ok)$('capTrans').textContent=r.text;
+  else if(r.message==='NO_KEY'){$('vcMsg').textContent='⚙ Pro 인증 또는 API 키 필요';stopVC();}
+}
+function startVC(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){$('vcMsg').textContent='이 환경에서는 음성 인식을 지원하지 않아요';return;}
+  vcRec=new SR();vcRec.lang='ko-KR';vcRec.continuous=true;vcRec.interimResults=true;
+  let lastFinal='';
+  vcRec.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal)final+=t;else interim+=t;
+    }
+    if(interim)$('capOrig').textContent=interim;
+    if(final&&final.trim()&&final!==lastFinal){lastFinal=final;vcTranslate(final.trim());}
+  };
+  vcRec.onerror=ev=>{$('vcMsg').textContent='음성 인식 오류: '+ev.error;};
+  vcRec.onend=()=>{if(vcOn)try{vcRec.start();}catch(e){}}; // 자동 재시작
+  try{vcRec.start();}catch(e){}
+  vcOn=true;capBar.classList.add('on');applyCapStyle();
+  $('vcToggle').textContent='⏹ 자막 정지';$('vcToggle').classList.add('rec');
+  $('capOrig').textContent='🎤 듣고 있어요…';$('capTrans').textContent='';
+  $('vcMsg').textContent='';
+}
+function stopVC(){
+  vcOn=false;if(vcRec)try{vcRec.stop();}catch(e){}
+  capBar.classList.remove('on');
+  $('vcToggle').textContent='🎤 자막 시작';$('vcToggle').classList.remove('rec');
+}
+$('vcToggle').addEventListener('click',()=>vcOn?stopVC():startVC());
 $('aiGo').addEventListener('click',async()=>{
   const prompt=$('aiIn').value.trim();
-  const key=localStorage.getItem('ai_key')||'';
   if(!prompt){$('aiMsg').textContent='질문을 입력하세요';return;}
-  if(!key){$('aiMsg').textContent='⚙ API 키를 먼저 설정하세요';$('aiKeyRow').classList.add('on');return;}
   $('aiGo').disabled=true;$('aiGo').textContent='생각 중…';$('aiMsg').textContent='';
-  const r=await window.cm.aiChat({prompt,apiKey:key});
+  const r=await callAI({prompt});
   $('aiGo').disabled=false;$('aiGo').textContent='물어보기';
   if(r.ok){
     $('aiOut').textContent=r.text;$('aiOut').classList.add('on');$('aiActions').classList.add('on');
-  }else if(r.message==='NO_KEY'){$('aiMsg').textContent='⚙ API 키를 먼저 설정하세요';$('aiKeyRow').classList.add('on');}
+  }else if(r.message==='NO_KEY'){$('aiMsg').textContent='⚙ Pro 인증을 하거나 API 키를 설정하세요';$('aiKeyRow').classList.add('on');}
   else if(r.status===401){$('aiMsg').textContent='API 키가 올바르지 않아요';$('aiKeyRow').classList.add('on');}
   else{$('aiMsg').textContent='오류: '+(r.message||'연결 확인');}
 });
@@ -297,6 +360,13 @@ function setProUI(){
   const on=isPro();
   document.querySelectorAll('.pro-badge').forEach(b=>b.style.display=on?'none':'');
   $('proBtn').classList.toggle('prolock',!on);
+  // Pro면 개인 키 설정 UI 숨김 (회사 키 자동 사용)
+  ['aiGear','trGear'].forEach(id=>{const el=$(id);if(el)el.style.display=on?'none':'';});
+  if(on){
+    const aiKeyRow=$('aiKeyRow'),trKeyRow=$('trKeyRow');
+    if(aiKeyRow)aiKeyRow.classList.remove('on');
+    if(trKeyRow)trKeyRow.classList.remove('on');
+  }
 }
 // Pro 키 인증 (Cloudflare 서버 검증)
 $('proKeyGo').addEventListener('click',async()=>{
@@ -344,6 +414,43 @@ document.querySelectorAll('#proWrap .pro-item').forEach(it=>{
 // 명단 저장(roster) 잠금 버튼
 document.querySelectorAll('[data-pro]').forEach(el=>{
   el.addEventListener('click',e=>{ if(!isPro()){e.preventDefault();e.stopPropagation();openPro();} });
+});
+
+// 명단 저장·불러오기 (Pro) — localStorage 'cm_rosters'
+$('rosterBtn').addEventListener('click',()=>{
+  if(!isPro())return; // 잠금은 위 핸들러가 처리
+  const rosters=JSON.parse(localStorage.getItem('cm_rosters')||'{}');
+  const names=Object.keys(rosters);
+  let menu='📋 명단 관리\\n\\n';
+  if(names.length)menu+='저장된 명단: '+names.join(', ')+'\\n\\n';
+  menu+='무엇을 할까요?\\n1 = 현재 명단 저장\\n2 = 불러오기\\n3 = 삭제';
+  const c=prompt(menu,'1');
+  if(c===null)return;
+  if(c==='1'){
+    const cur=$('nameList').value.trim();
+    if(!cur){toast('저장할 명단이 비어있어요');return;}
+    const nm=prompt('명단 이름 (예: 3학년 2반):','');
+    if(!nm)return;
+    rosters[nm.trim()]=cur;
+    localStorage.setItem('cm_rosters',JSON.stringify(rosters));
+    toast('💾 "'+nm.trim()+'" 명단 저장됨');
+  }else if(c==='2'){
+    if(!names.length){toast('저장된 명단이 없어요');return;}
+    const nm=prompt('불러올 명단 이름:\\n'+names.join(', '),names[0]);
+    if(nm&&rosters[nm.trim()]){
+      $('nameList').value=rosters[nm.trim()];
+      loadN();
+      toast('📂 "'+nm.trim()+'" 불러옴');
+    }else if(nm){toast('그 이름의 명단이 없어요');}
+  }else if(c==='3'){
+    if(!names.length){toast('삭제할 명단이 없어요');return;}
+    const nm=prompt('삭제할 명단 이름:\\n'+names.join(', '),'');
+    if(nm&&rosters[nm.trim()]){
+      delete rosters[nm.trim()];
+      localStorage.setItem('cm_rosters',JSON.stringify(rosters));
+      toast('🗑 "'+nm.trim()+'" 삭제됨');
+    }
+  }
 });
 
 // 구독 안내 받기 → Google Forms (기본 브라우저에서 열기)
@@ -403,7 +510,7 @@ setProUI();
     $('pillVer').textContent=ver;
   }catch(e){}
 })();
-// 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 토스트
+// 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 모달
 (()=>{
   let cnt=0,last=0;
   const lo=$('eggLogo');
@@ -411,12 +518,16 @@ setProUI();
   lo.addEventListener('click',e=>{
     e.stopPropagation();
     const now=Date.now();
-    cnt=(now-last<1200)?cnt+1:1;last=now; // 1.2초로 넉넉하게
+    cnt=(now-last<1500)?cnt+1:1;last=now; // 1.5초로 넉넉하게
+    if(cnt>=3&&cnt<7)toast('🦋 '+cnt+'/7…'); // 진행 힌트
     if(cnt>=7){
       cnt=0;
-      toast('🦋 ClassMate — 기획·개발 김수훈 · 김수관 · 네패스 코코아팹');
+      const eg=$('eggCredit');eg.classList.add('on');
+      setTimeout(()=>eg.classList.remove('on'),4000);
     }
   });
+  // 모달 클릭하면 바로 닫기
+  $('eggCredit').addEventListener('click',()=>$('eggCredit').classList.remove('on'));
 })();
 // 🦋 이스터에그 2: 콘솔 크레딧 (F12로 발견)
 try{
@@ -641,91 +752,84 @@ makeDrag($('ladderHead'),(e,s)=>{
   ladderWrap.style.left=(e.clientX-s.dx)+'px';ladderWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='ladderClose');
 $('ladderClose').addEventListener('click',()=>ladderWrap.classList.remove('on'));
-$('ladderReset').addEventListener('click',()=>buildLadder());
+$('ladderReset').addEventListener('click',()=>buildLadder(true)); // 사다리 새로 (이름/결과 유지)
+$('ladderStart').addEventListener('click',()=>runLadderAll());
 $('ladderOpen').addEventListener('click',()=>{
-  ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder();
+  ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder(false);
 });
-function buildLadder(){
+function buildLadder(keep){
   const n=Math.min(10,Math.max(2,parseInt($('ladderCnt').value)||4));
   const auto=$('ladderAuto').checked;
-  const tops=Array.from({length:n},(_,i)=>'');           // 빈 칸 (클릭해 입력)
-  let bottoms;
-  if(auto){
-    bottoms=Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝').sort(()=>Math.random()-.5);
-  }else{
-    bottoms=Array.from({length:n},()=>'');               // 빈 칸 (클릭해 입력)
+  let tops,bottoms;
+  if(keep&&ladder&&ladder.n===n){tops=ladder.tops.slice();bottoms=ladder.bottoms.slice();}
+  else{
+    tops=Array.from({length:n},()=>'');
+    bottoms=auto?makeAutoResults(n):Array.from({length:n},()=>'');
   }
-  // 사다리 가로줄 무작위
-  const ROWS=Math.max(7,n+4);
+  // 사다리 가로줄 무작위 (매번 새로)
+  const ROWS=Math.max(8,n+5);
   const rungs=[];
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<n-1;c++){
-      if(Math.random()<0.34&&!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))
-        rungs.push({row:r,col:c});
-    }
+  for(let r=0;r<ROWS;r++)for(let c=0;c<n-1;c++){
+    if(Math.random()<0.36&&!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))rungs.push({row:r,col:c});
   }
-  lcv.width=Math.min(640,Math.max(380,n*92));lcv.height=460;
-  ladder={tops,bottoms,n,ROWS,rungs,revealed:{},auto};
-  $('ladderInfo').textContent=n+'명 · 칸을 눌러 이름/결과 입력';
-  $('ladderResult').textContent='위·아래 칸을 클릭해 입력하고, 이름 칸을 누르면 출발해요';
+  lcv.width=Math.min(660,Math.max(400,n*94));lcv.height=470;
+  ladder={tops,bottoms,n,ROWS,rungs,auto,results:null};
+  $('ladderInfo').textContent=n+'명';
+  $('ladderResult').textContent='위·아래 칸을 클릭해 입력하고, [사다리 시작]을 누르세요';
   drawLadder();
 }
+function makeAutoResults(n){return Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝').sort(()=>Math.random()-.5);}
 function ladderX(c){return lcv.width/(ladder.n+1)*(c+1);}
-function ladderY(r){return 86+r*(lcv.height-180)/(ladder.ROWS-1);}
+function ladderTopY(){return 92;}
+function ladderBotY(){return lcv.height-92;}
+function ladderY(r){return ladderTopY()+r*(ladderBotY()-ladderTopY())/(ladder.ROWS-1);}
 function rrect(x,y,w,h,r){lx.beginPath();lx.moveTo(x+r,y);lx.arcTo(x+w,y,x+w,y+h,r);lx.arcTo(x+w,y+h,x,y+h,r);lx.arcTo(x,y+h,x,y,r);lx.arcTo(x,y,x+w,y,r);lx.closePath();}
-function drawLadder(hl){
-  const{W,H}=({W:lcv.width,H:lcv.height});
-  const{n,ROWS,rungs,tops,bottoms}=ladder;
+function drawBox(x,yc,text,fill,stroke){
+  rrect(x-40,yc-15,80,30,8);lx.fillStyle=fill;lx.fill();
+  lx.lineWidth=2;lx.strokeStyle=stroke;lx.stroke();
+  lx.fillStyle=fill==='#F68C1F'||stroke==='#F68C1F'?'#fff':'#cdd8e2';
+  lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
+  lx.fillText(text,x,yc);
+}
+function drawLadder(highlights){
+  const W=lcv.width,H=lcv.height,{n,ROWS,rungs,tops,bottoms}=ladder;
   lx.fillStyle='#0f1419';lx.fillRect(0,0,W,H);
-  lx.strokeStyle='#3a4654';lx.lineWidth=3;
-  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),78);lx.lineTo(ladderX(c),H-78);lx.stroke();}
+  // 세로줄
+  lx.strokeStyle='#3a4654';lx.lineWidth=3;lx.lineCap='round';
+  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),ladderTopY());lx.lineTo(ladderX(c),ladderBotY());lx.stroke();}
+  // 가로줄
   rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
-  // 상단 이름 칸
+  // 강조 경로
+  if(highlights)highlights.forEach(hl=>{
+    lx.strokeStyle=hl.col;lx.lineWidth=4;lx.globalAlpha=.9;
+    lx.beginPath();hl.path.forEach((p,i)=>{const px=ladderX(p.col);if(i===0)lx.moveTo(px,p.y);else lx.lineTo(px,p.y);});lx.stroke();
+    lx.globalAlpha=1;
+  });
+  // 상단 이름 박스
+  for(let c=0;c<n;c++)drawBox(ladderX(c),ladderTopY()-30,tops[c]||'이름?',tops[c]?'#26303c':'#F68C1F',tops[c]?'#3a4654':'#F68C1F');
+  // 하단 결과 박스
   for(let c=0;c<n;c++){
-    const x=ladderX(c);
-    lx.fillStyle=ladder.revealed[c]!==undefined?'#3a4654':'#F68C1F';
-    rrect(x-40,42,80,28,8);lx.fill();
-    lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
-    lx.fillText(tops[c]||'이름?',x,56);
-  }
-  // 하단 결과 칸
-  for(let c=0;c<n;c++){
-    const x=ladderX(c);
     const isHit=(bottoms[c]||'').includes('당첨')||(bottoms[c]||'').includes('🎉');
-    lx.fillStyle=isHit?'#F68C1F':'#2c3744';
-    rrect(x-40,H-70,80,28,8);lx.fill();
-    lx.fillStyle='#fff';lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
-    lx.fillText(bottoms[c]||'결과?',x,H-56);
-  }
-  if(hl&&hl.path&&hl.path.length){
-    lx.strokeStyle=hl.col;lx.lineWidth=5;lx.lineCap='round';lx.lineJoin='round';
-    lx.beginPath();
-    hl.path.forEach((p,i)=>{const px=ladderX(p.col),py=p.y;if(i===0)lx.moveTo(px,py);else lx.lineTo(px,py);});
-    lx.stroke();
-    // 현재 위치 구슬
-    const last=hl.path[hl.path.length-1];
-    lx.fillStyle=hl.col;lx.beginPath();lx.arc(ladderX(last.col),last.y,8,0,7);lx.fill();
-    lx.fillStyle='#fff';lx.beginPath();lx.arc(ladderX(last.col)-2,last.y-2,2.5,0,7);lx.fill();
+    drawBox(ladderX(c),ladderBotY()+30,bottoms[c]||'결과?',isHit?'#F68C1F':'#26303c',isHit?'#F68C1F':'#3a4654');
   }
 }
-// 경로 계산 — dir: 'down'(위→아래) / 'up'(아래→위)
-function ladderPath(startCol,dir){
-  const{ROWS,rungs}=ladder;
-  let col=startCol;
-  const path=[];
-  const rowOrder=dir==='up'?[...Array(ROWS).keys()].reverse():[...Array(ROWS).keys()];
-  path.push({col,y:dir==='up'?(lcv.height-78):78});
-  for(const r of rowOrder){
+// 경로 계산 (위 c → 아래)
+function pathFor(startCol){
+  const{ROWS,rungs}=ladder;let col=startCol;
+  const path=[{col,y:ladderTopY()-15}];
+  path.push({col,y:ladderTopY()});
+  for(let r=0;r<ROWS;r++){
     const y=ladderY(r);
     const left=rungs.find(x=>x.row===r&&x.col===col-1);
     const right=rungs.find(x=>x.row===r&&x.col===col);
     if(right){path.push({col,y});col++;path.push({col,y});}
     else if(left){path.push({col,y});col--;path.push({col,y});}
   }
-  path.push({col,y:dir==='up'?78:(lcv.height-78)});
-  return {col,path};
+  path.push({col,y:ladderBotY()});
+  path.push({col,y:ladderBotY()+15});
+  return {endCol:col,path};
 }
-// 칸 클릭: 이름/결과 입력 or 출발
+// 칸 클릭: 위/아래 입력
 lcv.addEventListener('click',e=>{
   if(!ladder||ladderBusy)return;
   const rect=lcv.getBoundingClientRect();
@@ -733,72 +837,54 @@ lcv.addEventListener('click',e=>{
   const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
   for(let c=0;c<ladder.n;c++){
     if(Math.abs(cx-ladderX(c))<42){
-      // 상단(이름)
-      if(cy<86){
-        if(ladder.revealed[c]!==undefined)return;
-        if(!ladder.tops[c]){ // 이름 비었으면 입력
-          const v=prompt('참가자 '+(c+1)+' 이름:',ladder.tops[c]||'');
-          if(v!==null){ladder.tops[c]=v.trim().slice(0,6);drawLadder();}
-          return;
-        }
-        runLadder(c,'down');return;
+      if(Math.abs(cy-(ladderTopY()-30))<22){
+        const v=prompt('참가자 '+(c+1)+' 이름:',ladder.tops[c]||'');
+        if(v!==null){ladder.tops[c]=v.trim().slice(0,6);ladder.results=null;drawLadder();}
+        return;
       }
-      // 하단(결과)
-      if(cy>lcv.height-86){
-        if(!ladder.auto){
-          const v=prompt('결과 '+(c+1)+':',ladder.bottoms[c]||'');
-          if(v!==null){ladder.bottoms[c]=v.trim().slice(0,6);drawLadder();}
-          return;
-        }
-        // auto 모드: 아래에서 위로 거꾸로 타기
-        runLadder(c,'up');return;
+      if(Math.abs(cy-(ladderBotY()+30))<22){
+        if(ladder.auto){toast('결과 자동 모드예요. 수동 입력하려면 설정에서 자동을 끄세요');return;}
+        const v=prompt('결과 '+(c+1)+':',ladder.bottoms[c]||'');
+        if(v!==null){ladder.bottoms[c]=v.trim().slice(0,6);ladder.results=null;drawLadder();}
+        return;
       }
     }
   }
 });
-function runLadder(startCol,dir){
-  if(ladderBusy)return;ladderBusy=true;
-  const{path,col}=ladderPath(startCol,dir);
-  const colColor=LCOL[startCol%LCOL.length];
-  // 느리게: 세그먼트 사이를 보간하며 그림
-  let seg=0,t=0;
-  const SEG_TIME=dir==='up'?0.34:0.34; // 세그먼트당 시간(초) — 두근두근
+// 시작: 전원 동시에 경로 그리며 결과 확정
+function runLadderAll(){
+  if(!ladder||ladderBusy)return;
+  // 결과 자동인데 비었으면 채우기
+  if(ladder.auto&&ladder.bottoms.every(b=>!b))ladder.bottoms=makeAutoResults(ladder.n);
+  ladderBusy=true;$('ladderStart').disabled=true;
+  const paths=[];for(let c=0;c<ladder.n;c++){const{endCol,path}=pathFor(c);paths.push({startCol:c,endCol,path,col:LCOL[c%LCOL.length]});}
+  // 점진적으로 모든 경로를 동시에 그림
+  let prog=0;const SPEED=0.9; // 낮을수록 느림(두근두근)
   let last=performance.now();
   const anim=now=>{
     const dt=Math.min(0.05,(now-last)/1000);last=now;
-    t+=dt/SEG_TIME;
-    while(t>=1&&seg<path.length-1){t-=1;seg++;}
-    // 현재까지의 경로 + 보간된 마지막 점
-    const drawn=path.slice(0,seg+1).map(p=>({col:p.col,y:p.y}));
-    if(seg<path.length-1){
-      const a=path[seg],b=path[seg+1];
-      drawn.push({col:a.col+(b.col-a.col)*t, y:a.y+(b.y-a.y)*t});
-    }
-    drawLadder({path:drawn,col:colColor});
-    if(seg<path.length-1){gameAnim=requestAnimationFrame(anim);}
+    prog+=dt*SPEED;
+    const hls=paths.map(pp=>{
+      const total=pp.path.length-1;
+      const upto=Math.min(total,prog*total);
+      const seg=Math.floor(upto),frac=upto-seg;
+      const drawn=pp.path.slice(0,seg+1).map(p=>({col:p.col,y:p.y}));
+      if(seg<total){const a=pp.path[seg],b=pp.path[seg+1];drawn.push({col:a.col+(b.col-a.col)*frac,y:a.y+(b.y-a.y)*frac});}
+      return {col:pp.col,path:drawn};
+    });
+    drawLadder(hls);
+    if(prog<1){gameAnim=requestAnimationFrame(anim);}
     else{
-      ladderBusy=false;
-      if(dir==='up'){
-        // 아래→위: 출발은 결과칸, 도착은 이름칸
-        const who=col; ladder.revealed[who]=ladder.bottoms[startCol];
-        $('ladderResult').innerHTML='🪜 <b style="color:#F68C1F">'+(ladder.bottoms[startCol]||'결과')+'</b> ← <b>'+(ladder.tops[who]||('참가자'+(who+1)))+'</b>';
-      }else{
-        ladder.revealed[startCol]=ladder.bottoms[col];
-        $('ladderResult').innerHTML='🪜 <b>'+(ladder.tops[startCol]||('참가자'+(startCol+1)))+'</b> → <b style="color:#F68C1F">'+(ladder.bottoms[col]||'결과')+'</b>';
-      }
+      ladderBusy=false;$('ladderStart').disabled=false;
+      // 결과 텍스트
+      const res=paths.map(pp=>'<span style="display:inline-block;margin:2px 6px;white-space:nowrap"><b>'+(ladder.tops[pp.startCol]||('참가'+(pp.startCol+1)))+'</b> → <b style="color:#F68C1F">'+(ladder.bottoms[pp.endCol]||'?')+'</b></span>');
+      $('ladderResult').innerHTML=res.join('');
+      drawLadder(paths.map(pp=>({col:pp.col,path:pp.path})));
       beep();
-      drawLadder({path,col:colColor});
     }
   };
   gameAnim=requestAnimationFrame(anim);
 }
-$('ladderAll').addEventListener('click',()=>{
-  if(!ladder||ladderBusy)return;
-  const res=[];
-  for(let c=0;c<ladder.n;c++){const{col}=ladderPath(c,'down');ladder.revealed[c]=ladder.bottoms[col];res.push((ladder.tops[c]||('참가'+(c+1)))+'→'+(ladder.bottoms[col]||'?'));}
-  drawLadder();
-  $('ladderResult').innerHTML=res.map(r=>'<span style="margin:0 6px;white-space:nowrap">'+r+'</span>').join('');
-});
 
 /* --- 제비뽑기 (번호 표시) --- */
 const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0;
@@ -1381,18 +1467,17 @@ $('trKeySave').addEventListener('click',()=>{
 function trSay(msg){$('trMsg').textContent=msg;}
 $('trGo').addEventListener('click',async()=>{
   const text=$('trIn').value.trim();
-  const key=localStorage.getItem('ai_key')||'';
   if(!text){trSay('번역할 문장을 입력하세요');return;}
-  if(!key){trSay('⚙ API 키를 먼저 설정하세요');$('trKeyRow').classList.add('on');return;}
   $('trGo').disabled=true;$('trGo').textContent='번역 중…';trSay('');
-  const res=await window.cm.translate({text,lang:trLang,apiKey:key});
+  const sys='You are a translator for Korean elementary classrooms. Translate the user text into '+trLang+'. Output ONLY the translation, no explanations, no quotes. Keep it natural and simple for a child.';
+  const res=await callAI({prompt:text,system:sys,max_tokens:1024});
   $('trGo').disabled=false;$('trGo').textContent='번역하기';
   if(res.ok){
     $('trOrig').textContent='🇰🇷 '+text;
     $('trOut').textContent=res.text;
     $('trCard').classList.add('on');
     trSay('');
-  }else if(res.message==='NO_KEY'){trSay('⚙ API 키를 먼저 설정하세요');$('trKeyRow').classList.add('on');}
+  }else if(res.message==='NO_KEY'){trSay('⚙ Pro 인증을 하거나 API 키를 설정하세요');$('trKeyRow').classList.add('on');}
   else if(res.status===401){trSay('API 키가 올바르지 않아요 — ⚙ 설정 확인');$('trKeyRow').classList.add('on');}
   else{trSay('번역 오류: '+(res.message||'인터넷 연결 확인'));}
 });
