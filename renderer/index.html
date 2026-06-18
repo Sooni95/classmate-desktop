@@ -494,6 +494,25 @@ body.ptr-over-ui #halo{display:none!important;}
 /* 가리개 (자유 박스) */
 #shadeWrap{position:fixed;inset:0;z-index:78;display:none;}
 #shadeWrap.on{display:block;}
+/* 칠판 (보드) */
+#boardWrap{position:fixed;inset:0;z-index:60;display:none;}
+#boardWrap.on{display:block;}
+#boardWrap.green{background:#0d3a2b;background-image:linear-gradient(180deg,#14543d,#0b3325);}
+#boardWrap.white{background:#f5f3ee;background-image:linear-gradient(180deg,#fbfaf7,#eceae3);}
+#boardCv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;}
+#boardTb{position:fixed;left:0;top:18px;z-index:62;display:flex;align-items:center;gap:6px;background:var(--dk);border:1px solid var(--line);border-radius:14px;padding:7px 10px;box-shadow:var(--shadow);}
+#boardGrip{cursor:grab;color:#6b7884;font-size:15px;padding:0 3px;}
+#boardGrip:active{cursor:grabbing;}
+.bbtn{border:none;background:var(--dk2);color:#cdd8e2;border-radius:9px;padding:7px 10px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.bbtn:hover{background:#2a3947;}
+.bbtn.on{background:var(--or);color:#fff;}
+.bsep{width:1px;height:20px;background:var(--line);}
+.bsw{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;display:inline-block;vertical-align:middle;margin:0 2px;}
+.bsw.sel{border-color:#fff;box-shadow:0 0 0 2px var(--or);}
+#boardStamps{position:fixed;left:0;top:64px;z-index:62;display:none;flex-wrap:wrap;width:236px;gap:5px;background:var(--dk);border:1px solid var(--line);border-radius:12px;padding:9px;box-shadow:var(--shadow);}
+#boardStamps.on{display:flex;}
+.bstamp{font-size:21px;cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:8px;}
+.bstamp:hover,.bstamp.sel{background:var(--or);}
 #shadePanel{position:absolute;left:12%;top:14%;width:60%;height:55%;background:linear-gradient(160deg,#11171f,#0c1117);border:2px solid var(--or);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden;}
 #shadeBar{position:absolute;left:0;top:0;width:100%;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 11px;background:rgba(246,140,31,.16);cursor:grab;}
 #shadeBar:active{cursor:grabbing;}
@@ -669,7 +688,6 @@ body.ptr-over-ui #halo{display:none!important;}
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
     <div class="gcard" id="gcLadder"><div class="gi">🪜</div><div class="gl">사다리타기</div></div>
-    <div class="gcard" id="gcShade"><div class="gi">🔲</div><div class="gl">가리개</div></div>
   </div>
 
   <div class="gcfg" id="cfgPick">
@@ -1029,6 +1047,26 @@ body.ptr-over-ui #halo{display:none!important;}
 </div>
 
 <!-- dock -->
+<!-- 칠판 (보드) -->
+<div id="boardWrap" class="iv">
+  <canvas id="boardCv" class="iv"></canvas>
+  <div id="boardTb" class="iv">
+    <span id="boardGrip">⠿</span>
+    <button class="bbtn" id="bStyleBtn" title="칠판/보드 전환">🟩 칠판</button>
+    <span class="bsep"></span>
+    <span id="bSwatches"></span>
+    <span class="bsep"></span>
+    <button class="bbtn on" id="bPenBtn">✏️ 펜</button>
+    <button class="bbtn" id="bErBtn">🧽 지우개</button>
+    <button class="bbtn" id="bStampBtn">🔖 스탬프</button>
+    <span class="bsep"></span>
+    <button class="bbtn" id="bShadeBtn" title="가리개 덮기">🪟 가리개</button>
+    <button class="bbtn" id="bClearBtn">🧹 전체</button>
+    <button class="bbtn" id="bCloseBtn">✕</button>
+  </div>
+  <div id="boardStamps"></div>
+</div>
+
 <div id="dock" class="iv">
   <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
   <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
@@ -1040,6 +1078,7 @@ body.ptr-over-ui #halo{display:none!important;}
   <button class="tool" data-p="p-noise"><span class="ti">📢</span>소음</button>
 
   <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
+  <button class="tool" id="boardBtn"><span class="ti">🟩</span>칠판</button>
   <button class="tool" id="expBtn"><span class="ti">📋</span>기록저장</button>
   <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>

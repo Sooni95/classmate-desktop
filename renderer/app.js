@@ -36,7 +36,7 @@ document.addEventListener('mousemove', e => {
   const overUI = !!(el && el.closest('.iv'));
   // 포인터(링/스포트/렌즈)·펜 모드일 때 독·툴바 위에서는 커스텀 포인터를 숨겨 시스템 커서가 보이게
   document.body.classList.toggle('ptr-over-ui', overUI && (PS.ring || PS.spot>0 || lensOn || drawMode));
-  if (drawMode || lensOn || snipOn || PS.spot>0) { setIgnore(false); trackPtr(e); return; }
+  if (drawMode || lensOn || snipOn || PS.spot>0 || PS.ring) { setIgnore(false); trackPtr(e); return; }
   setIgnore(!overUI);
   trackPtr(e);
 });
@@ -896,7 +896,7 @@ $('gcPk').addEventListener('click',()=>{gShowCfg('gcPk');$('cfgPk').classList.ad
 $('gcScore').addEventListener('click',()=>{gShowCfg();openWidget('scoreW');});
 $('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
 $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
-$('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
+$('gcShade')&&$('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
 $('gcLadder').addEventListener('click',()=>{gShowCfg('gcLadder');$('cfgLadder').classList.add('on');});
 
 /* ===== 입력 모달 (Electron prompt 대체) ===== */
@@ -962,7 +962,7 @@ function buildLadder(keep){
     if(Math.random()<0.36&&!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))rungs.push({row:r,col:c});
   }
   lcv.width=Math.min(680,Math.max(420,n*96));lcv.height=480;
-  ladder={tops,bottoms,n,ROWS,rungs,auto,results:null};
+  ladder={tops,bottoms,n,ROWS,rungs,auto,results:null,revealed:false};
   $('ladderInfo').textContent=n+'명';
   $('ladderResult').textContent=ladderEditMode
     ?'편집 모드 — 칸을 클릭해 이름·결과 입력 (Enter 확정)'
@@ -998,10 +998,12 @@ function drawLadder(highlights,focus){
     lx.strokeStyle='#46586b';lx.lineWidth=4;
     lx.beginPath();lx.moveTo(ladderX(c),ladderTopY());lx.lineTo(ladderX(c),ladderBotY());lx.stroke();
   }
-  // 가로 막대
-  lx.globalAlpha=dim?0.16:1;lx.strokeStyle='#46586b';lx.lineWidth=4;
-  rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
-  lx.globalAlpha=1;
+  // 가로 막대 (시작/추적 전에는 숨김 — 미리 경로가 보이면 재미 없음)
+  if(ladder.revealed){
+    lx.globalAlpha=dim?0.16:1;lx.strokeStyle='#46586b';lx.lineWidth=4;
+    rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
+    lx.globalAlpha=1;
+  }
   // 강조 경로 (은은한 글로우)
   if(highlights)highlights.forEach(hl=>{
     lx.save();
@@ -1085,12 +1087,8 @@ function ladderHit(e){
 lcv.addEventListener('click',e=>{
   if(!ladder||ladderBusy)return;
   const hit=ladderHit(e);if(!hit)return;
-  const filled=hit.kind==='top'?ladder.tops[hit.c]:ladder.bottoms[hit.c];
-  // 편집 모드이거나 빈 칸이면 입력, 채워진 칸이면 그 줄만 추적
-  if(ladderEditMode||!filled){
-    if(hit.kind==='bottom'&&ladder.auto&&!ladderEditMode){toast('결과 자동 모드예요. [편집]을 켜면 직접 입력 가능');return;}
-    ladderEditAt(hit.c,hit.kind);return;
-  }
+  // [편집] 켜져 있으면 입력, 아니면 클릭한 블록의 줄만 색을 따라 이동
+  if(ladderEditMode){ladderEditAt(hit.c,hit.kind);return;}
   traceOne(hit.c,hit.kind);
 });
 // 한 줄만 추적 (이름 클릭=아래로, 결과 클릭=위로)
@@ -1108,6 +1106,7 @@ function traceOne(col,kind){
 // 공통 애니메이션 (single=true면 그 줄만 또렷)
 function animatePaths(paths,single){
   cancelAnimationFrame(gameAnim);
+  ladder.revealed=true; // 이제 가로줄도 보이게
   ladderBusy=true;$('ladderStart').disabled=true;
   const focus=single?{start:new Set(paths.map(p=>p.startCol)),end:new Set(paths.map(p=>p.endCol))}:null;
   let prog=0;const SPEED=single?1.4:0.9;let last=performance.now();
@@ -2458,6 +2457,7 @@ document.addEventListener('keydown',e=>{
     else if(gameWrap.classList.contains('on'))closeGame();
     else if(ladderWrap&&ladderWrap.classList.contains('on'))ladderWrap.classList.remove('on');
     else if($('camWrap').classList.contains('on'))closeCam();
+    else if($('boardWrap')&&$('boardWrap').classList.contains('on')){$('boardWrap').classList.remove('on');$('boardBtn')&&$('boardBtn').classList.remove('on');}
     else if(curPanel)setPanel(null); // AI보조·번역 등 열린 패널 닫기
     else if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();
   }
@@ -2648,6 +2648,7 @@ function allOff(){
   $('nStop').click();closeGame();closeCam();
   if(drawWrap)drawWrap.classList.remove('on');
   if(shadeWrap)shadeWrap.classList.remove('on');
+  if($('boardWrap')){$('boardWrap').classList.remove('on');$('boardBtn')&&$('boardBtn').classList.remove('on');}
   setIgnore(true); // 클릭 통과 복구
 }
 window.cm.onHotkey(ch=>{
@@ -2662,3 +2663,121 @@ window.cm.onHotkey(ch=>{
   }
 });
 syncPtr();
+
+/* ===== 칠판 (보드) — 화이트보드(보드마카) / 초록칠판(분필) + 스탬프 + 가리개 ===== */
+(()=>{
+  const boardWrap=$('boardWrap'),bcv=$('boardCv'),bx=bcv.getContext('2d');
+  const PAL={green:['#ffffff','#ffe14d','#ff9ecb'], white:['#1f2024','#e8362f','#1f6dff']};
+  const STAMPS=['⭐','👍','✅','💮','🌸','🎉','💯','❤️','😊','✏️','🅾️','❌'];
+  let bStyle='green',bColor=PAL.green[0],bTool='pen',bStamp='⭐',bDrawing=false,bLast=null,bOpen=false;
+  const SIZE={marker:5,chalk:15,eraser:36};
+
+  function fitBoard(){const r=window.devicePixelRatio||1;bcv.width=innerWidth;bcv.height=innerHeight;}
+  function setStyle(s){
+    bStyle=s;
+    boardWrap.classList.toggle('green',s==='green');
+    boardWrap.classList.toggle('white',s==='white');
+    $('bStyleBtn').textContent=s==='green'?'🟩 칠판':'⬜ 보드';
+    renderSwatches();
+  }
+  function renderSwatches(){
+    const wrap=$('bSwatches');wrap.innerHTML='';
+    PAL[bStyle].forEach((c,i)=>{
+      const s=document.createElement('span');s.className='bsw'+(i===0?' sel':'');
+      s.style.background=c;s.title=c;
+      s.addEventListener('click',()=>{
+        bColor=c;wrap.querySelectorAll('.bsw').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');
+        if(bTool!=='stamp')setTool('pen');
+      });
+      wrap.appendChild(s);
+    });
+    bColor=PAL[bStyle][0];
+  }
+  function renderStamps(){
+    const g=$('boardStamps');g.innerHTML='';
+    STAMPS.forEach(em=>{
+      const b=document.createElement('div');b.className='bstamp'+(em===bStamp?' sel':'');
+      b.textContent=em;
+      b.addEventListener('click',()=>{bStamp=em;setTool('stamp');g.querySelectorAll('.bstamp').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
+      g.appendChild(b);
+    });
+  }
+  function setTool(t){
+    bTool=t;
+    $('bPenBtn').classList.toggle('on',t==='pen');
+    $('bErBtn').classList.toggle('on',t==='eraser');
+    $('bStampBtn').classList.toggle('on',t==='stamp');
+    $('boardStamps').classList.toggle('on',t==='stamp');
+    bcv.style.cursor=t==='stamp'?'pointer':(t==='eraser'?'cell':'crosshair');
+  }
+  // 분필: 거친 입자 / 보드마카: 매끈한 선
+  function drawSeg(a,b){
+    if(bTool==='eraser'){
+      bx.save();bx.globalCompositeOperation='destination-out';
+      bx.strokeStyle='#000';bx.lineWidth=SIZE.eraser;bx.lineCap='round';bx.lineJoin='round';
+      bx.beginPath();bx.moveTo(a.x,a.y);bx.lineTo(b.x,b.y);bx.stroke();bx.restore();return;
+    }
+    if(bStyle==='green'){ // 분필 입자
+      const dist=Math.hypot(b.x-a.x,b.y-a.y),steps=Math.max(1,Math.floor(dist/2)),sz=SIZE.chalk;
+      bx.fillStyle=bColor;
+      for(let i=0;i<=steps;i++){
+        const t=i/steps,cx=a.x+(b.x-a.x)*t,cy=a.y+(b.y-a.y)*t;
+        for(let k=0;k<sz*0.7;k++){
+          const ang=Math.random()*6.28,rr=Math.random()*sz/2;
+          bx.globalAlpha=0.12+Math.random()*0.24;
+          bx.fillRect(cx+Math.cos(ang)*rr,cy+Math.sin(ang)*rr,1.6,1.6);
+        }
+      }
+      bx.globalAlpha=1;
+    }else{ // 보드마카
+      bx.globalAlpha=0.96;bx.strokeStyle=bColor;bx.lineWidth=SIZE.marker;bx.lineCap='round';bx.lineJoin='round';
+      bx.beginPath();bx.moveTo(a.x,a.y);bx.lineTo(b.x,b.y);bx.stroke();bx.globalAlpha=1;
+    }
+  }
+  function stampAt(x,y){
+    bx.globalAlpha=1;bx.textAlign='center';bx.textBaseline='middle';bx.font='46px "Apple Color Emoji","Segoe UI Emoji",serif';
+    bx.fillText(bStamp,x,y);
+  }
+  bcv.addEventListener('pointerdown',e=>{
+    if(bTool==='stamp'){stampAt(e.clientX,e.clientY);return;}
+    bDrawing=true;bcv.setPointerCapture(e.pointerId);bLast={x:e.clientX,y:e.clientY};
+    drawSeg(bLast,{x:e.clientX+0.1,y:e.clientY+0.1}); // 점 찍기
+  });
+  bcv.addEventListener('pointermove',e=>{
+    if(!bDrawing)return;
+    const p={x:e.clientX,y:e.clientY};drawSeg(bLast,p);bLast=p;
+  });
+  const endB=()=>{bDrawing=false;};
+  bcv.addEventListener('pointerup',endB);bcv.addEventListener('pointercancel',endB);
+
+  function openBoard(){
+    setPanel(null);fitBoard();
+    boardWrap.classList.add('on');setIgnore(false);bOpen=true;
+    $('boardBtn')&&$('boardBtn').classList.add('on');
+    setStyle(bStyle);setTool('pen');renderStamps();
+    const tb=$('boardTb');
+    requestAnimationFrame(()=>{
+      const d=dockDisp();
+      const lx2=Math.round(d.x+(d.w-tb.offsetWidth)/2),ty=d.y+18;
+      tb.style.left=lx2+'px';tb.style.top=ty+'px';
+      const st=$('boardStamps');st.style.left=lx2+'px';st.style.top=(ty+46)+'px';
+    });
+  }
+  function closeBoard(){boardWrap.classList.remove('on');bOpen=false;$('boardBtn')&&$('boardBtn').classList.remove('on');}
+  $('boardBtn')&&$('boardBtn').addEventListener('click',()=>{bOpen?closeBoard():openBoard();});
+  $('bStyleBtn').addEventListener('click',()=>setStyle(bStyle==='green'?'white':'green'));
+  $('bPenBtn').addEventListener('click',()=>setTool('pen'));
+  $('bErBtn').addEventListener('click',()=>setTool('eraser'));
+  $('bStampBtn').addEventListener('click',()=>setTool(bTool==='stamp'?'pen':'stamp'));
+  $('bClearBtn').addEventListener('click',()=>bx.clearRect(0,0,bcv.width,bcv.height));
+  $('bShadeBtn').addEventListener('click',()=>{ if(typeof openShade==='function')openShade(); });
+  $('bCloseBtn').addEventListener('click',closeBoard);
+  addEventListener('resize',()=>{ if(bOpen){const img=bx.getImageData(0,0,bcv.width,bcv.height);fitBoard();bx.putImageData(img,0,0);} });
+  // 펜 툴바 이동
+  makeDrag($('boardGrip'),(e,s)=>{
+    const tb=$('boardTb');
+    if(!s){const r=tb.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+    tb.style.left=(e.clientX-s.dx)+'px';tb.style.top=(e.clientY-s.dy)+'px';
+    const st=$('boardStamps');st.style.left=(e.clientX-s.dx)+'px';st.style.top=(e.clientY-s.dy+46)+'px';
+  });
+})();
