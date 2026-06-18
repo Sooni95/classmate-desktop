@@ -32,9 +32,12 @@ function centerOnDockDisplay(el) {
 let ignoring = true;
 function setIgnore(v){ if(ignoring!==v){ ignoring=v; window.cm.setIgnore(v); } }
 document.addEventListener('mousemove', e => {
-  if (drawMode || lensOn || snipOn || PS.spot>0) { setIgnore(false); trackPtr(e); return; }
   const el = document.elementFromPoint(e.clientX, e.clientY);
-  setIgnore(!(el && el.closest('.iv')));
+  const overUI = !!(el && el.closest('.iv'));
+  // 포인터(링/스포트/렌즈)·펜 모드일 때 독·툴바 위에서는 커스텀 포인터를 숨겨 시스템 커서가 보이게
+  document.body.classList.toggle('ptr-over-ui', overUI && (PS.ring || PS.spot>0 || lensOn || drawMode));
+  if (drawMode || lensOn || snipOn || PS.spot>0) { setIgnore(false); trackPtr(e); return; }
+  setIgnore(!overUI);
   trackPtr(e);
 });
 
@@ -201,7 +204,7 @@ $('aiSave').addEventListener('click',async()=>{
   const q=$('aiIn').value.trim();
   const a=$('aiOut').textContent;
   if(!a){toast('저장할 답변이 없어요');return;}
-  const content='[질문]\\n'+q+'\\n\\n[AI 답변]\\n'+a+'\\n\\n— ClassMate AI 교수보조';
+  const content='[질문]\n'+q+'\n\n[AI 답변]\n'+a+'\n\n— ClassMate AI 교수보조';
   const now=new Date();
   const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
   const r=await window.cm.saveText({text:content,filename:'AI보조_'+stamp+'.txt'});
@@ -490,19 +493,21 @@ $('rosterBtn').addEventListener('click',()=>{
   if(!isPro())return; // 잠금은 위 핸들러가 처리
   openRosterModal();
 });
+let activeRoster=null; // 현재 게임에 불러온 명단 이름 (삭제 시 게임에서도 비우기 위함)
 function getRosters(){try{return JSON.parse(localStorage.getItem('cm_rosters')||'{}');}catch(e){return {};}}
 function saveRosters(r){localStorage.setItem('cm_rosters',JSON.stringify(r));}
 function openRosterModal(){
   $('rosterModal').classList.add('on');
   $('rmName').value='';
   renderRosterList();
+  centerOnDockDisplay($('rosterModal').querySelector('.rm-card')); // 독 있는 모니터에 배치
 }
 function renderRosterList(){
   const rosters=getRosters();const names=Object.keys(rosters);
   const list=$('rmList');list.innerHTML='';
   if(!names.length){list.innerHTML='<div class="rm-empty">저장된 명단이 없어요.<br>위에서 현재 명단을 저장해보세요.</div>';return;}
   names.forEach(nm=>{
-    const cnt=rosters[nm].split('\\n').filter(s=>s.trim()).length;
+    const cnt=rosters[nm].split('\n').filter(s=>s.trim()).length;
     const row=document.createElement('div');row.className='rm-item';
     row.innerHTML='<span class="rm-nm"></span><span class="rm-cnt">'+cnt+'명</span><button class="rm-load">불러오기</button><button class="rm-del">삭제</button>';
     row.querySelector('.rm-nm').textContent=nm;
@@ -510,13 +515,21 @@ function renderRosterList(){
       $('nameList').value=rosters[nm];loadN();
       // 다른 게임에도 반영
       const names=splitNames(rosters[nm]);
-      if($('wheelNames'))$('wheelNames').value=names.join('\\n');
-      if($('pkNames'))$('pkNames').value=names.join('\\n');
-      if($('tNames'))$('tNames').value=names.join('\\n');
+      if($('wheelNames'))$('wheelNames').value=names.join('\n');
+      if($('pkNames'))$('pkNames').value=names.join('\n');
+      if($('tNames'))$('tNames').value=names.join('\n');
+      activeRoster=nm;
       $('rosterModal').classList.remove('on');toast('📂 "'+nm+'" 불러옴 (모든 게임에 반영)');
     });
     row.querySelector('.rm-del').addEventListener('click',()=>{
-      const r=getRosters();delete r[nm];saveRosters(r);renderRosterList();toast('🗑 "'+nm+'" 삭제됨');
+      const r=getRosters();delete r[nm];saveRosters(r);
+      // 게임에 불러와 있던 명단이면 게임 입력칸도 비움
+      if(activeRoster===nm){
+        ['nameList','wheelNames','pkNames','tNames'].forEach(id=>{if($(id))$(id).value='';});
+        loadN();activeRoster=null;
+        renderRosterList();toast('🗑 "'+nm+'" 삭제 — 게임 명단에서도 제외됨');return;
+      }
+      renderRosterList();toast('🗑 "'+nm+'" 삭제됨');
     });
     list.appendChild(row);
   });
@@ -530,6 +543,14 @@ $('rmSave').addEventListener('click',()=>{
   $('rmName').value='';renderRosterList();toast('💾 "'+nm+'" 저장됨');
 });
 $('rmClose').addEventListener('click',()=>$('rosterModal').classList.remove('on'));
+// 카드 헤더 드래그로 이동
+makeDrag($('rosterModal').querySelector('.rm-head'),(e,s)=>{
+  const card=$('rosterModal').querySelector('.rm-card');
+  if(!s){const r=card.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  card.style.left=(e.clientX-s.dx)+'px';card.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='rmClose');
+// 배경 클릭 시 닫기 (카드 바깥)
+$('rosterModal').addEventListener('click',e=>{if(e.target.id==='rosterModal')$('rosterModal').classList.remove('on');});
 
 // ── 엑셀 명단 가져오기 (드래그앤드롭 + 파일선택) ──
 $('rmTemplate').addEventListener('click',async()=>{
@@ -567,14 +588,14 @@ function parseRosterFile(file){
       if(!data.length){toast('이름 데이터가 없어요');return;}
       // 발표자 명단(nameList)에 이름 채우기
       const names=data.map(r=>String(r[ni]).trim());
-      $('nameList').value=names.join('\\n');loadN();
+      $('nameList').value=names.join('\n');loadN();
       // 핀볼: 가중치 반영 (이름*N)
       if(colW>=0){
         const pk=data.map(r=>{const w=parseInt(r[colW])||1;return w>1?String(r[ni]).trim()+'*'+Math.min(10,w):String(r[ni]).trim();});
-        if($('pkNames'))$('pkNames').value=pk.join('\\n');
-      }else if($('pkNames'))$('pkNames').value=names.join('\\n');
+        if($('pkNames'))$('pkNames').value=pk.join('\n');
+      }else if($('pkNames'))$('pkNames').value=names.join('\n');
       // 돌림판도 채우기
-      if($('wheelNames'))$('wheelNames').value=names.join('\\n');
+      if($('wheelNames'))$('wheelNames').value=names.join('\n');
       // 모둠 정보가 있으면 안내
       let msg='📂 '+names.length+'명 불러옴';
       if(colTeam>=0)msg+=' (모둠 정보 포함)';
@@ -651,7 +672,7 @@ setProUI();
   lo.addEventListener('pointerdown',e=>{
     e.stopPropagation();
     const now=Date.now();
-    cnt=(now-last<1500)?cnt+1:1;last=now;
+    cnt=(now-last<450)?cnt+1:1;last=now; // 빠르게 연타할 때만 (천천히 누르면 리셋)
     if(cnt>=7){
       cnt=0;
       const eg=$('eggCredit');
@@ -667,7 +688,7 @@ try{
   console.log('%c🦋 ClassMate','color:#F68C1F;font-size:26px;font-weight:800;');
   console.log('%c네패스 코코아팹 — 교사를 위한 올인원 수업 보조 도구','color:#9fb0bf;font-size:12px;');
   console.log('%c기획·개발  김수훈 · 김수관','color:#F68C1F;font-size:13px;font-weight:700;');
-  console.log('%c   ∧,,,∧\\n  (  ̳• · • ̳)\\n  /    づ♥  함께 만들어요','color:#D9760F;font-size:12px;');
+  console.log('%c   ∧,,,∧\n  (  ̳• · • ̳)\n  /    づ♥  함께 만들어요','color:#D9760F;font-size:12px;');
 }catch(e){}
 // 모니터 연결/해제 시: 독이 화면 밖에 있으면 주 모니터로 복귀
 window.cm.onBoundsChanged(async()=>{
@@ -682,7 +703,7 @@ window.cm.onBoundsChanged(async()=>{
   }
   placePanels();
 });
-$('quitBtn').addEventListener('click',()=>window.cm.quit());
+$('quitBtn').addEventListener('click',()=>window.cm.hideToTray());
 let toastT;
 function toast(msg){
   const t=$('toast');const d=dockDisp();
@@ -900,19 +921,28 @@ $('imInput').addEventListener('keydown',e=>{
 
 /* ===== 사다리타기 ===== */
 const ladderWrap=$('ladderWrap'),lcv=$('ladderCv'),lx=lcv.getContext('2d');
-let ladder=null,ladderBusy=false;
+let ladder=null,ladderBusy=false,ladderEditMode=false;
 const LCOL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e','#4dd0e1','#ff8a65','#ba68c8','#aed581'];
 makeDrag($('ladderHead'),(e,s)=>{
   if(!s){const r=ladderWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   ladderWrap.style.left=(e.clientX-s.dx)+'px';ladderWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='ladderClose');
-$('ladderClose').addEventListener('click',()=>ladderWrap.classList.remove('on'));
+$('ladderClose').addEventListener('click',()=>{ladderWrap.classList.remove('on');cancelAnimationFrame(gameAnim);ladderBusy=false;});
 $('ladderReset').addEventListener('click',()=>buildLadder(true)); // 사다리 새로 (이름/결과 유지)
 $('ladderStart').addEventListener('click',()=>runLadderAll());
+$('ladderEdit').addEventListener('click',()=>{
+  ladderEditMode=!ladderEditMode;
+  $('ladderEdit').classList.toggle('on',ladderEditMode);
+  $('ladderEdit').textContent=ladderEditMode?'✏️ 편집중':'✏️ 편집';
+  $('ladderResult').textContent=ladderEditMode
+    ?'편집 모드 — 칸을 클릭해 이름·결과 입력 (Enter 확정)'
+    :'이름이나 결과를 클릭하면 그 줄만 따라가요 · [사다리 시작]은 전체';
+});
 $('ladderOpen').addEventListener('click',()=>{
   ladderWrap.classList.add('on');centerOnDockDisplay(ladderWrap);buildLadder(false);
 });
 function buildLadder(keep){
+  cancelAnimationFrame(gameAnim);ladderBusy=false;$('ladderStart').disabled=false; // ★ 멈춤 상태 초기화 (재시작 안 되던 버그)
   const useRoster=$('ladderUseRoster')&&$('ladderUseRoster').checked;
   let rosterNames=[];
   if(useRoster){rosterNames=splitNames($('nameList').value);}
@@ -931,51 +961,80 @@ function buildLadder(keep){
   for(let r=0;r<ROWS;r++)for(let c=0;c<n-1;c++){
     if(Math.random()<0.36&&!rungs.some(x=>x.row===r&&(x.col===c-1||x.col===c+1)))rungs.push({row:r,col:c});
   }
-  lcv.width=Math.min(660,Math.max(400,n*94));lcv.height=470;
+  lcv.width=Math.min(680,Math.max(420,n*96));lcv.height=480;
   ladder={tops,bottoms,n,ROWS,rungs,auto,results:null};
   $('ladderInfo').textContent=n+'명';
-  $('ladderResult').textContent='칸을 클릭해 입력 (Enter 확정) · [사다리 시작]을 누르세요';
+  $('ladderResult').textContent=ladderEditMode
+    ?'편집 모드 — 칸을 클릭해 이름·결과 입력 (Enter 확정)'
+    :'이름이나 결과를 클릭하면 그 줄만 따라가요 · [사다리 시작]은 전체';
   drawLadder();
 }
 function makeAutoResults(n){return Array.from({length:n},(_,i)=>i===0?'🎉당첨':'꽝').sort(()=>Math.random()-.5);}
 function ladderX(c){return lcv.width/(ladder.n+1)*(c+1);}
-function ladderTopY(){return 92;}
-function ladderBotY(){return lcv.height-92;}
+function ladderTopY(){return 98;}
+function ladderBotY(){return lcv.height-98;}
 function ladderY(r){return ladderTopY()+r*(ladderBotY()-ladderTopY())/(ladder.ROWS-1);}
 function rrect(x,y,w,h,r){lx.beginPath();lx.moveTo(x+r,y);lx.arcTo(x+w,y,x+w,y+h,r);lx.arcTo(x+w,y+h,x,y+h,r);lx.arcTo(x,y+h,x,y,r);lx.arcTo(x,y,x+w,y,r);lx.closePath();}
-function drawBox(x,yc,text,fill,stroke){
-  rrect(x-40,yc-15,80,30,8);lx.fillStyle=fill;lx.fill();
-  lx.lineWidth=2;lx.strokeStyle=stroke;lx.stroke();
-  lx.fillStyle=fill==='#F68C1F'||stroke==='#F68C1F'?'#fff':'#cdd8e2';
-  lx.font='bold 12px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
-  lx.fillText(text,x,yc);
+function drawChip(x,yc,text,o){
+  o=o||{};const w=80,h=33;
+  rrect(x-w/2,yc-h/2,w,h,10);lx.fillStyle=o.fill||'#1e2935';lx.fill();
+  lx.setLineDash(o.dash?[4,3]:[]);
+  lx.lineWidth=o.focus?3:2;lx.strokeStyle=o.stroke||'#39485a';lx.stroke();lx.setLineDash([]);
+  lx.fillStyle=o.text||'#e7edf3';
+  lx.font='bold 12.5px "Malgun Gothic"';lx.textAlign='center';lx.textBaseline='middle';
+  lx.fillText(text,x,yc+0.5);
 }
-function drawLadder(highlights){
-  const W=lcv.width,H=lcv.height,{n,ROWS,rungs,tops,bottoms}=ladder;
-  lx.fillStyle='#0f1419';lx.fillRect(0,0,W,H);
-  // 세로줄
-  lx.strokeStyle='#3a4654';lx.lineWidth=3;lx.lineCap='round';
-  for(let c=0;c<n;c++){lx.beginPath();lx.moveTo(ladderX(c),ladderTopY());lx.lineTo(ladderX(c),ladderBotY());lx.stroke();}
-  // 가로줄
-  rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
-  // 강조 경로
-  if(highlights)highlights.forEach(hl=>{
-    lx.strokeStyle=hl.col;lx.lineWidth=4;lx.globalAlpha=.9;
-    lx.beginPath();hl.path.forEach((p,i)=>{const px=ladderX(p.col);if(i===0)lx.moveTo(px,p.y);else lx.lineTo(px,p.y);});lx.stroke();
-    lx.globalAlpha=1;
-  });
-  // 상단 이름 박스
-  for(let c=0;c<n;c++)drawBox(ladderX(c),ladderTopY()-30,tops[c]||'이름?',tops[c]?'#26303c':'#F68C1F',tops[c]?'#3a4654':'#F68C1F');
-  // 하단 결과 박스
+// focus={start:Set, end:Set} 가 있으면 그 줄만 또렷하게, 나머지는 흐리게
+function drawLadder(highlights,focus){
+  const W=lcv.width,H=lcv.height,{n,rungs,tops,bottoms}=ladder;
+  const bg=lx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#141b22');bg.addColorStop(1,'#0e1318');
+  lx.fillStyle=bg;lx.fillRect(0,0,W,H);
+  const dim=!!focus;
+  lx.lineCap='round';
+  // 세로 레일
   for(let c=0;c<n;c++){
-    const isHit=(bottoms[c]||'').includes('당첨')||(bottoms[c]||'').includes('🎉');
-    drawBox(ladderX(c),ladderBotY()+30,bottoms[c]||'결과?',isHit?'#F68C1F':'#26303c',isHit?'#F68C1F':'#3a4654');
+    const active=focus&&(focus.start.has(c)||focus.end.has(c));
+    lx.globalAlpha=dim&&!active?0.16:1;
+    lx.strokeStyle='#46586b';lx.lineWidth=4;
+    lx.beginPath();lx.moveTo(ladderX(c),ladderTopY());lx.lineTo(ladderX(c),ladderBotY());lx.stroke();
   }
+  // 가로 막대
+  lx.globalAlpha=dim?0.16:1;lx.strokeStyle='#46586b';lx.lineWidth=4;
+  rungs.forEach(rg=>{lx.beginPath();lx.moveTo(ladderX(rg.col),ladderY(rg.row));lx.lineTo(ladderX(rg.col+1),ladderY(rg.row));lx.stroke();});
+  lx.globalAlpha=1;
+  // 강조 경로 (은은한 글로우)
+  if(highlights)highlights.forEach(hl=>{
+    lx.save();
+    lx.strokeStyle=hl.col;lx.lineWidth=5;lx.lineCap='round';lx.lineJoin='round';
+    lx.shadowColor=hl.col;lx.shadowBlur=12;
+    lx.beginPath();hl.path.forEach((p,i)=>{const px=ladderX(p.col);if(i===0)lx.moveTo(px,p.y);else lx.lineTo(px,p.y);});lx.stroke();
+    lx.restore();
+  });
+  // 상단 이름 칩
+  for(let c=0;c<n;c++){
+    const empty=!tops[c],active=!focus||focus.start.has(c);
+    lx.globalAlpha=dim&&!active?0.3:1;
+    drawChip(ladderX(c),ladderTopY()-34,tops[c]||'이름?',empty
+      ?{fill:'#241a10',stroke:'#F68C1F',text:'#F68C1F',dash:true}
+      :{fill:'#1e2935',stroke:'#39485a',text:'#e7edf3',focus:focus&&focus.start.has(c)});
+  }
+  // 하단 결과 칩
+  for(let c=0;c<n;c++){
+    const empty=!bottoms[c],active=!focus||focus.end.has(c);
+    const isHit=(bottoms[c]||'').includes('당첨')||(bottoms[c]||'').includes('🎉');
+    const lit=isHit||(focus&&focus.end.has(c));
+    lx.globalAlpha=dim&&!active?0.3:1;
+    drawChip(ladderX(c),ladderBotY()+34,bottoms[c]||'결과?',empty
+      ?{fill:'#241a10',stroke:'#F68C1F',text:'#F68C1F',dash:true}
+      :(lit?{fill:'#F68C1F',stroke:'#F68C1F',text:'#fff',focus:focus&&focus.end.has(c)}
+           :{fill:'#1e2935',stroke:'#39485a',text:'#e7edf3'}));
+  }
+  lx.globalAlpha=1;
 }
 // 경로 계산 (위 c → 아래)
 function pathFor(startCol){
   const{ROWS,rungs}=ladder;let col=startCol;
-  const path=[{col,y:ladderTopY()-15}];
+  const path=[{col,y:ladderTopY()-17}];
   path.push({col,y:ladderTopY()});
   for(let r=0;r<ROWS;r++){
     const y=ladderY(r);
@@ -985,19 +1044,18 @@ function pathFor(startCol){
     else if(left){path.push({col,y});col--;path.push({col,y});}
   }
   path.push({col,y:ladderBotY()});
-  path.push({col,y:ladderBotY()+15});
+  path.push({col,y:ladderBotY()+17});
   return {endCol:col,path};
 }
 // 칸 클릭: 위/아래 입력
 function ladderEditAt(c,kind){
-  // 캔버스 좌표 → 화면 좌표
   const rect=lcv.getBoundingClientRect();
   const sx=rect.left+ladderX(c)*(rect.width/lcv.width);
-  const sy=rect.top+(kind==='top'?(ladderTopY()-30):(ladderBotY()+30))*(rect.height/lcv.height);
+  const sy=rect.top+(kind==='top'?(ladderTopY()-34):(ladderBotY()+34))*(rect.height/lcv.height);
   const inp=document.createElement('input');
   inp.type='text';inp.maxLength=6;inp.className='ladder-edit iv';
   inp.value=(kind==='top'?ladder.tops[c]:ladder.bottoms[c])||'';
-  inp.style.cssText=`position:fixed;left:${sx-40}px;top:${sy-15}px;width:80px;height:30px;z-index:200;text-align:center;font-weight:700;border:2px solid #F68C1F;border-radius:8px;background:#fff;color:#222;font-family:inherit;font-size:13px;`;
+  inp.style.cssText=`position:fixed;left:${sx-40}px;top:${sy-16}px;width:80px;height:32px;z-index:200;text-align:center;font-weight:700;border:2px solid #F68C1F;border-radius:9px;background:#fff;color:#222;font-family:inherit;font-size:13px;`;
   document.body.appendChild(inp);
   inp.focus();inp.select();
   const commit=()=>{
@@ -1017,7 +1075,7 @@ function ladderHit(e){
   const cx=(e.clientX-rect.left)*(lcv.width/rect.width);
   const cy=(e.clientY-rect.top)*(lcv.height/rect.height);
   for(let c=0;c<ladder.n;c++){
-    if(Math.abs(cx-ladderX(c))<44){
+    if(Math.abs(cx-ladderX(c))<46){
       if(cy<ladderTopY())return {c,kind:'top'};
       if(cy>ladderBotY())return {c,kind:'bottom'};
     }
@@ -1027,42 +1085,59 @@ function ladderHit(e){
 lcv.addEventListener('click',e=>{
   if(!ladder||ladderBusy)return;
   const hit=ladderHit(e);if(!hit)return;
-  if(hit.kind==='bottom'&&ladder.auto){toast('결과 자동 모드예요. 설정에서 자동을 끄면 직접 입력 가능');return;}
-  ladderEditAt(hit.c,hit.kind);
+  const filled=hit.kind==='top'?ladder.tops[hit.c]:ladder.bottoms[hit.c];
+  // 편집 모드이거나 빈 칸이면 입력, 채워진 칸이면 그 줄만 추적
+  if(ladderEditMode||!filled){
+    if(hit.kind==='bottom'&&ladder.auto&&!ladderEditMode){toast('결과 자동 모드예요. [편집]을 켜면 직접 입력 가능');return;}
+    ladderEditAt(hit.c,hit.kind);return;
+  }
+  traceOne(hit.c,hit.kind);
 });
-// 시작: 전원 동시에 경로 그리며 결과 확정
-function runLadderAll(){
-  if(!ladder||ladderBusy)return;
-  // 결과 자동인데 비었으면 채우기
+// 한 줄만 추적 (이름 클릭=아래로, 결과 클릭=위로)
+function traceOne(col,kind){
+  if(ladderBusy)return;
   if(ladder.auto&&ladder.bottoms.every(b=>!b))ladder.bottoms=makeAutoResults(ladder.n);
+  let startCol,endCol,path;
+  if(kind==='top'){startCol=col;const r=pathFor(col);endCol=r.endCol;path=r.path;}
+  else{ // 결과에서 위로 거슬러: 이 결과로 도착하는 출발칸 찾기
+    let s=col;for(let c=0;c<ladder.n;c++){if(pathFor(c).endCol===col){s=c;break;}}
+    startCol=s;const r=pathFor(s);endCol=r.endCol;path=r.path.slice().reverse();
+  }
+  animatePaths([{startCol,endCol,path,col:LCOL[startCol%LCOL.length]}],true);
+}
+// 공통 애니메이션 (single=true면 그 줄만 또렷)
+function animatePaths(paths,single){
+  cancelAnimationFrame(gameAnim);
   ladderBusy=true;$('ladderStart').disabled=true;
-  const paths=[];for(let c=0;c<ladder.n;c++){const{endCol,path}=pathFor(c);paths.push({startCol:c,endCol,path,col:LCOL[c%LCOL.length]});}
-  // 점진적으로 모든 경로를 동시에 그림
-  let prog=0;const SPEED=0.9; // 낮을수록 느림(두근두근)
-  let last=performance.now();
-  const anim=now=>{
-    const dt=Math.min(0.05,(now-last)/1000);last=now;
-    prog+=dt*SPEED;
+  const focus=single?{start:new Set(paths.map(p=>p.startCol)),end:new Set(paths.map(p=>p.endCol))}:null;
+  let prog=0;const SPEED=single?1.4:0.9;let last=performance.now();
+  const step=now=>{
+    const dt=Math.min(0.05,(now-last)/1000);last=now;prog+=dt*SPEED;
     const hls=paths.map(pp=>{
-      const total=pp.path.length-1;
-      const upto=Math.min(total,prog*total);
+      const total=pp.path.length-1,upto=Math.min(total,prog*total);
       const seg=Math.floor(upto),frac=upto-seg;
       const drawn=pp.path.slice(0,seg+1).map(p=>({col:p.col,y:p.y}));
       if(seg<total){const a=pp.path[seg],b=pp.path[seg+1];drawn.push({col:a.col+(b.col-a.col)*frac,y:a.y+(b.y-a.y)*frac});}
       return {col:pp.col,path:drawn};
     });
-    drawLadder(hls);
-    if(prog<1){gameAnim=requestAnimationFrame(anim);}
+    drawLadder(hls,focus);
+    if(prog<1){gameAnim=requestAnimationFrame(step);}
     else{
       ladderBusy=false;$('ladderStart').disabled=false;
-      // 결과 텍스트
-      const res=paths.map(pp=>'<span style="display:inline-block;margin:2px 6px;white-space:nowrap"><b>'+(ladder.tops[pp.startCol]||('참가'+(pp.startCol+1)))+'</b> → <b style="color:#F68C1F">'+(ladder.bottoms[pp.endCol]||'?')+'</b></span>');
+      drawLadder(paths.map(pp=>({col:pp.col,path:pp.path})),focus);
+      const res=paths.map(pp=>'<span style="display:inline-block;margin:2px 7px;white-space:nowrap"><b>'+(ladder.tops[pp.startCol]||('참가'+(pp.startCol+1)))+'</b> → <b style="color:#F68C1F">'+(ladder.bottoms[pp.endCol]||'?')+'</b></span>');
       $('ladderResult').innerHTML=res.join('');
-      drawLadder(paths.map(pp=>({col:pp.col,path:pp.path})));
       beep();
     }
   };
-  gameAnim=requestAnimationFrame(anim);
+  gameAnim=requestAnimationFrame(step);
+}
+// 시작: 전원 동시에
+function runLadderAll(){
+  if(!ladder||ladderBusy)return;
+  if(ladder.auto&&ladder.bottoms.every(b=>!b))ladder.bottoms=makeAutoResults(ladder.n);
+  const paths=[];for(let c=0;c<ladder.n;c++){const{endCol,path}=pathFor(c);paths.push({startCol:c,endCol,path,col:LCOL[c%LCOL.length]});}
+  animatePaths(paths,false);
 }
 
 /* --- 제비뽑기 (번호 표시) --- */
@@ -2178,7 +2253,7 @@ let penHudT;
 function showPenHud(){
   const hud=$('penHud');const w=PW[penType];
   hud.querySelector('.dot').style.cssText=`width:${Math.min(40,w)}px;height:${Math.min(40,w)}px;color:${penType==='eraser'?'#fff':penColor}`;
-  hud.querySelector('.ptxt').textContent=({pen:'펜',hl:'형광펜',eraser:'지우개',rect:'박스'})[penType]+' 굵기 '+w;
+  hud.querySelector('.ptxt').textContent=({pen:'펜',hl:'형광펜',eraser:'지우개',rect:'박스',circle:'원'})[penType]+' 굵기 '+w;
   hud.style.left=(hx+24)+'px';hud.style.top=(hy+24)+'px';
   hud.classList.add('on');
   clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
@@ -2193,7 +2268,7 @@ document.addEventListener('wheel',e=>{
   else if(drawMode){
     e.preventDefault();
     const d=e.deltaY<0?2:-2;
-    const lim={pen:[2,30],hl:[8,60],eraser:[10,80],rect:[2,16]}[penType];
+    const lim={pen:[2,30],hl:[8,60],eraser:[10,80],rect:[2,16],circle:[2,16]}[penType];
     PW[penType]=Math.min(lim[1],Math.max(lim[0],PW[penType]+d));
     showPenHud();
   }
@@ -2246,8 +2321,8 @@ $('mLens').addEventListener('click',cycleLens);
 const dc=$('dc'),ctx=dc.getContext('2d');
 const dctmp=$('dctmp'),tctx=dctmp.getContext('2d');
 let drawMode=false,drawing=false,penColor='#ff3b3b',penType='pen',undoStack=[];
-const PW={pen:5,hl:16,eraser:26,rect:4}; // 도구별 굵기 (휠로 조절)
-let rectStart=null,rectMode=false;
+const PW={pen:5,hl:16,eraser:26,rect:4,circle:4}; // 도구별 굵기 (휠로 조절)
+let rectStart=null,rectMode=false,circleMode=false;
 let stroke=[]; // 현재 스트로크 점들
 function fitC(){dc.width=innerWidth;dc.height=innerHeight;dctmp.width=innerWidth;dctmp.height=innerHeight;}
 addEventListener('resize',fitC);fitC();
@@ -2317,14 +2392,15 @@ document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{
 function setTool(t){
   if(penType==='text'&&t!=='text')commitText();
   penType=t;
-  ['penBtn','hlBtn','erBtn','txBtn','rectBtn'].forEach(id=>$(id).classList.remove('on'));
-  $({pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn'}[t]).classList.add('on');
+  ['penBtn','hlBtn','erBtn','txBtn','rectBtn','circBtn'].forEach(id=>$(id).classList.remove('on'));
+  $({pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn',circle:'circBtn'}[t]).classList.add('on');
 }
 $('penBtn').addEventListener('click',()=>setTool('pen'));
 $('hlBtn').addEventListener('click',()=>setTool('hl'));
 $('erBtn').addEventListener('click',()=>setTool('eraser'));
 $('txBtn').addEventListener('click',()=>setTool('text'));
 $('rectBtn').addEventListener('click',()=>setTool('rect'));
+$('circBtn').addEventListener('click',()=>setTool('circle'));
 
 /* --- 글자 도구: 클릭한 곳에 입력 → Enter로 화면에 새김 (휠로 크기) --- */
 let txSize=28,txEditor=null;
@@ -2369,6 +2445,7 @@ $('undoBtn').addEventListener('click',undo);
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
+  if(drawMode&&(e.key==='c'||e.key==='C')){e.preventDefault();setTool('circle');}
   if(e.key==='Escape'){
     const curPanel=document.querySelector('.panel.on');
     if($('proMenu')&&$('proMenu').classList.contains('on'))$('proMenu').classList.remove('on');
@@ -2404,9 +2481,10 @@ dc.addEventListener('pointerdown',e=>{
   if(penType==='text'){commitText();openTextEditor(e.clientX,e.clientY);return;}
   saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
-  // Ctrl 누르고 그리면 (펜/형광 중에도) 임시로 박스
+  // Ctrl 드래그 = 박스, Shift 드래그 = 원 (펜/형광 중에도)
   rectMode=(penType==='rect')||((penType==='pen'||penType==='hl')&&e.ctrlKey);
-  if(rectMode){rectStart={x:e.clientX,y:e.clientY};return;}
+  circleMode=(penType==='circle')||((penType==='pen'||penType==='hl')&&e.shiftKey);
+  if(rectMode||circleMode){rectStart={x:e.clientX,y:e.clientY};return;}
   if(penType==='eraser'){
     ctx.globalCompositeOperation='destination-out';
     ctx.strokeStyle='#000';ctx.fillStyle='#000';
@@ -2415,13 +2493,21 @@ dc.addEventListener('pointerdown',e=>{
 });
 dc.addEventListener('pointermove',e=>{
   if(!drawing)return;
-  if(rectMode){
+  if(rectMode||circleMode){
     tctx.clearRect(0,0,dctmp.width,dctmp.height);
-    dctmp.style.opacity=1;
-    const x=Math.min(rectStart.x,e.clientX),y=Math.min(rectStart.y,e.clientY);
-    const w=Math.abs(e.clientX-rectStart.x),h=Math.abs(e.clientY-rectStart.y);
-    tctx.strokeStyle=penColor;tctx.lineWidth=PW.rect;tctx.lineJoin='round';
-    tctx.strokeRect(x,y,w,h);
+    dctmp.style.opacity=penType==='hl'?0.42:1;
+    const x0=rectStart.x,y0=rectStart.y;
+    const lw=PW[penType==='circle'?'circle':(penType==='rect'?'rect':penType)]||PW.rect;
+    tctx.strokeStyle=penColor;tctx.lineWidth=lw;tctx.lineJoin='round';
+    if(circleMode){
+      const cx=(x0+e.clientX)/2,cy=(y0+e.clientY)/2;
+      const rx=Math.abs(e.clientX-x0)/2,ry=Math.abs(e.clientY-y0)/2;
+      tctx.beginPath();tctx.ellipse(cx,cy,Math.max(1,rx),Math.max(1,ry),0,0,7);tctx.stroke();
+    }else{
+      const x=Math.min(x0,e.clientX),y=Math.min(y0,e.clientY);
+      const w=Math.abs(e.clientX-x0),h=Math.abs(e.clientY-y0);
+      tctx.strokeRect(x,y,w,h);
+    }
     return;
   }
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
@@ -2442,11 +2528,13 @@ dc.addEventListener('pointermove',e=>{
 });
 const endD=()=>{
   if(!drawing)return;drawing=false;
-  if(rectMode){
-    ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  if(rectMode||circleMode){
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=penType==='hl'?0.42:1;
     ctx.drawImage(dctmp,0,0);
+    ctx.globalAlpha=1;
     tctx.clearRect(0,0,dctmp.width,dctmp.height);
-    stroke=[];rectMode=false;return;
+    stroke=[];rectMode=false;circleMode=false;return;
   }
   if(penType!=='eraser'&&stroke.length){
     // 완성된 스트로크를 본 캔버스에 한 번만 합성 (형광은 반투명으로)

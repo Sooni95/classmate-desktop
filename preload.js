@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('cm', {
   openExternal: (url) => ipcRenderer.send('open-external', url),
   saveTemplate: () => ipcRenderer.invoke('save-template'),
   quit: () => ipcRenderer.send('quit-app'),
+  hideToTray: () => ipcRenderer.send('hide-to-tray'),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
     .forEach(ch => ipcRenderer.on(ch, () => h(ch))),
   onBoundsChanged: (h) => ipcRenderer.on('bounds-changed', h),

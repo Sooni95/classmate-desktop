@@ -139,10 +139,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .rm-or{text-align:center;font-size:10.5px;color:#6b7884;margin-bottom:10px;}
 
 /* 명단 관리 모달 */
-#rosterModal{position:fixed;inset:0;z-index:128;display:none;align-items:center;justify-content:center;background:rgba(8,11,15,.6);}
-#rosterModal.on{display:flex;}
-.rm-card{background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.rm-head{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:800;color:#fff;margin-bottom:14px;}
+#rosterModal{position:fixed;inset:0;z-index:128;display:none;background:rgba(8,11,15,.55);}
+#rosterModal.on{display:block;}
+.rm-card{position:absolute;left:0;top:0;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.rm-head{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:800;color:#fff;margin-bottom:14px;cursor:grab;}
+.rm-head:active{cursor:grabbing;}
 .rm-head button{border:none;background:var(--dk2);width:26px;height:26px;border-radius:7px;color:#9fb0bf;cursor:pointer;}
 .rm-save{display:flex;gap:6px;margin-bottom:16px;}
 .rm-save input{flex:1;background:var(--dk2);border:1px solid var(--line);color:#fff;border-radius:8px;padding:9px;font-family:inherit;font-size:12px;min-width:0;}
@@ -285,7 +286,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #penHud.on{display:flex;}
 #penHud .dot{border-radius:50%;background:currentColor;}
 
-#halo{position:fixed;left:0;top:0;width:34px;height:34px;border:3px solid var(--or);border-radius:50%;box-shadow:0 0 14px rgba(246,140,31,.55);z-index:90;display:none;}
+#halo{position:fixed;left:0;top:0;width:34px;height:34px;border:3px solid var(--or);border-radius:50%;box-shadow:0 0 14px rgba(246,140,31,.55);z-index:90;display:none;pointer-events:none;}
 #halo.on{display:block;}
 #halo::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;background:var(--or);border-radius:50%;transform:translate(-50%,-50%);}
 .ripple{position:fixed;width:16px;height:16px;border:3px solid var(--or);border-radius:50%;z-index:89;pointer-events:none;animation:rip .55s ease-out forwards;}
@@ -294,8 +295,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #halo.clickpulse{box-shadow:0 0 0 0 rgba(246,140,31,.6);animation:halopulse .4s ease-out;}
 @keyframes halopulse{0%{box-shadow:0 0 0 0 rgba(246,140,31,.6);}100%{box-shadow:0 0 0 22px rgba(246,140,31,0);}}
 
-#spot{position:fixed;inset:0;z-index:39;display:none;overflow:hidden;}
+#spot{position:fixed;inset:0;z-index:39;display:none;overflow:hidden;pointer-events:none;}
 #spot.on{display:block;}
+body.ptr-over-ui #halo{display:none!important;}
 #spotHole{position:absolute;box-shadow:0 0 0 200vmax rgba(0,0,0,.72);border:2px solid rgba(255,255,255,.25);}
 #spotHole.circle{border-radius:50%;}
 #spotHole.rect{border-radius:14px;}
@@ -309,7 +311,9 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #snipHint{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(22,28,36,.9);color:#fff;font-size:12px;padding:7px 16px;border-radius:100px;}
 
 /* memo & pin */
-.memo{position:fixed;z-index:48;width:210px;border-radius:5px 5px 9px 9px;box-shadow:0 12px 32px -8px rgba(120,80,0,.45);overflow:hidden;}
+.memo{position:fixed;z-index:48;width:282px;border-radius:5px 5px 9px 9px;box-shadow:0 12px 32px -8px rgba(120,80,0,.45);overflow:hidden;}
+.memo .mbar>span:first-child{min-width:0;flex:1 1 auto;overflow:hidden;}
+.memo .mbar>span:last-child{flex:0 0 auto;display:flex;gap:4px;}
 .memo .mbar{height:34px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 8px;gap:6px;}
 .memo .mbtn2{border:none;background:rgba(0,0,0,.12);border-radius:6px;width:24px;height:24px;font-size:15px;font-weight:800;cursor:pointer;color:rgba(60,40,0,.85);display:inline-flex;align-items:center;justify-content:center;line-height:1;}
 .memo .mbtn2:hover{background:var(--red);color:#fff;}
@@ -529,6 +533,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 #ladderCv{display:block;background:#0f1419;width:100%;}
 #ladderResult{padding:10px 16px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
 #ladderFoot{display:flex;gap:8px;padding:0 14px 13px;justify-content:center;}
+#ladderEdit.on{background:var(--or);color:#fff;border-color:var(--or);}
 
 /* 영역 녹화 정지 버튼 */
 #recStop{position:fixed;left:0;top:0;z-index:95;display:none;border:none;background:var(--red);color:#fff;border-radius:11px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);animation:recpulse 1.2s infinite;}
@@ -627,6 +632,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <button class="tb" id="hlBtn">🖍 형광</button>
   <button class="tb" id="txBtn">T 글자</button>
   <button class="tb" id="rectBtn" title="박스 강조 (또는 펜 상태로 Ctrl+드래그)">▭ 박스</button>
+  <button class="tb" id="circBtn" title="원 강조 (또는 펜 상태로 Shift+드래그)">◯ 원</button>
   <button class="tb" id="erBtn">⬜ 지우개</button>
   <button class="tb" id="undoBtn">↩</button>
   <button class="tb danger" id="clearBtn">↺ 전체</button>
@@ -710,7 +716,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div class="gcfg" id="cfgLadder">
     <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="10"></div>
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
-    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">위·아래 칸을 클릭하면 바로 입력</b>돼요. (Enter로 확정)</div>
+    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">이름·결과 칸을 클릭하면 그 줄만 따라가</b>요. 전체는 [사다리 시작], 이름 수정은 [✏️ 편집].</div>
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
     <button class="btn-go" id="ladderOpen">사다리 만들기</button>
   </div>
@@ -721,7 +727,7 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
   <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
   <canvas id="ladderCv" class="iv"></canvas>
   <div id="ladderResult"></div>
-  <div id="ladderFoot"><button class="btn-go" id="ladderStart">🪜 사다리 시작</button><button class="btn-g" id="ladderReset">다시 타기</button></div>
+  <div id="ladderFoot"><button class="btn-go" id="ladderStart">🪜 사다리 시작</button><button class="btn-g" id="ladderEdit">✏️ 편집</button><button class="btn-g" id="ladderReset">다시 타기</button></div>
 </div>
 
 <div class="panel iv" id="p-qr">

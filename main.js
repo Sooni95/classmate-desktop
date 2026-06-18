@@ -283,7 +283,9 @@ function createOverlay() {
     } catch (err) { return { ok: false, message: String(err) }; }
   });
 
-  ipcMain.on('quit-app', () => app.quit());
+  ipcMain.on('quit-app', () => { app.isQuiting = true; app.quit(); });
+  // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
+  ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });
 }
 
 function registerShortcuts() {
@@ -303,7 +305,7 @@ function registerShortcuts() {
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) { app.quit(); }
 else {
-  app.on('second-instance', () => { if (win) win.webContents.send('hk-dock'); });
+  app.on('second-instance', () => { if (win) { win.show(); win.webContents.send('hk-dock'); } });
   app.whenReady().then(() => {
     const { session } = require('electron');
     session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'media'));
@@ -312,15 +314,18 @@ else {
     try {
       tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
       tray.setToolTip('ClassMate');
+      const showWin = () => { if (win) { win.show(); win.webContents.send('bounds-changed'); } };
       tray.setContextMenu(Menu.buildFromTemplate([
-        { label: '툴바 보이기/숨기기 (Ctrl+Alt+`)', click: () => win.webContents.send('hk-dock') },
+        { label: 'ClassMate 열기', click: showWin },
+        { label: '툴바 보이기/숨기기 (Ctrl+Alt+`)', click: () => { showWin(); win.webContents.send('hk-dock'); } },
         { label: '모두 끄기 (Ctrl+Alt+0)', click: () => win.webContents.send('hk-escape') },
         { type: 'separator' },
-        { label: '종료', click: () => app.quit() },
+        { label: '완전 종료', click: () => { app.isQuiting = true; app.quit(); } },
       ]));
+      tray.on('click', showWin); // 트레이 아이콘 클릭 → 다시 표시
     } catch (e) {}
   });
 }
 
 app.on('will-quit', () => globalShortcut.unregisterAll());
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => { if (app.isQuiting) app.quit(); });
