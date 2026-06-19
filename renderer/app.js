@@ -1088,28 +1088,15 @@ function pathFor(startCol){
   path.push({col,y:ladderBotY()+17});
   return {endCol:col,path};
 }
-// 칸 클릭: 위/아래 입력
+// 칸 클릭: 위/아래 입력 — 오버레이에서 포커스가 불안정한 인라인 input 대신
+// 검증된 커스텀 입력 모달(askInput)을 사용 (이전 인라인 방식이 포커스를 못 받던 문제 수정)
 function ladderEditAt(c,kind){
-  const rect=lcv.getBoundingClientRect();
-  const sx=rect.left+ladderX(c)*(rect.width/lcv.width);
-  const sy=rect.top+(kind==='top'?(ladderTopY()-34):(ladderBotY()+34))*(rect.height/lcv.height);
-  const inp=document.createElement('input');
-  inp.type='text';inp.maxLength=6;inp.className='ladder-edit iv';
-  inp.value=(kind==='top'?ladder.tops[c]:ladder.bottoms[c])||'';
-  inp.style.cssText=`position:fixed;left:${sx-40}px;top:${sy-16}px;width:80px;height:32px;z-index:200;text-align:center;font-weight:700;border:2px solid #F68C1F;border-radius:9px;background:#fff;color:#222;font-family:inherit;font-size:13px;`;
-  document.body.appendChild(inp);
-  inp.focus();inp.select();
-  const commit=()=>{
-    const v=inp.value.trim().slice(0,6);
-    if(kind==='top')ladder.tops[c]=v;else ladder.bottoms[c]=v;
+  const cur=(kind==='top'?ladder.tops[c]:ladder.bottoms[c])||'';
+  askInput(kind==='top'?('이름 입력 ('+(c+1)+'번 칸)'):('결과 입력 ('+(c+1)+'번 칸)'),cur,v=>{
+    const val=(v||'').slice(0,6);
+    if(kind==='top')ladder.tops[c]=val;else ladder.bottoms[c]=val;
     ladder.results=null;drawLadder();
-    if(inp.parentNode)inp.remove();
-  };
-  inp.addEventListener('keydown',ev=>{
-    if(ev.key==='Enter'){ev.preventDefault();commit();}
-    else if(ev.key==='Escape'){ev.preventDefault();inp.remove();}
   });
-  inp.addEventListener('blur',commit);
 }
 function ladderHit(e){
   const rect=lcv.getBoundingClientRect();
@@ -1229,6 +1216,17 @@ const shadeWrap=$('shadeWrap'),shadePanel=$('shadePanel');
 function openShade(){
   setPanel(null);
   shadeWrap.classList.add('on');setIgnore(false);
+  // 멀티모니터에서 %기반 CSS는 전체 화면(유니언) 기준이라 모니터 중간에 걸쳐 뜸 →
+  // 독이 있는 모니터 기준 픽셀 좌표로 그 모니터 중앙에 배치
+  const place=()=>{
+    const d=dockDisp();
+    const w=Math.round(d.w*0.6), h=Math.round(d.h*0.55);
+    shadePanel.style.right='auto';shadePanel.style.bottom='auto';
+    shadePanel.style.width=w+'px';shadePanel.style.height=h+'px';
+    shadePanel.style.left=(d.x+(d.w-w)/2)+'px';
+    shadePanel.style.top=(d.y+(d.h-h)/2)+'px';
+  };
+  place();requestAnimationFrame(place);
 }
 $('shadeClose').addEventListener('click',()=>shadeWrap.classList.remove('on'));
 // 바(상단)로 이동
@@ -2300,8 +2298,21 @@ function showPenHud(){
   hud.classList.add('on');
   clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
 }
+function showStampHud(){
+  const hud=$('penHud');
+  hud.querySelector('.dot').style.cssText='width:0;height:0';
+  hud.querySelector('.ptxt').textContent=penStamp+' 스탬프 크기 '+stampSize+' (휠로 조절)';
+  hud.style.left=(hx+24)+'px';hud.style.top=(hy+24)+'px';
+  hud.classList.add('on');
+  clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
+}
 document.addEventListener('wheel',e=>{
-  if(drawMode&&penType==='text'){
+  if(drawMode&&penType==='stamp'){
+    e.preventDefault();
+    stampSize=Math.min(160,Math.max(20,stampSize+(e.deltaY<0?6:-6)));
+    showStampHud();
+  }
+  else if(drawMode&&penType==='text'){
     e.preventDefault();
     txSize=Math.min(96,Math.max(12,txSize+(e.deltaY<0?3:-3)));
     if(txEditor)txEditor.style.fontSize=txSize+'px';
@@ -2366,6 +2377,12 @@ let drawMode=false,drawing=false,penColor='#ff3b3b',penType='pen',undoStack=[];
 const PW={pen:5,hl:16,eraser:26,rect:4,circle:4}; // 도구별 굵기 (휠로 조절)
 let rectStart=null,rectMode=false,circleMode=false;
 let stroke=[]; // 현재 스트로크 점들
+// 수정자 키 상태를 직접 추적 (오버레이/클릭통과 환경에서 pointer 이벤트에 ctrlKey/shiftKey가
+// 안 실려 오는 경우가 있어, keydown/keyup으로 추적한 값을 같이 사용한다)
+let keyCtrl=false,keyShift=false;
+window.addEventListener('keydown',e=>{if(e.key==='Control')keyCtrl=true;if(e.key==='Shift')keyShift=true;},true);
+window.addEventListener('keyup',e=>{if(e.key==='Control')keyCtrl=false;if(e.key==='Shift')keyShift=false;},true);
+window.addEventListener('blur',()=>{keyCtrl=keyShift=false;});
 function fitC(){dc.width=innerWidth;dc.height=innerHeight;dctmp.width=innerWidth;dctmp.height=innerHeight;}
 addEventListener('resize',fitC);fitC();
 function toggleDraw(force){
@@ -2433,6 +2450,7 @@ document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{
 }));
 const STAMPS=['⭐','👍','✅','💮','🌸','🎉','💯','❤️','😊','✏️','🅾️','❌'];
 let penStamp='⭐';
+let stampSize=46; // 스탬프 크기 (휠로 조절)
 function renderPenStamps(){
   const ps=$('penStamps');if(!ps)return;ps.innerHTML='';
   STAMPS.forEach(em=>{
@@ -2443,7 +2461,7 @@ function renderPenStamps(){
 }
 function stampAtDraw(x,y){
   saveSt();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='46px "Apple Color Emoji","Segoe UI Emoji",serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=stampSize+'px "Apple Color Emoji","Segoe UI Emoji",serif';
   ctx.fillText(penStamp,x,y);
 }
 function setTool(t){
@@ -2547,9 +2565,10 @@ dc.addEventListener('pointerdown',e=>{
   if(penType==='stamp'){stampAtDraw(e.clientX,e.clientY);return;}
   saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
-  // Ctrl 드래그 = 박스, Shift 드래그 = 원 (펜/형광 중에도)
-  rectMode=(penType==='rect')||((penType==='pen'||penType==='hl')&&e.ctrlKey);
-  circleMode=(penType==='circle')||((penType==='pen'||penType==='hl')&&e.shiftKey);
+  // Ctrl 드래그 = 박스, Shift 드래그 = 원 (펜/형광 중에도) — 추적 상태 OR 이벤트 플래그
+  const ctrlDown=e.ctrlKey||keyCtrl, shiftDown=e.shiftKey||keyShift;
+  rectMode=(penType==='rect')||((penType==='pen'||penType==='hl')&&ctrlDown);
+  circleMode=(penType==='circle')||((penType==='pen'||penType==='hl')&&shiftDown);
   if(rectMode||circleMode){rectStart={x:e.clientX,y:e.clientY};return;}
   if(penType==='eraser'){
     ctx.globalCompositeOperation='destination-out';
@@ -2660,7 +2679,8 @@ $('nStart').addEventListener('click',()=>{
 async function startNoise(){
   if(nStream)return;
   try{
-    nStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    // autoGainControl을 끄지 않으면 브라우저가 음량을 평준화해 큰 소리도 작게 잡힘 → 게이지가 안 오름
+    nStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     nCtx=new AudioContext();
     const srcN=nCtx.createMediaStreamSource(nStream);
     nAn=nCtx.createAnalyser();nAn.fftSize=512;srcN.connect(nAn);
@@ -2677,7 +2697,7 @@ async function startNoise(){
       nAn.getByteTimeDomainData(buf);
       let sum=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;sum+=v*v;}
       const rms=Math.sqrt(sum/buf.length);
-      const lvl=Math.min(100,Math.round(rms*300));
+      const lvl=Math.min(100,Math.round(rms*620)); // 체감 음량을 0~100로 (이전 *300은 기준값 대비 너무 낮아 게이지가 안 올랐음)
       $('nFill').style.width=lvl+'%';
       const th=+$('nTh').value;
       $('nVal').textContent='현재 '+lvl+' / 기준 '+th;
@@ -2846,4 +2866,152 @@ syncPtr();
     tb.style.left=(e.clientX-s.dx)+'px';tb.style.top=(e.clientY-s.dy)+'px';
     const st=$('boardStamps');st.style.left=(e.clientX-s.dx)+'px';st.style.top=(e.clientY-s.dy+46)+'px';
   });
+})();
+
+/* ===== ⚙ 설정 메뉴 + 🌗 테마 + ✉️ 의견 보내기 + 🧩 독 편집 ===== */
+(function(){
+  const dockEl=$('dock'), setBtn=$('setBtn'), setMenu=$('setMenu');
+  if(!setBtn||!setMenu)return;
+
+  /* --- 메뉴 토글 --- */
+  function closeSet(){setMenu.classList.remove('on');}
+  setBtn.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(setMenu.classList.contains('on')){closeSet();return;}
+    setMenu.classList.add('on');
+    const r=setBtn.getBoundingClientRect(),mw=setMenu.offsetWidth,mh=setMenu.offsetHeight;
+    let lx=r.right-mw; if(lx<8)lx=8;
+    let ty=r.top-mh-8; if(ty<8)ty=r.bottom+8;
+    setMenu.style.left=lx+'px'; setMenu.style.top=ty+'px';
+  });
+  document.addEventListener('click',e=>{
+    if(setMenu.classList.contains('on')&&!setMenu.contains(e.target)&&!setBtn.contains(e.target))closeSet();
+  });
+
+  /* --- 🌗 테마 (독 중심) --- */
+  function applyTheme(t){document.body.classList.toggle('light',t==='light');}
+  applyTheme(localStorage.getItem('cm_theme')||'dark');
+  function toggleTheme(){
+    const next=document.body.classList.contains('light')?'dark':'light';
+    localStorage.setItem('cm_theme',next);applyTheme(next);
+    toast(next==='light'?'🌞 라이트 모드':'🌙 다크 모드');
+  }
+
+  /* --- ✉️ 의견 보내기 --- */
+  const fbModal=$('feedbackModal'),fbMsg=$('fbMsg'),fbContact=$('fbContact'),fbSend=$('fbSend'),fbStatus=$('fbStatus');
+  function openFeedback(){fbStatus.textContent='';fbStatus.className='fb-status';fbSend.disabled=false;fbModal.classList.add('on');setIgnore(false);window.cm.grabFocus&&window.cm.grabFocus();setTimeout(()=>fbMsg.focus(),60);}
+  function closeFeedback(){fbModal.classList.remove('on');}
+  $('fbClose').addEventListener('click',closeFeedback);
+  $('fbCancel').addEventListener('click',closeFeedback);
+  fbModal.addEventListener('click',e=>{if(e.target===fbModal)closeFeedback();});
+  fbSend.addEventListener('click',async()=>{
+    const message=fbMsg.value.trim();
+    if(!message){fbStatus.className='fb-status err';fbStatus.textContent='내용을 입력해 주세요.';return;}
+    fbSend.disabled=true;fbStatus.className='fb-status';fbStatus.textContent='보내는 중…';
+    let meta='';try{const i=await window.cm.getAppInfo();meta='v'+((i&&i.version)||'?');}catch(e){}
+    try{
+      const r=await window.cm.feedback({message,contact:fbContact.value.trim(),meta});
+      if(r&&r.ok){fbStatus.className='fb-status ok';fbStatus.textContent='접수되었습니다. 감사합니다! 🧡';fbMsg.value='';fbContact.value='';setTimeout(closeFeedback,1400);}
+      else{fbStatus.className='fb-status err';fbStatus.textContent='전송 실패 — 인터넷 연결을 확인해 주세요.';fbSend.disabled=false;}
+    }catch(e){fbStatus.className='fb-status err';fbStatus.textContent='전송 실패 — 잠시 후 다시 시도해 주세요.';fbSend.disabled=false;}
+  });
+
+  /* --- 🧩 독 편집 (도구 표시/숨김 + 순서) --- */
+  const TOOL_META={timer:'⏱ 타이머',game:'🎲 뽑기·게임',qr:'🔗 URL',pin:'📌 핀',memo:'📝 메모',ptr:'🎯 포인터',noise:'📢 소음',draw:'✏️ 펜',exp:'📋 기록저장',pro:'🧡 Pro'};
+  const ALL_IDS=Object.keys(TOOL_META);
+  const drawer=$('dockDrawer'),hiddenBox=$('dockHidden');
+  const toolBtn=id=>dockEl.querySelector('.tool[data-id="'+id+'"]');
+  function loadCfg(){
+    let order=[],hidden=[];
+    try{order=JSON.parse(localStorage.getItem('cm_dock_order')||'[]');}catch(e){}
+    try{hidden=JSON.parse(localStorage.getItem('cm_dock_hidden')||'[]');}catch(e){}
+    if(!Array.isArray(order))order=[]; if(!Array.isArray(hidden))hidden=[];
+    ALL_IDS.forEach(id=>{if(!order.includes(id))order.push(id);});
+    return {order:order.filter(id=>ALL_IDS.includes(id)),hidden:hidden.filter(id=>ALL_IDS.includes(id))};
+  }
+  const saveCfg=(order,hidden)=>{localStorage.setItem('cm_dock_order',JSON.stringify(order));localStorage.setItem('cm_dock_hidden',JSON.stringify(hidden));};
+  const currentOrder=()=>[...dockEl.querySelectorAll('.tool[data-id]')].map(b=>b.dataset.id);
+  const currentHidden=()=>ALL_IDS.filter(id=>{const b=toolBtn(id);return b&&b.style.display==='none';});
+  function applyCfg(){
+    const {order,hidden}=loadCfg();
+    order.forEach(id=>{const b=toolBtn(id);if(b)dockEl.insertBefore(b,setBtn);});
+    ALL_IDS.forEach(id=>{const b=toolBtn(id);if(b)b.style.display=hidden.includes(id)?'none':'';});
+  }
+  function renderDrawer(){
+    hiddenBox.innerHTML='';
+    currentHidden().forEach(id=>{
+      const m=TOOL_META[id],it=document.createElement('div');it.className='dd-item';
+      it.innerHTML='<span class="em">'+m.split(' ')[0]+'</span>'+m.split(' ').slice(1).join(' ');
+      it.addEventListener('click',()=>{const b=toolBtn(id);if(b)b.style.display='';saveCfg(currentOrder(),currentHidden());renderDrawer();});
+      hiddenBox.appendChild(it);
+    });
+  }
+  function addDx(){
+    dockEl.querySelectorAll('.tool[data-id]').forEach(b=>{
+      if(b.querySelector('.dx'))return;
+      const x=document.createElement('span');x.className='dx';x.textContent='×';
+      x.addEventListener('click',ev=>{ev.stopPropagation();b.style.display='none';saveCfg(currentOrder(),currentHidden());renderDrawer();});
+      b.appendChild(x);
+    });
+  }
+  const removeDx=()=>dockEl.querySelectorAll('.tool .dx').forEach(x=>x.remove());
+  let editing=false;
+  function enterEdit(){
+    if(typeof setPanel==='function')setPanel(null);
+    editing=true;dockEl.classList.add('editing');addDx();renderDrawer();
+    const r=dockEl.getBoundingClientRect();
+    drawer.classList.add('on');
+    drawer.style.left=Math.max(8,Math.min(r.left,innerWidth-drawer.offsetWidth-8))+'px';
+    drawer.style.top=(r.bottom+10)+'px';
+    setIgnore(false);
+  }
+  function exitEdit(){
+    editing=false;dockEl.classList.remove('editing');removeDx();drawer.classList.remove('on');
+    saveCfg(currentOrder(),currentHidden());toast('🧩 독 편집을 저장했어요');
+  }
+  $('dockDone').addEventListener('click',exitEdit);
+  // 편집 중 도구 클릭은 원래 동작(패널 열기) 대신 무시
+  dockEl.addEventListener('click',e=>{
+    if(!editing)return;
+    const t=e.target.closest('.tool[data-id]');
+    if(t&&!e.target.classList.contains('dx')){e.stopPropagation();e.preventDefault();}
+  },true);
+  // 드래그로 순서 변경
+  let dragEl=null;
+  dockEl.addEventListener('pointerdown',e=>{
+    if(!editing)return;
+    const t=e.target.closest('.tool[data-id]');
+    if(!t||e.target.classList.contains('dx'))return;
+    dragEl=t;t.classList.add('dragging');
+    try{t.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  dockEl.addEventListener('pointermove',e=>{
+    if(!editing||!dragEl)return;
+    const sibs=[...dockEl.querySelectorAll('.tool[data-id]')].filter(b=>b!==dragEl&&b.style.display!=='none');
+    let placed=false;
+    for(const b of sibs){const r=b.getBoundingClientRect();if(e.clientX<r.left+r.width/2){dockEl.insertBefore(dragEl,b);placed=true;break;}}
+    if(!placed)dockEl.insertBefore(dragEl,setBtn);
+  });
+  const endDrag=()=>{if(dragEl){dragEl.classList.remove('dragging');dragEl=null;saveCfg(currentOrder(),currentHidden());renderDrawer();}};
+  dockEl.addEventListener('pointerup',endDrag);
+  dockEl.addEventListener('pointercancel',endDrag);
+
+  /* --- 메뉴 액션 --- */
+  setMenu.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-act]');if(!b)return;
+    closeSet();
+    if(b.dataset.act==='theme')toggleTheme();
+    else if(b.dataset.act==='dockedit')enterEdit();
+    else if(b.dataset.act==='feedback')openFeedback();
+  });
+
+  /* --- Esc 로 닫기 --- */
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape')return;
+    if(fbModal.classList.contains('on')){closeFeedback();}
+    else if(setMenu.classList.contains('on')){closeSet();}
+    else if(editing){exitEdit();}
+  });
+
+  applyCfg();
 })();

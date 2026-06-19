@@ -933,7 +933,7 @@ body.ptr-over-ui #halo{display:none!important;}
   <div class="ph">📢 소음 측정 — 폭탄 게이지 <button id="nHelp" style="float:right;border:none;background:var(--dk2);color:#9fb0bf;border-radius:6px;font-size:10.5px;padding:3px 8px;cursor:pointer;font-family:inherit">❓ 작동 방식</button></div>
   <div class="noise-bar"><div class="noise-fill" id="nFill"></div></div>
   <div class="noise-val" id="nVal">대기 중</div>
-  <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="20" max="90" value="60"><span id="nThV" style="font-size:12px;color:#cdd8e2">60</span></div>
+  <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="20" max="90" value="45"><span id="nThV" style="font-size:12px;color:#cdd8e2">45</span></div>
   <p style="font-size:10.5px;color:#6b7884;line-height:1.7;margin:7px 0 10px">
     기준 60 ≈ 교실이 "시끄럽다"고 느끼는 수준(약 70dB).<br>마이크 감도가 제각각이라 슬라이더로 보정하세요.<br>기준을 <b style="color:var(--amber)">계속 넘으면 💣 게이지가 차오르고</b>, 가득 차면 💥 터집니다.
   </p>
@@ -1103,19 +1103,70 @@ body.ptr-over-ui #halo{display:none!important;}
   <div id="boardStamps"></div>
 </div>
 
+<style>
+/* ⚙ 설정 메뉴 */
+#setMenu{position:fixed;z-index:96;display:none;flex-direction:column;gap:3px;background:var(--dk);border:1px solid var(--or);border-radius:12px;padding:6px;box-shadow:var(--shadow);min-width:210px;}
+#setMenu.on{display:flex;}
+#setMenu button{border:none;background:transparent;color:#e7edf3;font-family:inherit;font-size:13px;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer;}
+#setMenu button:hover{background:var(--dk2);}
+.sysbtn{color:#8a94a1;}
+/* 독 편집 */
+#dock.editing .tool[data-id]{outline:2px dashed var(--or);outline-offset:-3px;cursor:grab;}
+#dock.editing .tool.dragging{opacity:.45;}
+.tool .dx{display:none;position:absolute;top:-6px;right:-3px;width:18px;height:18px;border-radius:50%;background:#e05544;color:#fff;font-size:12px;line-height:17px;text-align:center;border:2px solid var(--dk);z-index:6;cursor:pointer;}
+#dock.editing .tool[data-id] .dx{display:block;}
+#dockDrawer{position:fixed;z-index:95;display:none;background:var(--dk);border:1px solid var(--or);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);width:520px;max-width:92vw;}
+#dockDrawer.on{display:block;}
+.dd-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;}
+.dd-head span{font-size:12px;font-weight:700;color:#cdd8e2;}
+#dockDone{border:none;background:var(--or);color:#fff;border-radius:9px;padding:7px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
+.dd-t{font-size:11px;color:#8a94a1;margin-bottom:8px;}
+.dd-list{display:flex;flex-wrap:wrap;gap:8px;min-height:42px;align-items:center;}
+.dd-list:empty::after{content:'숨긴 도구가 없습니다 — 독에서 × 를 눌러 여기로 정리하세요';font-size:11px;color:#6b7884;}
+.dd-item{display:flex;align-items:center;gap:6px;background:var(--dk2);border:1px solid var(--line);border-radius:9px;padding:7px 11px;color:#e7edf3;font-size:12px;font-weight:600;cursor:pointer;}
+.dd-item:hover{background:var(--dk3);border-color:var(--or);}
+.dd-item .em{font-size:15px;}
+/* ✉️ 의견 보내기 */
+#feedbackModal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);}
+#feedbackModal.on{display:flex;}
+.fb-card{width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.fb-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;}
+.fb-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
+.fb-sub{font-size:11.5px;color:#9fb0bf;margin:8px 0 12px;line-height:1.5;}
+#fbMsg{width:100%;height:120px;resize:none;margin-bottom:9px;}
+#fbContact{width:100%;margin-bottom:12px;}
+.fb-btns{display:flex;gap:8px;justify-content:flex-end;}
+.fb-btns button{border:none;border-radius:9px;padding:9px 18px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;}
+#fbCancel{background:var(--dk2);color:#cdd8e2;}
+#fbSend{background:var(--or);color:#fff;}
+#fbSend:disabled{background:var(--dk3);color:#6b7884;cursor:default;}
+.fb-status{font-size:12px;margin-top:10px;text-align:center;min-height:16px;}
+.fb-status.ok{color:#34c759;} .fb-status.err{color:#e05544;}
+/* 🌗 라이트 테마 (독 중심) */
+body.light #dock{background:rgba(255,255,255,.97);border-color:#e6e0d4;box-shadow:0 18px 50px -16px rgba(120,90,30,.3);}
+body.light .tool{color:#5b6470;}
+body.light .tool:hover{background:#f1ece1;color:#1a1d21;}
+body.light #dock .brand .nm{color:#1a1d21;}
+body.light #dock .brand .nm small{color:#8a94a1;}
+body.light .sysbtn,body.light #collapseBtn,body.light #quitBtn{background:#efe9dd;color:#8a7d63;}
+body.light .tool .dx{border-color:#fff;}
+body.light #pill{background:rgba(255,255,255,.97);}
+body.light #pill .pl b{color:#1a1d21;}
+</style>
 <div id="dock" class="iv">
   <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
-  <button class="tool" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
-  <button class="tool" data-p="p-game"><span class="ti">🎲</span>뽑기·게임</button>
-  <button class="tool" data-p="p-qr"><span class="ti">🔗</span>URL</button>
-  <button class="tool" data-p="p-pin"><span class="ti">📌</span>핀</button>
-  <button class="tool" id="memoBtn"><span class="ti">📝</span>메모</button>
-  <button class="tool" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
-  <button class="tool" data-p="p-noise"><span class="ti">📢</span>소음</button>
+  <button class="tool" data-id="timer" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
+  <button class="tool" data-id="game" data-p="p-game"><span class="ti">🎲</span>뽑기·게임</button>
+  <button class="tool" data-id="qr" data-p="p-qr"><span class="ti">🔗</span>URL</button>
+  <button class="tool" data-id="pin" data-p="p-pin"><span class="ti">📌</span>핀</button>
+  <button class="tool" data-id="memo" id="memoBtn"><span class="ti">📝</span>메모</button>
+  <button class="tool" data-id="ptr" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
+  <button class="tool" data-id="noise" data-p="p-noise"><span class="ti">📢</span>소음</button>
 
-  <button class="tool" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
-  <button class="tool" id="expBtn"><span class="ti">📋</span>기록저장</button>
-  <button class="tool prolock" id="proBtn"><span class="ti">🧡</span>Pro</button>
+  <button class="tool" data-id="draw" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
+  <button class="tool" data-id="exp" id="expBtn"><span class="ti">📋</span>기록저장</button>
+  <button class="tool prolock" data-id="pro" id="proBtn"><span class="ti">🧡</span>Pro</button>
+  <button id="setBtn" class="tool sysbtn" title="설정"><span class="ti">⚙</span>설정</button>
   <button id="collapseBtn" title="접어두기 (Ctrl+Alt+`)">﹀</button>
   <button id="quitBtn" title="종료">✕</button>
 </div>
@@ -1173,6 +1224,26 @@ body.ptr-over-ui #halo{display:none!important;}
     <div class="im-label" id="imLabel">입력</div>
     <input type="text" id="imInput" maxlength="6" autocomplete="off">
     <div class="im-btns"><button id="imCancel">취소</button><button id="imOk">확인</button></div>
+  </div>
+</div>
+<div id="setMenu" class="iv">
+  <button data-act="theme">🌗 라이트 / 다크 전환</button>
+  <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
+  <button data-act="feedback">✉️ 의견 보내기</button>
+</div>
+<div id="dockDrawer" class="iv">
+  <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><button id="dockDone">완료</button></div>
+  <div class="dd-t">서랍 (숨긴 도구 — 클릭하면 독에 다시 추가)</div>
+  <div id="dockHidden" class="dd-list"></div>
+</div>
+<div id="feedbackModal" class="iv">
+  <div class="fb-card">
+    <div class="fb-head"><span>✉️ 의견 보내기</span><button id="fbClose">✕</button></div>
+    <div class="fb-sub">버그 신고·기능 제안 무엇이든 환영합니다. 개발팀에 바로 전달됩니다.</div>
+    <textarea id="fbMsg" placeholder="여기에 의견을 적어 주세요…" maxlength="2000"></textarea>
+    <input id="fbContact" type="text" placeholder="(선택) 회신받을 이메일·연락처" maxlength="120">
+    <div class="fb-btns"><button id="fbCancel">취소</button><button id="fbSend">보내기</button></div>
+    <div id="fbStatus" class="fb-status"></div>
   </div>
 </div>
 <div id="toast"></div>

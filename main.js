@@ -302,6 +302,20 @@ function createOverlay() {
     try { return { name: path.basename(p), b64: fs.readFileSync(p).toString('base64') }; }
     catch (err) { return null; }
   });
+  // 사용자 의견 보내기 → 워커가 ksh0502@nepes.co.kr 로 메일 발송
+  ipcMain.handle('feedback', async (_e, { message, contact, meta }) => {
+    try {
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, contact, meta }),
+      });
+      const text = await res.text();
+      return { ok: res.ok, status: res.status, message: text };
+    } catch (err) {
+      return { ok: false, status: 0, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
 }
 
 function registerShortcuts() {
