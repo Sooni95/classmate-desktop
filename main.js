@@ -286,6 +286,22 @@ function createOverlay() {
   ipcMain.on('quit-app', () => { app.isQuiting = true; app.quit(); });
   // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
   ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });
+  // 명단 파일 선택 (메인 프로세스 dialog → 투명/클릭통과 오버레이에서도 확실히 동작)
+  ipcMain.handle('pick-roster', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      title: '명단 파일 선택',
+      filters: [{ name: '명단 (Excel/CSV)', extensions: ['xlsx', 'xls', 'csv'] }],
+      properties: ['openFile'],
+    });
+    if (r.canceled || !r.filePaths[0]) return null;
+    try { return { name: path.basename(r.filePaths[0]), b64: fs.readFileSync(r.filePaths[0]).toString('base64') }; }
+    catch (e) { return null; }
+  });
+  // 드래그앤드롭으로 받은 파일 경로 읽기
+  ipcMain.handle('read-path', async (e, p) => {
+    try { return { name: path.basename(p), b64: fs.readFileSync(p).toString('base64') }; }
+    catch (err) { return null; }
+  });
 }
 
 function registerShortcuts() {

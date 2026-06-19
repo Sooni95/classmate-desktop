@@ -558,22 +558,34 @@ $('rmTemplate').addEventListener('click',async()=>{
   if(r&&r.ok)toast('📥 양식을 저장했어요');
 });
 const rmDrop=$('rmDrop');
-$('rmPick').addEventListener('click',e=>{e.stopPropagation();$('rmFile').click();});
-rmDrop.addEventListener('click',()=>$('rmFile').click());
+function b64ToU8(b64){const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return u8;}
+async function pickRoster(){
+  try{const r=await window.cm.pickRosterFile();if(r)parseRosterData(r.name,b64ToU8(r.b64));}
+  catch(e){toast('파일 선택 창을 열지 못했어요');}
+}
+$('rmPick').addEventListener('click',e=>{e.stopPropagation();pickRoster();});
+rmDrop.addEventListener('click',()=>pickRoster());
 $('rmFile').addEventListener('change',e=>{if(e.target.files[0])parseRosterFile(e.target.files[0]);});
 ['dragenter','dragover'].forEach(ev=>rmDrop.addEventListener(ev,e=>{e.preventDefault();rmDrop.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev=>rmDrop.addEventListener(ev,e=>{e.preventDefault();rmDrop.classList.remove('drag');}));
-rmDrop.addEventListener('drop',e=>{
-  const f=e.dataTransfer.files[0];
-  if(f)parseRosterFile(f);
+rmDrop.addEventListener('drop',async e=>{
+  e.preventDefault();rmDrop.classList.remove('drag');
+  const f=e.dataTransfer.files[0];if(!f)return;
+  if(f.path){const r=await window.cm.readPath(f.path);if(r){parseRosterData(r.name,b64ToU8(r.b64));return;}}
+  parseRosterFile(f); // 경로를 못 얻으면 브라우저 방식으로
 });
+// 창 전체에 파일을 떨어뜨려도 페이지가 파일로 이동하지 않도록 차단
+['dragover','drop'].forEach(ev=>window.addEventListener(ev,e=>e.preventDefault(),false));
 function parseRosterFile(file){
-  const name=file.name.toLowerCase();
-  if(!/\.(xlsx|xls|csv)$/.test(name)){toast('xlsx 또는 csv 파일을 올려주세요');return;}
   const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array'});
+  reader.onload=e=>parseRosterData(file.name,new Uint8Array(e.target.result));
+  reader.readAsArrayBuffer(file);
+}
+function parseRosterData(fname,u8){
+  const name=(fname||'').toLowerCase();
+  if(!/\.(xlsx|xls|csv)$/.test(name)){toast('xlsx 또는 csv 파일을 올려주세요');return;}
+  try{
+      const wb=XLSX.read(u8,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(!rows.length){toast('빈 파일이에요');return;}
@@ -601,10 +613,8 @@ function parseRosterFile(file){
       if(colTeam>=0)msg+=' (모둠 정보 포함)';
       toast(msg);
       // 저장 이름 자동 추천
-      if(!$('rmName').value)$('rmName').value=file.name.replace(/\\.(xlsx|xls|csv)$/i,'');
+      if(!$('rmName').value)$('rmName').value=(fname||'명단').replace(/\.(xlsx|xls|csv)$/i,'');
     }catch(err){toast('파일을 읽지 못했어요: '+err.message);}
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 // 구독 안내 받기 → Google Forms (기본 브라우저에서 열기)
@@ -877,16 +887,45 @@ function openGame(mode){
   $('gameTitle').textContent=mode==='wheel'?'🎡 돌림판':'🎢 핀볼 — 마지막에 골인하는 사람 당첨!';
   gGo.textContent=mode==='wheel'?'돌리기!':'구슬 떨어뜨리기!';
   gCv.height=mode==='wheel'?430:470;
+  gameWrap.classList.toggle('plinko',mode==='plinko');
+  _pkRankN=-1;if($('pkrList'))$('pkrList').innerHTML='';
   gameWrap.classList.add('on');
   centerOnDockDisplay(gameWrap);
   if(mode==='wheel')drawWheel(src,0);else{pk=pkInit(src);pkDraw();}
 }
 function closeGame(){cancelAnimationFrame(gameAnim);gameWrap.classList.remove('on');gameMode=null;}
 $('gameClose').addEventListener('click',closeGame);
+// ── 핀볼 실시간 결과 패널 ──
+let _pkRankN=-1;
+function escH(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function pkRankHTML(final){
+  const total=pk?pk.arrived.length:0;
+  if(!total)return '<div class="pkr-i" style="color:#6b7884">떨어지는 중…</div>';
+  return pk.arrived.map((b,i)=>{
+    const win=final&&i===total-1;
+    return '<div class="pkr-i'+(win?' win':'')+'"><span class="rk">'+(i+1)+'</span><span>'+(win?'🎉 ':'')+escH(b.nm)+'</span></div>';
+  }).join('');
+}
+function renderPkRank(final){
+  if(gameMode!=='plinko'||!pk)return;
+  const list=$('pkrList');if(!list)return;
+  if(!final&&pk.arrived.length===_pkRankN)return;
+  _pkRankN=pk.arrived.length;
+  list.innerHTML=pkRankHTML(final);
+  list.scrollTop=list.scrollHeight;
+}
+$('pkrAll')&&$('pkrAll').addEventListener('click',()=>{
+  if(!pk){toast('아직 기록이 없어요');return;}
+  $('pkLogBody').innerHTML=pkRankHTML(true)+'<div style="color:#6b7884;font-size:11px;margin-top:8px">※ 마지막 골인(맨 아래)이 당첨</div>';
+  $('pkLog').classList.add('on');
+  centerOnDockDisplay($('pkLog').querySelector('.pkl-card'));
+});
+$('pkLogClose')&&$('pkLogClose').addEventListener('click',()=>$('pkLog').classList.remove('on'));
+$('pkLog')&&$('pkLog').addEventListener('click',e=>{if(e.target.id==='pkLog')$('pkLog').classList.remove('on');});
 /* ===== 게이미피케이션 런처 ===== */
 function gShowCfg(id){
   ['cfgPick','cfgDraw','cfgWheel','cfgPk','cfgLadder'].forEach(c=>$(c).classList.remove('on'));
-  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade','gcLadder'].forEach(c=>$(c)&&$(c).classList.remove('on'));
+  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade','gcLadder','gcBoard'].forEach(c=>$(c)&&$(c).classList.remove('on'));
   if(id)$(id).classList.add('on');
 }
 $('gcPick').addEventListener('click',()=>{gShowCfg('gcPick');$('cfgPick').classList.add('on');});
@@ -1595,10 +1634,11 @@ function pkDraw(){
     gx.beginPath();gx.arc(b.x,b.y,b.r,0,7);gx.fillStyle=grad;gx.fill();
     gx.shadowBlur=0;
     gx.strokeStyle='rgba(0,0,0,.35)';gx.lineWidth=1;gx.stroke();
-    gx.font='bold 10px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
-    gx.lineWidth=2.5;gx.strokeStyle='rgba(0,0,0,.65)';
-    gx.strokeText(b.nm.slice(0,2),b.x,b.y);
-    gx.fillStyle='#fff';gx.fillText(b.nm.slice(0,2),b.x,b.y);
+    const lbl=b.nm, fsz=lbl.length>=4?7:(lbl.length===3?8.5:10);
+    gx.font='bold '+fsz+'px "Malgun Gothic"';gx.textAlign='center';gx.textBaseline='middle';
+    gx.lineWidth=2.5;gx.strokeStyle='rgba(0,0,0,.7)';
+    gx.strokeText(lbl,b.x,b.y);
+    gx.fillStyle='#fff';gx.fillText(lbl,b.x,b.y);
   }
   // ===== 여기부터 화면 고정 UI (카메라 변환 해제) =====
   gx.setTransform(1,0,0,1,0,0);
@@ -1626,17 +1666,20 @@ function dropPlinko(){
   let last=performance.now();const t0=last;let first=true;
   const tick=now=>{
     const alive=pk.balls.filter(b=>!b.done).length;
-    const scale=alive===1?0.5:1;            // 마지막 1개 → 슬로모션
     // 첫 프레임은 dt를 표준값으로 고정 (시작 시 느려지는 현상 방지)
     let dt=first?0.016:(now-last)/1000;first=false;
-    dt=Math.min(0.032,dt)*scale;last=now;
+    dt=Math.min(0.032,dt);last=now;
     pkStep(dt/2);pkStep(dt/2);
-    pkCamUpdate(dt/scale);                   // 카메라는 실제 시간 기준
-    pkDraw();
-    if(alive>0&&now-t0<150000){gameAnim=requestAnimationFrame(tick);}
+    pkCamUpdate(dt);
+    pkDraw();renderPkRank();
+    // 마지막 1명이 남으면 질질 끌지 않고 종료 (그 1명이 당첨)
+    if(alive>1&&now-t0<150000){gameAnim=requestAnimationFrame(tick);}
     else{
-      let w=pk.arrived.at(-1);
-      if(!w){const rem=pk.balls.filter(b=>!b.done);w=rem[rem.length-1];}
+      const rem=pk.balls.filter(b=>!b.done);
+      let w;
+      if(rem.length===1){rem[0].done=true;pk.arrived.push(rem[0]);w=rem[0];}
+      else{w=pk.arrived.at(-1)||(rem.length?rem[rem.length-1]:null);}
+      renderPkRank(true);
       if(w){
         // 꽃가루
         for(let i=0;i<70;i++)pk.fx.push({type:'confetti',x:PKW/2+(Math.random()-.5)*PKW,y:-10-Math.random()*120,col:BRAND[i%BRAND.length],life:2.5,vy:0});
@@ -2344,7 +2387,7 @@ function toggleDraw(force){
         tb.style.top=(d.y+18)+'px';
       });
     }
-  }else{commitText();$('dtbPill').classList.remove('on');}
+  }else{commitText();$('dtbPill').classList.remove('on');$('penStamps')&&$('penStamps').classList.remove('on');}
 }
 // 펜 툴바 이동 (⠿ 손잡이)
 let dtbMoved=false;
@@ -2388,11 +2431,32 @@ $('clearBtn').addEventListener('click',()=>{saveSt();ctx.clearRect(0,0,dc.width,
 document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>{
   document.querySelectorAll('.sw').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');penColor=s.dataset.c;
 }));
+const STAMPS=['⭐','👍','✅','💮','🌸','🎉','💯','❤️','😊','✏️','🅾️','❌'];
+let penStamp='⭐';
+function renderPenStamps(){
+  const ps=$('penStamps');if(!ps)return;ps.innerHTML='';
+  STAMPS.forEach(em=>{
+    const b=document.createElement('div');b.className='bstamp'+(em===penStamp?' sel':'');b.textContent=em;
+    b.addEventListener('click',()=>{penStamp=em;ps.querySelectorAll('.bstamp').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
+    ps.appendChild(b);
+  });
+}
+function stampAtDraw(x,y){
+  saveSt();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='46px "Apple Color Emoji","Segoe UI Emoji",serif';
+  ctx.fillText(penStamp,x,y);
+}
 function setTool(t){
   if(penType==='text'&&t!=='text')commitText();
   penType=t;
-  ['penBtn','hlBtn','erBtn','txBtn','rectBtn','circBtn'].forEach(id=>$(id).classList.remove('on'));
-  $({pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn',circle:'circBtn'}[t]).classList.add('on');
+  ['penBtn','hlBtn','erBtn','txBtn','rectBtn','circBtn','stampBtn'].forEach(id=>$(id)&&$(id).classList.remove('on'));
+  const m={pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn',circle:'circBtn',stamp:'stampBtn'}[t];
+  if(m&&$(m))$(m).classList.add('on');
+  const ps=$('penStamps');
+  if(ps){
+    if(t==='stamp'){renderPenStamps();const r=$('dtb').getBoundingClientRect();ps.style.left=r.left+'px';ps.style.top=(r.bottom+6)+'px';ps.classList.add('on');}
+    else ps.classList.remove('on');
+  }
 }
 $('penBtn').addEventListener('click',()=>setTool('pen'));
 $('hlBtn').addEventListener('click',()=>setTool('hl'));
@@ -2400,6 +2464,7 @@ $('erBtn').addEventListener('click',()=>setTool('eraser'));
 $('txBtn').addEventListener('click',()=>setTool('text'));
 $('rectBtn').addEventListener('click',()=>setTool('rect'));
 $('circBtn').addEventListener('click',()=>setTool('circle'));
+$('stampBtn')&&$('stampBtn').addEventListener('click',()=>setTool('stamp'));
 
 /* --- 글자 도구: 클릭한 곳에 입력 → Enter로 화면에 새김 (휠로 크기) --- */
 let txSize=28,txEditor=null;
@@ -2479,6 +2544,7 @@ function pathStroke(c,pts,w){
 dc.addEventListener('pointerdown',e=>{
   if(!drawMode)return;
   if(penType==='text'){commitText();openTextEditor(e.clientX,e.clientY);return;}
+  if(penType==='stamp'){stampAtDraw(e.clientX,e.clientY);return;}
   saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
   // Ctrl 드래그 = 박스, Shift 드래그 = 원 (펜/형광 중에도)
@@ -2668,7 +2734,6 @@ syncPtr();
 (()=>{
   const boardWrap=$('boardWrap'),bcv=$('boardCv'),bx=bcv.getContext('2d');
   const PAL={green:['#ffffff','#ffe14d','#ff9ecb'], white:['#1f2024','#e8362f','#1f6dff']};
-  const STAMPS=['⭐','👍','✅','💮','🌸','🎉','💯','❤️','😊','✏️','🅾️','❌'];
   let bStyle='green',bColor=PAL.green[0],bTool='pen',bStamp='⭐',bDrawing=false,bLast=null,bOpen=false;
   const SIZE={marker:5,chalk:15,eraser:36};
 
@@ -2765,6 +2830,7 @@ syncPtr();
   }
   function closeBoard(){boardWrap.classList.remove('on');bOpen=false;$('boardBtn')&&$('boardBtn').classList.remove('on');}
   $('boardBtn')&&$('boardBtn').addEventListener('click',()=>{bOpen?closeBoard():openBoard();});
+  $('gcBoard')&&$('gcBoard').addEventListener('click',()=>{if(typeof gShowCfg==='function')gShowCfg();openBoard();});
   $('bStyleBtn').addEventListener('click',()=>setStyle(bStyle==='green'?'white':'green'));
   $('bPenBtn').addEventListener('click',()=>setTool('pen'));
   $('bErBtn').addEventListener('click',()=>setTool('eraser'));

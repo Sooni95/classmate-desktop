@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('cm', {
   saveTemplate: () => ipcRenderer.invoke('save-template'),
   quit: () => ipcRenderer.send('quit-app'),
   hideToTray: () => ipcRenderer.send('hide-to-tray'),
+  pickRosterFile: () => ipcRenderer.invoke('pick-roster'),
+  readPath: (p) => ipcRenderer.invoke('read-path', p),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
     .forEach(ch => ipcRenderer.on(ch, () => h(ch))),
   onBoundsChanged: (h) => ipcRenderer.on('bounds-changed', h),
