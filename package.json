@@ -6,7 +6,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -22,16 +23,35 @@
       "renderer/**",
       "assets/**"
     ],
+    "directories": {
+      "buildResources": "build"
+    },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "portable"
         },
         {
           "target": "nsis"
+        },
+        {
+          "target": "appx"
         }
       ],
       "requestedExecutionLevel": "asInvoker"
+    },
+    "appx": {
+      "applicationId": "ClassMate",
+      "identityName": "REPLACE.CocoaFab.ClassMate",
+      "publisher": "CN=REPLACE-FROM-PARTNER-CENTER",
+      "publisherDisplayName": "NEPES Cocoafab",
+      "backgroundColor": "#F68C1F",
+      "showNameOnTiles": true,
+      "languages": [
+        "ko-KR",
+        "en-US"
+      ]
     },
     "nsis": {
       "oneClick": true,
@@ -41,6 +61,20 @@
     "portable": {
       "artifactName": "ClassMate-portable.exe",
       "unpackDirName": "ClassMateApp"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "dmg" },
+        { "target": "zip" }
+      ],
+      "category": "public.app-category.education",
+      "artifactName": "ClassMate-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "ClassMate-Setup-mac.dmg"
     },
     "compression": "normal"
   },

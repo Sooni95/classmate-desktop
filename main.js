@@ -31,6 +31,11 @@ function createOverlay() {
   win.setBounds(ub);
   win.setResizable(false);
   win.setAlwaysOnTop(true, 'screen-saver');
+  // macOS: 전체화면 앱 위에도 오버레이가 보이도록 + 모든 워크스페이스
+  if (process.platform === 'darwin') {
+    try { win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch (e) {}
+    try { if (app.dock) app.dock.hide(); } catch (e) {}
+  }
   // 모니터 연결/해제/배치변경 시 자동 재스팬
   const respan = () => {
     const u = unionBounds(); origin = { x: u.x, y: u.y };

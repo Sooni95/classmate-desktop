@@ -198,6 +198,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .egg-sub{font-size:13px;color:#9fb0bf;margin-top:8px;}
 .egg-names{font-size:15px;color:#cdd8e2;margin-top:22px;line-height:1.7;}
 .egg-names b{color:var(--or);font-size:21px;font-weight:800;}
+.egg-team{font-size:13px;color:#9fb0bf;margin-top:20px;}
+.egg-team b{color:var(--or);font-weight:800;font-size:15px;}
+.egg-roster{max-width:440px;margin:11px auto 0;line-height:2;}
+.egg-roster span{display:inline-block;font-size:13.5px;font-weight:600;color:#dbe3ec;white-space:nowrap;}
+.egg-roster span:not(:last-child)::after{content:" · ";color:#5d6b7a;font-weight:400;}
 .egg-thx{font-size:13px;color:#7c8894;margin-top:20px;}
 
 /* 음성 실시간 자막 */
@@ -514,9 +519,17 @@ body.ptr-over-ui #halo{display:none!important;}
 /* 칠판 (보드) */
 #boardWrap{position:fixed;inset:0;z-index:60;display:none;}
 #boardWrap.on{display:block;}
+#boardWrap.windowed{inset:auto;border-radius:16px;border:2px solid var(--or);box-shadow:0 24px 70px rgba(0,0,0,.5);overflow:hidden;}
 #boardWrap.green{background:#0d3a2b;background-image:linear-gradient(180deg,#14543d,#0b3325);}
 #boardWrap.white{background:#f5f3ee;background-image:linear-gradient(180deg,#fbfaf7,#eceae3);}
 #boardCv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;}
+.brz{position:absolute;z-index:62;display:none;}
+#boardWrap.windowed .brz{display:block;}
+.brz-e{right:0;top:0;width:10px;height:100%;cursor:ew-resize;}
+.brz-s{left:0;bottom:0;width:100%;height:10px;cursor:ns-resize;}
+.brz-se{right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;}
+#boardWrap .cvtext-b{position:fixed;z-index:63;min-width:30px;outline:none;border:1px dashed rgba(255,255,255,.6);padding:2px 4px;background:rgba(0,0,0,.12);white-space:pre;}
+#boardWrap.white .cvtext-b{border-color:rgba(0,0,0,.4);background:rgba(255,255,255,.3);}
 #boardTb{position:fixed;left:0;top:18px;z-index:62;display:flex;align-items:center;gap:6px;background:var(--dk);border:1px solid var(--line);border-radius:14px;padding:7px 10px;box-shadow:var(--shadow);}
 #boardGrip{cursor:grab;color:#6b7884;font-size:15px;padding:0 3px;}
 #boardGrip:active{cursor:grabbing;}
@@ -570,8 +583,18 @@ body.ptr-over-ui #halo{display:none!important;}
 #ladderClose{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
 #ladderCv{display:block;background:#0f1419;width:100%;}
 #ladderResult{padding:10px 16px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
+.lhbtn{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;line-height:1;}
+.lhbtn:hover{background:rgba(0,0,0,.32);}
+#ladderTops,#ladderBots{display:flex;gap:6px;padding:9px 14px 4px;}
+#ladderBots{padding:4px 14px 9px;}
+#ladderTops input,#ladderBots input{flex:1 1 0;min-width:0;width:0;text-align:center;font-weight:700;font-size:12.5px;padding:7px 2px;background:var(--dk2);border:1px solid var(--line);border-radius:8px;color:#e7edf3;}
+#ladderTops input{border-color:#3a4a5c;}
+#ladderBots input{border-color:#3a4a5c;color:#ffd9a8;}
+#ladderBots input.win{background:var(--or);color:#fff;border-color:var(--or);}
+.ltrace{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:4px 14px 0;}
+.ltrace button{border:none;border-radius:8px;min-width:30px;height:28px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:var(--dk3);color:#cdd8e2;}
+.ltrace button:hover{background:var(--or);color:#fff;}
 #ladderFoot{display:flex;gap:8px;padding:0 14px 13px;justify-content:center;}
-#ladderEdit.on{background:var(--or);color:#fff;border-color:var(--or);}
 
 /* 영역 녹화 정지 버튼 */
 #recStop{position:fixed;left:0;top:0;z-index:95;display:none;border:none;background:var(--red);color:#fff;border-radius:11px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);animation:recpulse 1.2s infinite;}
@@ -755,20 +778,30 @@ body.ptr-over-ui #halo{display:none!important;}
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
   <div class="gcfg" id="cfgLadder">
-    <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="10"></div>
+    <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="12"></div>
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
-    <div class="gdesc">🪜 사다리를 만든 뒤, <b style="color:#F68C1F">이름·결과 칸을 클릭하면 그 줄만 따라가</b>요. 전체는 [사다리 시작], 이름 수정은 [✏️ 편집].</div>
+    <div class="gdesc">🪜 위에 <b style="color:#F68C1F">이름</b>, 아래에 <b style="color:#F68C1F">결과</b>를 직접 입력하고 [▶ 전체 동시] 또는 아래 번호 버튼으로 한 명씩 따라가요.</div>
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
     <button class="btn-go" id="ladderOpen">사다리 만들기</button>
   </div>
 </div>
 
-<!-- 사다리타기 모달 -->
+<!-- 사다리타기 모달 (재작성) -->
 <div id="ladderWrap" class="iv">
-  <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
+  <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span>
+    <button id="ladderMinus" class="lhbtn" title="줄이기">－</button>
+    <button id="ladderPlus" class="lhbtn" title="늘리기">＋</button>
+    <button id="ladderClose">✕</button></div>
+  <div id="ladderTops" class="lrow"></div>
   <canvas id="ladderCv" class="iv"></canvas>
+  <div id="ladderBots" class="lrow"></div>
+  <div id="ladderTrace" class="ltrace"></div>
   <div id="ladderResult"></div>
-  <div id="ladderFoot"><button class="btn-go" id="ladderStart">🪜 사다리 시작</button><button class="btn-g" id="ladderEdit">✏️ 편집</button><button class="btn-g" id="ladderReset">다시 타기</button></div>
+  <div id="ladderFoot">
+    <button class="btn-go" id="ladderStart">▶ 전체 동시</button>
+    <button class="btn-g" id="ladderReset">🔀 새 사다리</button>
+    <button class="btn-g" id="ladderRoster">📋 명단</button>
+  </div>
 </div>
 
 <div class="panel iv" id="p-qr">
@@ -1093,14 +1126,17 @@ body.ptr-over-ui #halo{display:none!important;}
     <span id="bSwatches"></span>
     <span class="bsep"></span>
     <button class="bbtn on" id="bPenBtn">✏️ 펜</button>
+    <button class="bbtn" id="bTextBtn">🔤 글자</button>
     <button class="bbtn" id="bErBtn">🧽 지우개</button>
     <button class="bbtn" id="bStampBtn">🔖 스탬프</button>
     <span class="bsep"></span>
+    <button class="bbtn" id="bFullBtn" title="전체화면/창 전환">🗖 전체</button>
     <button class="bbtn" id="bShadeBtn" title="가리개 덮기">🪟 가리개</button>
-    <button class="bbtn" id="bClearBtn">🧹 전체</button>
+    <button class="bbtn" id="bClearBtn">🧹 전체지우기</button>
     <button class="bbtn" id="bCloseBtn">✕</button>
   </div>
   <div id="boardStamps"></div>
+  <span class="brz brz-e"></span><span class="brz brz-s"></span><span class="brz brz-se"></span>
 </div>
 
 <style>
@@ -1112,7 +1148,7 @@ body.ptr-over-ui #halo{display:none!important;}
 .sysbtn{color:#8a94a1;}
 /* 독 편집 */
 #dock.editing .tool[data-id]{outline:2px dashed var(--or);outline-offset:-3px;cursor:grab;}
-#dock.editing .tool.dragging{opacity:.45;}
+#dock.editing .tool.dragging{opacity:.6;transform:scale(1.12);box-shadow:0 8px 22px rgba(246,140,31,.5);z-index:9;}
 .tool .dx{display:none;position:absolute;top:-6px;right:-3px;width:18px;height:18px;border-radius:50%;background:#e05544;color:#fff;font-size:12px;line-height:17px;text-align:center;border:2px solid var(--dk);z-index:6;cursor:pointer;}
 #dock.editing .tool[data-id] .dx{display:block;}
 #dockDrawer{position:fixed;z-index:95;display:none;background:var(--dk);border:1px solid var(--or);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);width:520px;max-width:92vw;}
@@ -1127,10 +1163,11 @@ body.ptr-over-ui #halo{display:none!important;}
 .dd-item:hover{background:var(--dk3);border-color:var(--or);}
 .dd-item .em{font-size:15px;}
 /* ✉️ 의견 보내기 */
-#feedbackModal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);}
-#feedbackModal.on{display:flex;}
-.fb-card{width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.fb-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;}
+#feedbackModal{position:fixed;z-index:120;display:none;left:0;top:0;}
+#feedbackModal.on{display:block;}
+.fb-card{position:fixed;left:0;top:0;width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.fb-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;cursor:grab;}
+.fb-head:active{cursor:grabbing;}
 .fb-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
 .fb-sub{font-size:11.5px;color:#9fb0bf;margin:8px 0 12px;line-height:1.5;}
 #fbMsg{width:100%;height:120px;resize:none;margin-bottom:9px;}
@@ -1150,8 +1187,6 @@ body.light #dock .brand .nm{color:#1a1d21;}
 body.light #dock .brand .nm small{color:#8a94a1;}
 body.light .sysbtn,body.light #collapseBtn,body.light #quitBtn{background:#efe9dd;color:#8a7d63;}
 body.light .tool .dx{border-color:#fff;}
-body.light #pill{background:rgba(255,255,255,.97);}
-body.light #pill .pl b{color:#1a1d21;}
 </style>
 <div id="dock" class="iv">
   <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
@@ -1162,6 +1197,7 @@ body.light #pill .pl b{color:#1a1d21;}
   <button class="tool" data-id="memo" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-id="ptr" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
   <button class="tool" data-id="noise" data-p="p-noise"><span class="ti">📢</span>소음</button>
+  <button class="tool" data-id="present" id="presentBtn"><span class="ti">🎤</span>발표</button>
 
   <button class="tool" data-id="draw" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
   <button class="tool" data-id="exp" id="expBtn"><span class="ti">📋</span>기록저장</button>
@@ -1192,6 +1228,8 @@ body.light #pill .pl b{color:#1a1d21;}
     <div class="egg-ttl">ClassMate</div>
     <div class="egg-sub">네패스 코코아팹 · 교사를 위한 올인원 수업 보조 도구</div>
     <div class="egg-names">기획 · 개발<br><b>김수훈 · 김수관</b></div>
+    <div class="egg-team">함께하는 <b>네패스 코코아팹 원팀</b></div>
+    <div class="egg-roster"><span>이채윤</span><span>유현국</span><span>송지연</span><span>유예은</span><span>임연선</span><span>지민철</span><span>최진형</span><span>김찬미</span><span>이경아</span><span>임유진</span><span>장수현</span><span>고은혜</span><span>김정인</span><span>최나림</span><span>우종현</span><span>오민석</span><span>곽유진</span><span>임재승</span><span>심성민</span></div>
     <div class="egg-thx">함께 만들어 갑니다 🧡</div>
   </div>
 </div>
@@ -1247,6 +1285,63 @@ body.light #pill .pl b{color:#1a1d21;}
   </div>
 </div>
 <div id="toast"></div>
+<style>
+#presentWrap{position:fixed;z-index:90;display:none;flex-direction:column;background:#0d1117;border:2px solid var(--or);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);width:720px;height:440px;overflow:hidden;}
+#presentWrap.on{display:flex;}
+#presentHead{height:44px;display:flex;align-items:center;gap:10px;padding:0 10px 0 16px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;font-weight:800;font-size:14px;}
+#presentHead:active{cursor:grabbing;}
+#presentInfo{flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,.92);}
+#presentHead button{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
+#presentBody{flex:1;overflow:hidden;padding:26px 30px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+#presentNow{font-size:34px;font-weight:800;color:#fff;line-height:1.4;white-space:pre-wrap;}
+#presentNext{font-size:20px;color:#7d8aa0;line-height:1.45;white-space:pre-wrap;}
+#presentEmpty{color:#7d8aa0;font-size:16px;text-align:center;}
+#presentBar{display:flex;align-items:center;gap:7px;padding:10px 12px;background:#11161c;border-top:1px solid var(--line);flex-wrap:wrap;}
+#presentBar button{border:none;background:var(--dk3);color:#cdd8e2;border-radius:9px;padding:8px 11px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
+#presentBar button:hover{background:var(--or);color:#fff;}
+#presentBar button.on{background:var(--or);color:#fff;}
+#presentClock{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:#fff;padding:0 6px;}
+#presentClock.warn{color:#ffd24d;} #presentClock.over{color:#ff6b5b;}
+#presentBar .psep{flex:1;}
+#presentBlack{position:fixed;inset:0;z-index:99;background:#000;display:none;}
+#presentBlack.on{display:block;}
+#presentEdit{position:fixed;z-index:97;display:none;flex-direction:column;gap:8px;background:var(--dk);border:2px solid var(--or);border-radius:14px;padding:16px;width:420px;box-shadow:var(--shadow);}
+#presentEdit.on{display:flex;}
+#presentEdit .pe-t{font-size:13px;font-weight:800;color:#fff;}
+#presentEdit .pe-s{font-size:11px;color:#9fb0bf;}
+#peText{height:200px;resize:none;}
+#presentEdit .pe-btns{display:flex;gap:8px;justify-content:flex-end;}
+#presentEdit .pe-btns button{border:none;border-radius:9px;padding:8px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
+#peCancel{background:var(--dk2);color:#cdd8e2;} #peApply{background:var(--or);color:#fff;}
+</style>
+<div id="presentWrap" class="iv">
+  <div id="presentHead">🎤 발표자 모드 <span id="presentInfo"></span>
+    <button id="presentClose">✕</button></div>
+  <div id="presentBody" class="iv">
+    <div id="presentNow"></div>
+    <div id="presentNext"></div>
+    <div id="presentEmpty">대본이 비어 있습니다 — 아래 <b>✏️ 대본</b>에서 붙여넣으세요.<br>화면(또는 →·Enter·Space)으로 넘기고, ←로 이전, <b>B</b>로 화면 끄기.</div>
+  </div>
+  <div id="presentBar">
+    <button id="pPrev" title="이전 (←)">◀ 이전</button>
+    <button id="pNext" title="다음 (→/Enter/Space)">다음 ▶</button>
+    <button id="pFontDn">글자 −</button><button id="pFontUp">글자 +</button>
+    <span class="psep"></span>
+    <span id="presentClock">00:00</span>
+    <button id="pCountdown" title="카운트다운 설정">⏳ 카운트다운</button>
+    <button id="pReset" title="타이머 초기화">↺</button>
+    <button id="pLaser" title="레이저 포인터">🔴 레이저</button>
+    <button id="pBlack" title="화면 끄기 (B)">⬛ 블랙</button>
+    <button id="pEditBtn">✏️ 대본</button>
+  </div>
+</div>
+<div id="presentBlack"></div>
+<div id="presentEdit" class="iv">
+  <div class="pe-t">✏️ 발표 대본</div>
+  <div class="pe-s">한 줄(또는 한 문단)이 한 장면이 됩니다. 빈 줄로 장면을 구분하세요.</div>
+  <textarea id="peText" placeholder="여기에 발표 대본을 붙여넣으세요.&#10;&#10;첫 번째 할 말…&#10;&#10;두 번째 할 말…"></textarea>
+  <div class="pe-btns"><button id="peCancel">취소</button><button id="peApply">적용</button></div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>
