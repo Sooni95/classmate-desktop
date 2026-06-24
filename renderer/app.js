@@ -1,7 +1,5 @@
-/* ClassMate Desktop v0.4 renderer
-   v0.4 변경: ① 디스플레이 인식 배치(1/2/3모니터) ② 접힘 pill 위치 유지+이동 ③ 돌림판/핀볼
-   ④ 폭탄 소음 게이지 ⑤ 메모 부분 글자크기 ⑥ 형광펜 품질 + 휠 굵기 ⑦ 포인터 패널 재구성
-   ⑧ 카메라→핀 ⑨ 핀 메모 ⑩ 코코아팹 브랜드(#F68C1F) */
+/* ClassMate Desktop renderer — 버전은 package.json(version) 단일 출처로 관리.
+   독 버전칩/필 표시는 main.js의 app.getVersion()을 그대로 읽음. */
 const $ = id => document.getElementById(id);
 
 /* ===== 디스플레이 정보 (멀티/싱글 모니터 공통) ===== */
@@ -30,13 +28,15 @@ function centerOnDockDisplay(el) {
 
 /* ===== 클릭 통과(click-through) 관리 ===== */
 let ignoring = true;
+let dockEditing = false; // 독 편집 중에는 click-through를 끄고 고정 (드래그 끊김 방지)
 function setIgnore(v){ if(ignoring!==v){ ignoring=v; window.cm.setIgnore(v); } }
 document.addEventListener('mousemove', e => {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const overUI = !!(el && el.closest('.iv'));
   // 포인터(링/스포트/렌즈)·펜 모드일 때 독·툴바 위에서는 커스텀 포인터를 숨겨 시스템 커서가 보이게
   document.body.classList.toggle('ptr-over-ui', overUI && (PS.ring || PS.spot>0 || lensOn || drawMode));
-  if (drawMode || lensOn || snipOn || PS.spot>0 || PS.ring) { setIgnore(false); trackPtr(e); return; }
+  // 독 편집 중에는 커서가 독을 잠깐 벗어나도 입력을 계속 받도록 통과 전환을 막음
+  if (drawMode || lensOn || snipOn || PS.spot>0 || PS.ring || dockEditing) { setIgnore(false); trackPtr(e); return; }
   setIgnore(!overUI);
   trackPtr(e);
 });
@@ -672,8 +672,27 @@ setProUI();
     $('dockVer').textContent=ver;
     $('dockVer').title='ClassMate '+ver+(info.buildDate&&info.buildDate!=='개발 빌드'?(' (빌드: '+info.buildDate+')'):'');
     $('pillVer').textContent=ver;
+    checkForUpdate(info.buildDate);
   }catch(e){}
 })();
+// 업데이트 확인 — GitHub 'latest' 릴리스 게시일이 내 빌드일보다 나중이면 조용히 안내
+async function checkForUpdate(buildDate){
+  try{
+    if(!buildDate||!/^\d{4}\.\d{2}\.\d{2}$/.test(buildDate))return; // 개발 빌드 등은 건너뜀
+    const r=await window.cm.checkUpdate();
+    if(!r||!r.ok||!r.publishedAt)return;
+    const bn=+buildDate.replace(/\./g,'');                 // 20260619
+    const p=new Date(r.publishedAt);
+    const pn=p.getFullYear()*10000+(p.getMonth()+1)*100+p.getDate();
+    if(pn<=bn)return;                                       // 최신이거나 같음
+    // 버전칩에 점 표시 + 클릭 시 릴리스 페이지
+    const chip=$('dockVer');
+    if(chip){chip.textContent='⬆ 업데이트';chip.style.cursor='pointer';
+      chip.title='새 버전이 있어요 — 클릭하면 다운로드 페이지가 열립니다';
+      chip.addEventListener('click',()=>window.cm.openExternal(r.url));}
+    setTimeout(()=>toast('⬆ 새 버전이 나왔어요 — 버전 칩을 누르면 받을 수 있어요'),1500);
+  }catch(e){}
+}
 // 🦋 이스터에그 1: 로고 7번 연타 → 크레딧 모달 (조용히)
 (()=>{
   let cnt=0,last=0;
@@ -945,6 +964,7 @@ function askInput(label,initial,cb){
   $('imInput').value=initial||'';
   _askCb=cb;
   $('inputModal').classList.add('on');
+  centerOnDockDisplay($('inputModal').querySelector('.im-card')); // 멀티모니터 중간 걸침 방지
   setTimeout(()=>{$('imInput').focus();$('imInput').select();},50);
 }
 $('imOk').addEventListener('click',()=>{
@@ -2490,7 +2510,7 @@ document.addEventListener('keydown',e=>{
     else if(gameWrap.classList.contains('on'))closeGame();
     else if(ladderWrap&&ladderWrap.classList.contains('on'))ladderWrap.classList.remove('on');
     else if($('camWrap').classList.contains('on'))closeCam();
-    else if($('boardWrap')&&$('boardWrap').classList.contains('on')){$('boardWrap').classList.remove('on');$('boardBtn')&&$('boardBtn').classList.remove('on');}
+    else if($('boardWrap')&&$('boardWrap').classList.contains('on')){$('boardWrap').classList.remove('on');}
     else if(curPanel)setPanel(null); // AI보조·번역 등 열린 패널 닫기
     else if(snipOn)endSnip();else if(lensOn)setLens(0);else allOff();
   }
@@ -2686,7 +2706,7 @@ function allOff(){
   $('nStop').click();closeGame();closeCam();
   if(drawWrap)drawWrap.classList.remove('on');
   if(shadeWrap)shadeWrap.classList.remove('on');
-  if($('boardWrap')){$('boardWrap').classList.remove('on');$('boardBtn')&&$('boardBtn').classList.remove('on');}
+  if($('boardWrap')){$('boardWrap').classList.remove('on');}
   setIgnore(true); // 클릭 통과 복구
 }
 window.cm.onHotkey(ch=>{
@@ -2833,7 +2853,6 @@ syncPtr();
   function openBoard(){
     setPanel(null);
     boardWrap.classList.add('on');setIgnore(false);bOpen=true;
-    $('boardBtn')&&$('boardBtn').classList.add('on');
     if(!bFull){
       // 창 모드: 독 모니터에 ~72% 크기로
       const d=dockDisp();
@@ -2845,8 +2864,7 @@ syncPtr();
     setStyle(bStyle);bSetTool('pen');renderStamps();
     requestAnimationFrame(()=>{fitBoard();placeTb();});
   }
-  function closeBoard(){boardWrap.classList.remove('on');bOpen=false;$('boardBtn')&&$('boardBtn').classList.remove('on');}
-  $('boardBtn')&&$('boardBtn').addEventListener('click',()=>{bOpen?closeBoard():openBoard();});
+  function closeBoard(){boardWrap.classList.remove('on');bOpen=false;}
   $('gcBoard')&&$('gcBoard').addEventListener('click',()=>{if(typeof gShowCfg==='function')gShowCfg();openBoard();});
   $('bStyleBtn').addEventListener('click',()=>setStyle(bStyle==='green'?'white':'green'));
   $('bPenBtn').addEventListener('click',()=>bSetTool('pen'));
@@ -2997,7 +3015,7 @@ syncPtr();
   let editing=false;
   function enterEdit(){
     if(typeof setPanel==='function')setPanel(null);
-    editing=true;dockEl.classList.add('editing');addDx();renderDrawer();
+    editing=true;dockEditing=true;dockEl.classList.add('editing');addDx();renderDrawer();
     const r=dockEl.getBoundingClientRect();
     drawer.classList.add('on');
     drawer.style.left=Math.max(8,Math.min(r.left,innerWidth-drawer.offsetWidth-8))+'px';
@@ -3005,7 +3023,7 @@ syncPtr();
     setIgnore(false);
   }
   function exitEdit(){
-    editing=false;dockEl.classList.remove('editing');removeDx();drawer.classList.remove('on');
+    editing=false;dockEditing=false;dockEl.classList.remove('editing');removeDx();drawer.classList.remove('on');
     saveCfg(currentOrder(),currentHidden());toast('🧩 독 편집을 저장했어요');
   }
   $('dockDone').addEventListener('click',exitEdit);
@@ -3015,21 +3033,14 @@ syncPtr();
     const t=e.target.closest('.tool[data-id]');
     if(t&&!e.target.classList.contains('dx')){e.stopPropagation();e.preventDefault();}
   },true);
-  // 드래그로 순서 변경
-  let dragEl=null;
-  dockEl.addEventListener('pointerdown',e=>{
-    if(!editing)return;
-    const t=e.target.closest('.tool[data-id]');
-    if(!t||e.target.classList.contains('dx'))return;
-    dragEl=t;t.classList.add('dragging');
-    try{t.setPointerCapture(e.pointerId);}catch(_){}
-  });
-  dockEl.addEventListener('pointermove',e=>{
-    if(!editing||!dragEl)return;
+  // 드래그로 순서 변경 — document 리스너 + FLIP (캡처/커서-지오메트리 의존 제거)
+  let dragEl=null,dragMove=null,dragUp=null;
+  function reorderAt(clientX){
+    if(!dragEl)return;
     const sibs=[...dockEl.querySelectorAll('.tool[data-id]')].filter(b=>b!==dragEl&&b.style.display!=='none');
     let target=setBtn;
-    for(const b of sibs){const r=b.getBoundingClientRect();if(e.clientX<r.left+r.width/2){target=b;break;}}
-    if(dragEl.nextSibling===target)return; // 위치 변화 없음
+    for(const b of sibs){const r=b.getBoundingClientRect();if(clientX<r.left+r.width/2){target=b;break;}}
+    if(dragEl.nextElementSibling===target)return; // 위치 변화 없음 (요소 기준 — 공백 텍스트노드 무시)
     // FLIP: 이동하는 형제들을 부드럽게 슬라이드
     const others=[...dockEl.querySelectorAll('.tool[data-id]')].filter(b=>b!==dragEl);
     const firsts=new Map(others.map(b=>[b,b.getBoundingClientRect().left]));
@@ -3039,12 +3050,28 @@ syncPtr();
       if(dx){b.style.transition='none';b.style.transform='translateX('+dx+'px)';
         requestAnimationFrame(()=>{b.style.transition='transform .22s cubic-bezier(.2,.8,.2,1)';b.style.transform='';});}
     });
+  }
+  dockEl.addEventListener('pointerdown',e=>{
+    if(!editing)return;
+    const t=e.target.closest('.tool[data-id]');
+    if(!t||e.target.classList.contains('dx'))return;
+    e.preventDefault();
+    dragEl=t;t.classList.add('dragging');
+    dragMove=ev=>reorderAt(ev.clientX);
+    dragUp=()=>{
+      document.removeEventListener('pointermove',dragMove);
+      document.removeEventListener('pointerup',dragUp);
+      document.removeEventListener('pointercancel',dragUp);
+      if(dragEl){
+        dragEl.classList.remove('dragging');
+        dockEl.querySelectorAll('.tool[data-id]').forEach(b=>{b.style.transition='';b.style.transform='';});
+        saveCfg(currentOrder(),currentHidden());renderDrawer();dragEl=null;
+      }
+    };
+    document.addEventListener('pointermove',dragMove);
+    document.addEventListener('pointerup',dragUp);
+    document.addEventListener('pointercancel',dragUp);
   });
-  const endDrag=()=>{if(dragEl){dragEl.classList.remove('dragging');dragEl=null;
-    dockEl.querySelectorAll('.tool[data-id]').forEach(b=>{b.style.transition='';b.style.transform='';});
-    saveCfg(currentOrder(),currentHidden());renderDrawer();}};
-  dockEl.addEventListener('pointerup',endDrag);
-  dockEl.addEventListener('pointercancel',endDrag);
 
   /* --- 메뉴 액션 --- */
   setMenu.addEventListener('click',e=>{

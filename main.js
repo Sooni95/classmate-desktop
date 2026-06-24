@@ -288,6 +288,20 @@ function createOverlay() {
     } catch (err) { return { ok: false, message: String(err) }; }
   });
 
+  // 업데이트 확인 — GitHub 'latest' 릴리스 게시 시각을 받아 렌더러가 빌드날짜와 비교
+  ipcMain.handle('check-update', async () => {
+    try {
+      const res = await net.fetch('https://api.github.com/repos/Sooni95/classmate-desktop/releases/tags/latest', {
+        headers: { 'User-Agent': 'ClassMate', 'Accept': 'application/vnd.github+json' },
+      });
+      if (!res.ok) return { ok: false, status: res.status };
+      const data = await res.json();
+      return { ok: true, publishedAt: data.published_at || '', url: data.html_url || 'https://github.com/Sooni95/classmate-desktop/releases/latest' };
+    } catch (err) {
+      return { ok: false, message: String(err && err.message || err) };
+    }
+  });
+
   ipcMain.on('quit-app', () => { app.isQuiting = true; app.quit(); });
   // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
   ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });

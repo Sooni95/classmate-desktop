@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('cm', {
   pickRosterFile: () => ipcRenderer.invoke('pick-roster'),
   readPath: (p) => ipcRenderer.invoke('read-path', p),
   feedback: (p) => ipcRenderer.invoke('feedback', p),
+  checkUpdate: () => ipcRenderer.invoke('check-update'),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
     .forEach(ch => ipcRenderer.on(ch, () => h(ch))),
   onBoundsChanged: (h) => ipcRenderer.on('bounds-changed', h),
