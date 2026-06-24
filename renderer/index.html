@@ -359,12 +359,17 @@ body.ptr-over-ui #halo{display:none!important;}
 .pin .pb .vloop{opacity:.4;}.pin .pb .vloop.on{opacity:1;}
 .pin .pb .x:hover{color:var(--red);}
 .pin .pb .cap:hover,.pin .pb .cap.on{color:var(--or);}
+.pin .pmedia{position:relative;width:100%;overflow:hidden;}
+.pin .pmedia img,.pin .pmedia video{display:block;width:100%;height:100%;object-fit:fill;}
 .pin img{display:block;width:100%;}
 .pin .pcap{display:none;background:#FFF3A3;color:#5a3d00;font-size:13px;line-height:1.5;padding:7px 10px;outline:none;-webkit-user-select:text;user-select:text;cursor:text;word-break:break-all;}
 .pin .pcap.on{display:block;}
 .pin .pcap:empty::before{content:"핀 메모…";color:rgba(90,61,0,.4);}
 .pin .pb input[type=range]{width:52px;accent-color:var(--or);height:12px;}
-.pin .rs{position:absolute;right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,var(--or) 100%);}
+.pin .rs{position:absolute;right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,var(--or) 100%);z-index:3;}
+.pin .rs-e{position:absolute;right:0;top:28px;bottom:17px;width:9px;cursor:ew-resize;z-index:2;}
+.pin .rs-s{position:absolute;left:0;right:17px;bottom:0;height:9px;cursor:ns-resize;z-index:2;}
+.pin .rs-e:hover,.pin .rs-s:hover{background:rgba(246,140,31,.35);}
 
 /* collapse pill — v0.4: 자유 이동 */
 #pill{position:fixed;left:0;top:0;z-index:70;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;border:none;border-radius:100px;padding:9px 18px;font-family:inherit;font-size:14px;font-weight:800;cursor:grab;box-shadow:var(--shadow);display:none;align-items:center;gap:8px;}
@@ -422,12 +427,15 @@ body.ptr-over-ui #halo{display:none!important;}
 @keyframes bpop{0%{transform:translate(-50%,-50%) scale(.3);opacity:1;}55%{transform:translate(-50%,-50%) scale(1.7);}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;}}
 
 /* ===== 게이미피케이션 런처 ===== */
-.gmenu{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.gcard{background:var(--dk2);border:1px solid var(--line);border-radius:12px;padding:12px 8px 10px;cursor:pointer;text-align:center;transition:.13s;}
-.gcard:hover{border-color:var(--or);transform:translateY(-2px);}
-.gcard.on{border-color:var(--or);background:rgba(246,140,31,.1);}
-.gcard .gi{font-size:22px;line-height:1;}
-.gcard .gl{font-size:11.5px;font-weight:700;color:#cdd8e2;margin-top:6px;}
+.gmenu{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+.gcard{background:linear-gradient(160deg,var(--dk3),var(--dk2));border:1px solid var(--line);border-radius:14px;padding:14px 8px 12px;cursor:pointer;text-align:center;transition:transform .15s cubic-bezier(.2,.8,.2,1),box-shadow .15s,border-color .15s;position:relative;overflow:hidden;}
+.gcard::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,rgba(246,140,31,.10),transparent 60%);opacity:0;transition:.15s;}
+.gcard:hover{border-color:var(--or);transform:translateY(-3px);box-shadow:0 10px 24px -8px rgba(246,140,31,.4);}
+.gcard:hover::after{opacity:1;}
+.gcard.on{border-color:var(--or);background:linear-gradient(160deg,rgba(246,140,31,.18),rgba(246,140,31,.08));}
+.gcard .gi{font-size:25px;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.05);margin-bottom:2px;}
+.gcard:hover .gi{background:rgba(246,140,31,.16);}
+.gcard .gl{font-size:11.5px;font-weight:700;color:#dbe3ec;margin-top:8px;letter-spacing:-.2px;}
 .gcfg{display:none;margin-top:11px;}
 .gcfg.on{display:block;}
 
@@ -732,8 +740,6 @@ body.ptr-over-ui #halo{display:none!important;}
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
     <div class="gcard" id="gcLadder"><div class="gi">🪜</div><div class="gl">사다리타기</div></div>
-    <div class="gcard" id="gcBoard"><div class="gi">🟩</div><div class="gl">칠판</div></div>
-    <div class="gcard" id="gcShade"><div class="gi">🪟</div><div class="gl">가리개</div></div>
   </div>
 
   <div class="gcfg" id="cfgPick">
@@ -784,6 +790,16 @@ body.ptr-over-ui #halo{display:none!important;}
     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
     <button class="btn-go" id="ladderOpen">사다리 만들기</button>
   </div>
+</div>
+
+<!-- 도구 패널 (칠판·가리개 등 화면 보조 도구) -->
+<div class="panel iv" id="p-tools">
+  <div class="ph">🧰 도구</div>
+  <div class="gmenu">
+    <div class="gcard" id="gcBoard"><div class="gi">🟩</div><div class="gl">칠판</div></div>
+    <div class="gcard" id="gcShade"><div class="gi">🪟</div><div class="gl">가리개</div></div>
+  </div>
+  <div class="gdesc" style="margin-top:10px">🟩 <b style="color:#F68C1F">칠판</b>은 초록칠판·화이트보드로 전환되고 글자 입력·크기 조절이 됩니다. 🪟 <b style="color:#F68C1F">가리개</b>는 화면 일부를 가려 집중시킬 때 좋아요.</div>
 </div>
 
 <!-- 사다리타기 모달 (재작성) -->
@@ -1165,7 +1181,9 @@ body.ptr-over-ui #halo{display:none!important;}
 /* ✉️ 의견 보내기 */
 #feedbackModal{position:fixed;z-index:120;display:none;left:0;top:0;}
 #feedbackModal.on{display:block;}
-.fb-card{position:fixed;left:0;top:0;width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.fb-card{position:fixed;left:0;top:0;width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);cursor:move;}
+.fb-card textarea,.fb-card input,.fb-card button{cursor:auto;}
+.fb-card button{cursor:pointer;}
 .fb-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;cursor:grab;}
 .fb-head:active{cursor:grabbing;}
 .fb-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
@@ -1187,6 +1205,54 @@ body.light #dock .brand .nm{color:#1a1d21;}
 body.light #dock .brand .nm small{color:#8a94a1;}
 body.light .sysbtn,body.light #collapseBtn,body.light #quitBtn{background:#efe9dd;color:#8a7d63;}
 body.light .tool .dx{border-color:#fff;}
+
+/* ===== 🌞 화이트 테마 (1차 — 주요 화면) ===== */
+body.light{
+  --dk:#ffffff; --dk2:#f4efe6; --dk3:#e9e2d4;
+  --line:rgba(60,45,20,.14);
+  --shadow:0 18px 50px -14px rgba(120,90,30,.28);
+}
+/* 패널·설정·서랍·모달 컨테이너 */
+body.light .panel,body.light #setMenu,body.light #dockDrawer,body.light #inputModal .im-card,
+body.light .im-card,body.light #noiseGuide,body.light .fb-card{background:#fffdf9;border-color:#e6ddcc;}
+body.light .panel{color:#33312c;}
+body.light .ph{color:#1a1d21;}
+body.light .panel .sub,body.light .gdesc,body.light .pres,body.light .hist{color:#7a7363;}
+body.light .gdesc{background:#f6f1e7;border-color:#e6ddcc;}
+/* 입력 */
+body.light input,body.light textarea,body.light select,body.light .names,body.light .nrow input{
+  background:#fff;color:#222;border-color:#d9cfba;}
+body.light .nrow span,body.light label{color:#5b5446;}
+/* 카드·탭 */
+body.light .gcard{background:#fff;border-color:#e6ddcc;color:#33312c;}
+body.light .gcard .gi{background:#f3eee3;}
+body.light .gcard:hover .gi{background:rgba(246,140,31,.16);}
+body.light .gcard:hover{background:#fbf6ec;border-color:var(--or);}
+body.light .gl{color:#33312c;}
+body.light .tab{background:#efe8da;color:#7a7363;}
+body.light .tab.on{background:var(--or);color:#fff;}
+/* 버튼 */
+body.light .btn-g{background:#ece5d6;color:#5b5446;}
+body.light .btn-g:hover{background:#e0d7c4;}
+/* 설정 메뉴·서랍 텍스트 */
+body.light #setMenu button{color:#33312c;}
+body.light #setMenu button:hover{background:#f1ece1;}
+body.light .dd-head span,body.light .dd-item{color:#33312c;}
+body.light .dd-item{background:#f4efe6;border-color:#e6ddcc;}
+body.light .dd-t{color:#8a8270;}
+/* 모달/입력 */
+body.light #imLabel{color:#1a1d21;}
+body.light .fb-head,body.light .fb-sub{color:#33312c;}
+body.light .fb-sub{color:#7a7363;}
+/* 게임·도구 창 헤더 (공통 .whead 류) */
+body.light #ladderTops input{background:#fff;color:#222;border-color:#d9cfba;}
+body.light #ladderBots input{background:#fff;color:#a85b00;border-color:#d9cfba;}
+body.light #ladderResult{color:var(--or2);}
+body.light .ltrace button{background:#ece5d6;color:#5b5446;}
+/* 토스트 */
+body.light #toast{background:#fffdf9;color:#33312c;border:1px solid #e6ddcc;}
+/* 명단/사다리 등 흔한 흐린 텍스트 */
+body.light .pre,body.light .popts label{color:#5b5446;}
 </style>
 <div id="dock" class="iv">
   <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
@@ -1197,7 +1263,7 @@ body.light .tool .dx{border-color:#fff;}
   <button class="tool" data-id="memo" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-id="ptr" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
   <button class="tool" data-id="noise" data-p="p-noise"><span class="ti">📢</span>소음</button>
-  <button class="tool" data-id="present" id="presentBtn"><span class="ti">🎤</span>발표</button>
+  <button class="tool" data-id="tools" data-p="p-tools"><span class="ti">🧰</span>도구</button>
 
   <button class="tool" data-id="draw" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
   <button class="tool" data-id="exp" id="expBtn"><span class="ti">📋</span>기록저장</button>
@@ -1285,63 +1351,6 @@ body.light .tool .dx{border-color:#fff;}
   </div>
 </div>
 <div id="toast"></div>
-<style>
-#presentWrap{position:fixed;z-index:90;display:none;flex-direction:column;background:#0d1117;border:2px solid var(--or);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);width:720px;height:440px;overflow:hidden;}
-#presentWrap.on{display:flex;}
-#presentHead{height:44px;display:flex;align-items:center;gap:10px;padding:0 10px 0 16px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;font-weight:800;font-size:14px;}
-#presentHead:active{cursor:grabbing;}
-#presentInfo{flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,.92);}
-#presentHead button{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
-#presentBody{flex:1;overflow:hidden;padding:26px 30px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:14px;}
-#presentNow{font-size:34px;font-weight:800;color:#fff;line-height:1.4;white-space:pre-wrap;}
-#presentNext{font-size:20px;color:#7d8aa0;line-height:1.45;white-space:pre-wrap;}
-#presentEmpty{color:#7d8aa0;font-size:16px;text-align:center;}
-#presentBar{display:flex;align-items:center;gap:7px;padding:10px 12px;background:#11161c;border-top:1px solid var(--line);flex-wrap:wrap;}
-#presentBar button{border:none;background:var(--dk3);color:#cdd8e2;border-radius:9px;padding:8px 11px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
-#presentBar button:hover{background:var(--or);color:#fff;}
-#presentBar button.on{background:var(--or);color:#fff;}
-#presentClock{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:#fff;padding:0 6px;}
-#presentClock.warn{color:#ffd24d;} #presentClock.over{color:#ff6b5b;}
-#presentBar .psep{flex:1;}
-#presentBlack{position:fixed;inset:0;z-index:99;background:#000;display:none;}
-#presentBlack.on{display:block;}
-#presentEdit{position:fixed;z-index:97;display:none;flex-direction:column;gap:8px;background:var(--dk);border:2px solid var(--or);border-radius:14px;padding:16px;width:420px;box-shadow:var(--shadow);}
-#presentEdit.on{display:flex;}
-#presentEdit .pe-t{font-size:13px;font-weight:800;color:#fff;}
-#presentEdit .pe-s{font-size:11px;color:#9fb0bf;}
-#peText{height:200px;resize:none;}
-#presentEdit .pe-btns{display:flex;gap:8px;justify-content:flex-end;}
-#presentEdit .pe-btns button{border:none;border-radius:9px;padding:8px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
-#peCancel{background:var(--dk2);color:#cdd8e2;} #peApply{background:var(--or);color:#fff;}
-</style>
-<div id="presentWrap" class="iv">
-  <div id="presentHead">🎤 발표자 모드 <span id="presentInfo"></span>
-    <button id="presentClose">✕</button></div>
-  <div id="presentBody" class="iv">
-    <div id="presentNow"></div>
-    <div id="presentNext"></div>
-    <div id="presentEmpty">대본이 비어 있습니다 — 아래 <b>✏️ 대본</b>에서 붙여넣으세요.<br>화면(또는 →·Enter·Space)으로 넘기고, ←로 이전, <b>B</b>로 화면 끄기.</div>
-  </div>
-  <div id="presentBar">
-    <button id="pPrev" title="이전 (←)">◀ 이전</button>
-    <button id="pNext" title="다음 (→/Enter/Space)">다음 ▶</button>
-    <button id="pFontDn">글자 −</button><button id="pFontUp">글자 +</button>
-    <span class="psep"></span>
-    <span id="presentClock">00:00</span>
-    <button id="pCountdown" title="카운트다운 설정">⏳ 카운트다운</button>
-    <button id="pReset" title="타이머 초기화">↺</button>
-    <button id="pLaser" title="레이저 포인터">🔴 레이저</button>
-    <button id="pBlack" title="화면 끄기 (B)">⬛ 블랙</button>
-    <button id="pEditBtn">✏️ 대본</button>
-  </div>
-</div>
-<div id="presentBlack"></div>
-<div id="presentEdit" class="iv">
-  <div class="pe-t">✏️ 발표 대본</div>
-  <div class="pe-s">한 줄(또는 한 문단)이 한 장면이 됩니다. 빈 줄로 장면을 구분하세요.</div>
-  <textarea id="peText" placeholder="여기에 발표 대본을 붙여넣으세요.&#10;&#10;첫 번째 할 말…&#10;&#10;두 번째 할 말…"></textarea>
-  <div class="pe-btns"><button id="peCancel">취소</button><button id="peApply">적용</button></div>
-</div>
 <script src="app.js"></script>
 </body>
 </html>

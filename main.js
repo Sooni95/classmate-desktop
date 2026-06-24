@@ -325,10 +325,14 @@ function createOverlay() {
 
 function registerShortcuts() {
   const send = ch => win && win.webContents.send(ch);
-  // 단일 F키 (F6~F9는 대부분의 프로그램에서 비어 있음) + 이전 조합 호환
+  // 단일 F키(F6~F9: 대부분 비어 있음) + 외우기 쉬운 Ctrl+Alt 니모닉(펜=P 등) + 이전 조합 호환
+  // ※ F2~F5는 시스템 공용키(F5 새로고침 등)라 전역 가로채기 위험이 있어 사용하지 않음
   const map = [
     ['F6', 'hk-ring'], ['F7', 'hk-spot'], ['F8', 'hk-lens'], ['F9', 'hk-draw'],
-    // 이전 조합도 호환 유지
+    // 외우기 쉬운 니모닉 (펜 P, 링 R, 스포트 O, 돋보기 L, 캡처 S)
+    ['Control+Alt+P', 'hk-draw'], ['Control+Alt+R', 'hk-ring'],
+    ['Control+Alt+O', 'hk-spot'], ['Control+Alt+L', 'hk-lens'],
+    // 이전 조합 호환 유지
     ['Control+Alt+1', 'hk-ring'], ['Control+Alt+2', 'hk-spot'],
     ['Control+Alt+3', 'hk-lens'], ['Control+Alt+4', 'hk-draw'],
     ['Control+Alt+S', 'hk-snip'], ['Control+Alt+`', 'hk-dock'], ['Control+Alt+0', 'hk-escape'],
