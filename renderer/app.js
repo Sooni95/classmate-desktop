@@ -2121,7 +2121,7 @@ let snipB=null;
 async function startSnip(){
   if(snipOn)return;
   const res=await window.cm.captureScreen();
-  if(!res)return;
+  if(!res){toast('📷 화면 캡처에 실패했어요. 다시 시도해 주세요');return;}
   snipImgData=res.dataURL;snipB=res.bounds;
   const im=$('snipImg');
   im.src=res.dataURL;
@@ -2330,7 +2330,7 @@ const lens2=$('lens2'),lensImg=$('lensImg'),lensTip=$('lensTip');
 async function setLens(shape){
   if(shape>0&&lensShape===0){
     const res=await window.cm.captureScreen();
-    if(!res)return;
+    if(!res){toast('📷 화면 캡처에 실패했어요. 다시 시도해 주세요');return;}
     lensB=res.bounds;lensImg.src=res.dataURL;
     await new Promise(r=>{lensImg.onload=r;});
     lensImgW=lensImg.naturalWidth;

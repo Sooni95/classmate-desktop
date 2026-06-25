@@ -5,6 +5,10 @@ const path = require('path');
 
 let win = null, tray = null, origin = { x: 0, y: 0 };
 
+// Windows에서 desktopCapturer가 빈(투명) 화면으로 잡히는 GPU 합성 경로 문제 방지.
+// 오버레이 렌더링이 눈에 띄게 느려지면 이 한 줄만 지우면 원복됩니다.
+app.disableHardwareAcceleration();
+
 // 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
 function unionBounds() {
   const ds = screen.getAllDisplays();
@@ -86,23 +90,28 @@ function createOverlay() {
   ipcMain.handle('capture-screen', async () => {
     const pt = screen.getCursorScreenPoint();
     const d = screen.getDisplayNearestPoint(pt);
-    win.setOpacity(0);
-    await new Promise(r => setTimeout(r, 120));
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor },
-    });
-    win.setOpacity(1);
-    let src = sources.find(s => s.display_id == String(d.id));
-    if (!src) { // Windows에서 display_id가 비는 경우: 디스플레이 순서로 폴백
-      const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
-      src = sources[idx] || sources[0];
+    try {
+      win.setOpacity(0);
+      await new Promise(r => setTimeout(r, 150));
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor },
+      });
+      let src = sources.find(s => s.display_id == String(d.id));
+      if (!src) { // Windows에서 display_id가 비는 경우: 디스플레이 순서로 폴백
+        const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
+        src = sources[idx] || sources[0];
+      }
+      if (!src || src.thumbnail.isEmpty()) return null; // 빈(투명) 캡처 방지
+      return {
+        dataURL: src.thumbnail.toDataURL(),
+        bounds: { x: d.bounds.x - origin.x, y: d.bounds.y - origin.y, w: d.bounds.width, h: d.bounds.height },
+      };
+    } catch (e) {
+      return null;
+    } finally {
+      win.setOpacity(1); // 캡처 성공/실패와 무관하게 오버레이를 항상 다시 보이게 (투명 고착 방지)
     }
-    if (!src) return null;
-    return {
-      dataURL: src.thumbnail.toDataURL(),
-      bounds: { x: d.bounds.x - origin.x, y: d.bounds.y - origin.y, w: d.bounds.width, h: d.bounds.height },
-    };
   });
 
   // 캡처 이미지를 클립보드로 (Ctrl+V로 한글/PPT에 붙여넣기 가능)
