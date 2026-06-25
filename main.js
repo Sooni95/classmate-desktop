@@ -321,6 +321,17 @@ function createOverlay() {
     try { return { name: path.basename(p), b64: fs.readFileSync(p).toString('base64') }; }
     catch (err) { return null; }
   });
+  // 백업(JSON) 파일 선택 → 텍스트로 반환
+  ipcMain.handle('pick-backup', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'ClassMate 백업 파일 선택',
+      filters: [{ name: 'ClassMate 백업 (JSON)', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+    if (r.canceled || !r.filePaths[0]) return null;
+    try { return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') }; }
+    catch (e) { return null; }
+  });
   // 사용자 의견 보내기 → 워커가 ksh0502@nepes.co.kr 로 메일 발송
   ipcMain.handle('feedback', async (_e, { message, contact, meta }) => {
     try {

@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('cm', {
   hideToTray: () => ipcRenderer.send('hide-to-tray'),
   pickRosterFile: () => ipcRenderer.invoke('pick-roster'),
   readPath: (p) => ipcRenderer.invoke('read-path', p),
+  pickBackup: () => ipcRenderer.invoke('pick-backup'),
   feedback: (p) => ipcRenderer.invoke('feedback', p),
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']

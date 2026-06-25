@@ -473,6 +473,21 @@ body.ptr-over-ui #halo{display:none!important;}
 .die{width:56px;height:56px;border-radius:13px;background:#fff;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.13),0 4px 10px rgba(0,0,0,.3);}
 .die i{width:9px;height:9px;border-radius:50%;background:#222;place-self:center;visibility:hidden;}
 .die.rolling{animation:diceroll .5s ease-in-out infinite;}
+
+/* 활동 상징 */
+#symbolW{width:264px;padding-bottom:12px;}
+#symDisplay{text-align:center;padding:8px 12px 14px;}
+#symBig{font-size:86px;line-height:1.05;}
+#symLabel{font-size:22px;font-weight:900;color:#fff;margin-top:2px;letter-spacing:-.5px;}
+#symPick{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 12px;}
+.sym-b{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);background:var(--dk2);border-radius:11px;padding:9px 4px;cursor:pointer;color:#cdd8e2;font-family:inherit;transition:.13s;}
+.sym-b:hover{border-color:var(--or);background:var(--dk3);}
+.sym-b.on{background:var(--or);border-color:var(--or);color:#fff;}
+.sym-b .se{font-size:24px;line-height:1;}
+.sym-b .st{font-size:10.5px;font-weight:700;}
+body.light #symLabel{color:#1a1d21;}
+body.light .sym-b{background:#f4efe6;border-color:#e6ddcc;color:#33312c;}
+body.light .sym-b.on{background:var(--or);color:#fff;}
 @keyframes diceroll{
   0%{transform:translateY(0) rotate(0deg) scale(1);}
   25%{transform:translateY(-22px) rotate(180deg) scale(1.08);}
@@ -798,8 +813,9 @@ body.ptr-over-ui #halo{display:none!important;}
   <div class="gmenu">
     <div class="gcard" id="gcBoard"><div class="gi">🟩</div><div class="gl">칠판</div></div>
     <div class="gcard" id="gcShade"><div class="gi">🪟</div><div class="gl">가리개</div></div>
+    <div class="gcard" id="gcSymbol"><div class="gi">🪧</div><div class="gl">활동 상징</div></div>
   </div>
-  <div class="gdesc" style="margin-top:10px">🟩 <b style="color:#F68C1F">칠판</b>은 초록칠판·화이트보드로 전환되고 글자 입력·크기 조절이 됩니다. 🪟 <b style="color:#F68C1F">가리개</b>는 화면 일부를 가려 집중시킬 때 좋아요.</div>
+  <div class="gdesc" style="margin-top:10px">🟩 <b style="color:#F68C1F">칠판</b>은 초록칠판·화이트보드로 전환되고 글자 입력·크기 조절이 됩니다. 🪟 <b style="color:#F68C1F">가리개</b>는 화면 일부를 가려 집중시킬 때 좋아요. 🪧 <b style="color:#F68C1F">활동 상징</b>은 지금 활동 방식(조용히·짝·모둠 등)을 화면에 크게 띄워 학생이 한눈에 알게 합니다.</div>
 </div>
 
 <!-- 사다리타기 모달 (재작성) -->
@@ -1013,6 +1029,11 @@ body.ptr-over-ui #halo{display:none!important;}
   </div>
   <div id="lightLabel">신호를 눌러주세요</div>
 </div>
+<div id="symbolW" class="fw iv">
+  <div class="fwh"><span class="ic">🪧</span><span class="tt">활동 상징</span><button class="x">✕</button></div>
+  <div id="symDisplay"><div id="symBig">🪧</div><div id="symLabel">활동을 골라주세요</div></div>
+  <div id="symPick"></div>
+</div>
 
 <button id="recStop" class="iv">⏹ 녹화 정지</button>
 <div id="noiseAlert"></div>
@@ -1197,6 +1218,24 @@ body.ptr-over-ui #halo{display:none!important;}
 #fbSend:disabled{background:var(--dk3);color:#6b7884;cursor:default;}
 .fb-status{font-size:12px;margin-top:10px;text-align:center;min-height:16px;}
 .fb-status.ok{color:#34c759;} .fb-status.err{color:#e05544;}
+/* 💾 설정·명단 백업 */
+#backupModal{position:fixed;z-index:121;display:none;left:0;top:0;}
+#backupModal.on{display:block;}
+.bk-card{position:fixed;left:0;top:0;width:380px;max-width:92vw;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.bk-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;cursor:grab;}
+.bk-head:active{cursor:grabbing;}
+.bk-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
+.bk-sub{font-size:11.5px;color:#9fb0bf;margin:8px 0 14px;line-height:1.55;}
+.bk-sub b{color:#cdd8e2;}
+.bk-btns{display:flex;flex-direction:column;gap:8px;}
+.bk-btns button{border:none;border-radius:10px;padding:12px;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;}
+.bk-go{background:var(--or);color:#fff;}
+.bk-g{background:var(--dk2);color:#cdd8e2;}
+.bk-status{font-size:12px;margin-top:11px;text-align:center;min-height:16px;}
+.bk-status.ok{color:#34c759;} .bk-status.err{color:#e05544;}
+body.light .bk-card{background:#fffdf9;border-color:#e6ddcc;}
+body.light .bk-head{color:#33312c;} body.light .bk-sub{color:#7a7363;} body.light .bk-sub b{color:#33312c;}
+body.light .bk-g{background:#ece5d6;color:#5b5446;}
 /* 🌗 라이트 테마 (독 중심) */
 body.light #dock{background:rgba(255,255,255,.97);border-color:#e6e0d4;box-shadow:0 18px 50px -16px rgba(120,90,30,.3);}
 body.light .tool{color:#5b6470;}
@@ -1333,12 +1372,24 @@ body.light .pre,body.light .popts label{color:#5b5446;}
 <div id="setMenu" class="iv">
   <button data-act="theme">🌗 라이트 / 다크 전환</button>
   <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
+  <button data-act="backup">💾 설정·명단 백업</button>
   <button data-act="feedback">✉️ 의견 보내기</button>
 </div>
 <div id="dockDrawer" class="iv">
   <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><button id="dockDone">완료</button></div>
   <div class="dd-t">서랍 (숨긴 도구 — 클릭하면 독에 다시 추가)</div>
   <div id="dockHidden" class="dd-list"></div>
+</div>
+<div id="backupModal" class="iv">
+  <div class="bk-card">
+    <div class="bk-head"><span>💾 설정·명단 백업</span><button id="bkClose">✕</button></div>
+    <div class="bk-sub">명단·독 구성·테마를 파일 하나로 저장하고, 다른 PC나 재설치 후 그대로 복원할 수 있어요.<br><b>API 키·Pro 키는 보안을 위해 백업에 포함되지 않습니다.</b></div>
+    <div class="bk-btns">
+      <button id="bkExport" class="bk-go">⬇ 내보내기 (파일로 저장)</button>
+      <button id="bkImport" class="bk-g">⬆ 가져오기 (파일에서 복원)</button>
+    </div>
+    <div id="bkStatus" class="bk-status"></div>
+  </div>
 </div>
 <div id="feedbackModal" class="iv">
   <div class="fb-card">

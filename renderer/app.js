@@ -944,7 +944,7 @@ $('pkLog')&&$('pkLog').addEventListener('click',e=>{if(e.target.id==='pkLog')$('
 /* ===== 게이미피케이션 런처 ===== */
 function gShowCfg(id){
   ['cfgPick','cfgDraw','cfgWheel','cfgPk','cfgLadder'].forEach(c=>$(c).classList.remove('on'));
-  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade','gcLadder','gcBoard'].forEach(c=>$(c)&&$(c).classList.remove('on'));
+  ['gcPick','gcDraw','gcWheel','gcPk','gcScore','gcDice','gcLight','gcShade','gcSymbol','gcLadder','gcBoard'].forEach(c=>$(c)&&$(c).classList.remove('on'));
   if(id)$(id).classList.add('on');
 }
 $('gcPick').addEventListener('click',()=>{gShowCfg('gcPick');$('cfgPick').classList.add('on');});
@@ -955,6 +955,7 @@ $('gcScore').addEventListener('click',()=>{gShowCfg();openWidget('scoreW');});
 $('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
 $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
 $('gcShade')&&$('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
+$('gcSymbol')&&$('gcSymbol').addEventListener('click',()=>{gShowCfg();openWidget('symbolW');});
 $('gcLadder').addEventListener('click',()=>{gShowCfg('gcLadder');$('cfgLadder').classList.add('on');});
 
 /* ===== 입력 모달 (Electron prompt 대체) ===== */
@@ -1297,6 +1298,25 @@ $('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventLis
   $('lightW').querySelectorAll('.tl button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');$('lightLabel').textContent=b.dataset.m;
 }));
+
+/* --- 활동 상징 (조용히·짝·모둠 등을 화면에 크게) --- */
+(function(){
+  const pick=$('symPick'); if(!pick)return;
+  const SYMS=[
+    {e:'🤫',t:'조용히'},{e:'👂',t:'잘 듣기'},{e:'👥',t:'짝 활동'},
+    {e:'👨‍👩‍👧‍👦',t:'모둠 활동'},{e:'🙋',t:'발표·질문'},{e:'🚶',t:'이동·자유'},
+  ];
+  SYMS.forEach(s=>{
+    const b=document.createElement('button');b.className='sym-b';
+    b.innerHTML='<span class="se">'+s.e+'</span><span class="st">'+s.t+'</span>';
+    b.addEventListener('click',()=>{
+      pick.querySelectorAll('.sym-b').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      $('symBig').textContent=s.e;$('symLabel').textContent=s.t;
+    });
+    pick.appendChild(b);
+  });
+})();
 
 $('wheelOpen').addEventListener('click',()=>openGame('wheel'));
 $('plinkoOpen').addEventListener('click',()=>openGame('plinko'));
@@ -3073,19 +3093,60 @@ syncPtr();
     document.addEventListener('pointercancel',dragUp);
   });
 
+  /* --- 💾 설정·명단 백업 (내보내기/가져오기) --- */
+  const BK_KEYS=['cm_rosters','cm_dock_order','cm_dock_hidden','cm_theme','su_keys','noise_guide_seen'];
+  const bkModal=$('backupModal'),bkCard=bkModal?bkModal.querySelector('.bk-card'):null;
+  function bkSay(msg,good){const s=$('bkStatus');if(!s)return;s.textContent=msg||'';s.className='bk-status'+(good===true?' ok':good===false?' err':'');}
+  function openBackup(){if(!bkModal)return;bkSay('');bkModal.classList.add('on');setIgnore(false);centerOnDockDisplay(bkCard);}
+  function closeBackup(){if(bkModal)bkModal.classList.remove('on');}
+  if(bkModal){
+    $('bkClose').addEventListener('click',closeBackup);
+    makeDrag(bkModal.querySelector('.bk-head'),(e,s)=>{
+      if(!s){const r=bkCard.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+      bkCard.style.left=(e.clientX-s.dx)+'px';bkCard.style.top=(e.clientY-s.dy)+'px';
+    },e=>e.target.id==='bkClose');
+    $('bkExport').addEventListener('click',async()=>{
+      const out={app:'ClassMate',type:'backup',v:1,date:new Date().toISOString(),data:{}};
+      BK_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!=null)out.data[k]=v;});
+      const json=JSON.stringify(out,null,2);
+      const bytes=Array.from(new TextEncoder().encode(json));
+      const now=new Date();
+      const fn='ClassMate_백업_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.json';
+      const r=await window.cm.saveBinary({bytes,filename:fn,ext:'json'});
+      if(r&&r.ok)bkSay('내보내기 완료 — 안전한 곳에 보관하세요.',true);
+      else if(r&&r.canceled)bkSay('');
+      else bkSay('저장에 실패했어요.',false);
+    });
+    $('bkImport').addEventListener('click',async()=>{
+      const f=await window.cm.pickBackup();
+      if(!f)return;
+      let obj=null;
+      try{obj=JSON.parse(f.text.replace(/^\uFEFF/,''));}catch(e){bkSay('백업 파일을 읽을 수 없어요(형식 오류).',false);return;}
+      if(!obj||obj.app!=='ClassMate'||!obj.data){bkSay('ClassMate 백업 파일이 아니에요.',false);return;}
+      let n=0;
+      BK_KEYS.forEach(k=>{if(typeof obj.data[k]==='string'){localStorage.setItem(k,obj.data[k]);n++;}});
+      try{applyTheme(localStorage.getItem('cm_theme')||'dark');}catch(e){} // 테마 즉시 반영
+      try{applyCfg();}catch(e){}                                          // 독 구성 즉시 반영
+      bkSay('복원 완료 — '+n+'개 항목을 불러왔어요. 🧡',true);
+      toast('💾 백업을 복원했어요');
+    });
+  }
+
   /* --- 메뉴 액션 --- */
   setMenu.addEventListener('click',e=>{
     const b=e.target.closest('button[data-act]');if(!b)return;
     closeSet();
     if(b.dataset.act==='theme')toggleTheme();
     else if(b.dataset.act==='dockedit')enterEdit();
+    else if(b.dataset.act==='backup')openBackup();
     else if(b.dataset.act==='feedback')openFeedback();
   });
 
   /* --- Esc 로 닫기 --- */
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
-    if(fbModal.classList.contains('on')){closeFeedback();}
+    if(bkModal&&bkModal.classList.contains('on')){closeBackup();}
+    else if(fbModal.classList.contains('on')){closeFeedback();}
     else if(setMenu.classList.contains('on')){closeSet();}
     else if(editing){exitEdit();}
   });
