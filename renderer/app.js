@@ -127,6 +127,14 @@ function applyCapStyle(){
 // 인식된 한국어 → 원문 표시 + 선택 언어들로 번역
 async function vcProcess(koText){
   if(!koText)return;
+  const koOnly=$('vcKoOnly')&&$('vcKoOnly').checked;
+  capBox.classList.toggle('ko-only',!!koOnly);
+  if(koOnly){ // 한국어 자막만 — 번역 생략
+    $('capOrig').textContent=koText;
+    $('capTransList').innerHTML='';
+    applyCapStyle();
+    return;
+  }
   $('capOrig').textContent='🇰🇷 '+koText;
   const langs=vcLangsSel();
   const list=$('capTransList');list.innerHTML='';
@@ -1860,6 +1868,73 @@ $('suQrBtn').addEventListener('click',()=>{
   // QR에는 퓨니코드 형태로 (구형 스캐너 호환), 화면 표시는 한글
   makeQR(box,new URL('https://'+$('suUrl').textContent).href);
 });
+// 만든 단축 URL 목록·관리
+$('suListBtn').addEventListener('click',()=>{
+  const box=$('suListBox');
+  if(box.classList.contains('on')){box.classList.remove('on');box.innerHTML='';return;}
+  renderSuList();box.classList.add('on');
+});
+function suRow(slug,onOpen,onCopy,onEdit,onDel,extra){
+  const row=document.createElement('div');row.className='su-li';
+  row.innerHTML='<span class="su-li-n">'+slug+(extra||'')+'</span>'
+    +'<button class="su-li-b" data-a="open" title="브라우저로 열기">↗</button>'
+    +'<button class="su-li-b" data-a="copy" title="주소 복사">📋</button>'
+    +(onEdit?'<button class="su-li-b" data-a="edit" title="연결 수정">✏️</button>':'')
+    +'<button class="su-li-b del" data-a="del" title="삭제">🗑</button>';
+  row.querySelector('[data-a=open]').addEventListener('click',onOpen);
+  row.querySelector('[data-a=copy]').addEventListener('click',onCopy);
+  if(onEdit)row.querySelector('[data-a=edit]').addEventListener('click',onEdit);
+  row.querySelector('[data-a=del]').addEventListener('click',onDel);
+  return row;
+}
+function renderSuList(){
+  const box=$('suListBox');box.innerHTML='';
+  const keys=suKeys();const slugs=Object.keys(keys);
+  if(!slugs.length){box.innerHTML='<div class="su-empty">아직 만든 단축 URL이 없어요.</div>';}
+  slugs.forEach(slug=>{
+    box.appendChild(suRow(slug,
+      ()=>window.cm.openExternal('https://'+new URL('https://'+SU_BASE+'/'+slug).host+'/'+slug),
+      ()=>{window.cm.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
+      ()=>{ // 연결 수정: 슬러그 채우고 새 URL 입력 유도
+        $('suSlug').value=slug;$('suTarget').value='';$('suTarget').focus();
+        suSay('새 원본 URL을 넣고 [단축주소 만들기]를 누르면 연결만 바뀝니다.');
+      },
+      async()=>{
+        if(!confirm('"'+slug+'" 단축 URL을 삭제할까요? 배포된 QR·링크가 더 이상 연결되지 않습니다.'))return;
+        const r=await window.cm.suDelete({slug,key:keys[slug],token:SU_TOKEN_DEFAULT});
+        if(r.ok||r.status===404){const m=suKeys();delete m[slug];localStorage.setItem('su_keys',JSON.stringify(m));renderSuList();toast('🗑 삭제됨');}
+        else toast('삭제 실패 — 서버에 삭제 기능 배포가 필요해요');
+      }));
+  });
+  // 관리자(코코아팹) 전체 관리
+  const adm=document.createElement('button');adm.className='su-admin';adm.textContent='🔑 전체 URL 관리 (코코아팹 관리자)';
+  adm.addEventListener('click',()=>askInput('관리자 토큰 입력','',adminListAll));
+  box.appendChild(adm);
+}
+async function adminListAll(token){
+  if(!token)return;
+  const box=$('suListBox');box.innerHTML='<div class="su-empty">불러오는 중…</div>';
+  const r=await window.cm.suAdminList({admin:token});
+  box.innerHTML='';
+  if(!r.ok){box.innerHTML='<div class="su-empty">'+(r.status===401?'토큰이 올바르지 않아요':r.status===404?'서버에 관리자 기능 배포가 필요해요':'불러오기 실패')+'</div>';
+    const back=document.createElement('button');back.className='su-admin';back.textContent='← 내 목록으로';back.addEventListener('click',renderSuList);box.appendChild(back);return;}
+  let items=[];try{items=JSON.parse(r.message);}catch(e){}
+  if(!items.length)box.innerHTML='<div class="su-empty">등록된 URL이 없어요.</div>';
+  items.forEach(it=>{
+    const slug=it.slug||it;
+    box.appendChild(suRow(slug,
+      ()=>window.cm.openExternal('https://'+SU_BASE+'/'+slug),
+      ()=>{window.cm.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
+      null,
+      async()=>{
+        if(!confirm('[관리자] "'+slug+'"를 삭제할까요?'))return;
+        const d=await window.cm.suAdminDelete({slug,admin:token});
+        if(d.ok||d.status===404){adminListAll(token);toast('🗑 삭제됨');}else toast('삭제 실패');
+      },
+      it.target?' <small style="color:#8a94a1;font-weight:400">→ '+String(it.target).slice(0,28)+'</small>':''));
+  });
+  const back=document.createElement('button');back.className='su-admin';back.textContent='← 내 목록으로';back.addEventListener('click',renderSuList);box.appendChild(back);
+}
 
 /* ===== 메모 — v0.4: 부분 글자 크기 (선택한 단어만) ===== */
 const MCOLS=['#FFF3A3','#FFB3C6','#B3F0D4','#C7D2FF'];let mCnt=0;
@@ -1909,13 +1984,14 @@ $('memoBtn').addEventListener('click',()=>{
   m.innerHTML=`<div class="mbar" style="background:${c}cc">
     <span style="display:flex;align-items:center;gap:4px">
       <button class="fbtn" data-f="-1" title="선택한 글자 작게">A-</button><button class="fbtn" data-f="1" title="선택한 글자 크게">A+</button>
+      <button class="fbtn" id="mFont" title="글꼴 바꾸기">가</button>
       <button class="fbtn" id="mCopy" title="클립보드로 복사">📋</button>
       <button class="fbtn" id="mSave" title="txt 파일로 저장">💾</button>
       <button class="fbtn" id="mMic" title="음성 녹음">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
     <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
-  </div><div class="mtext" contenteditable="true" data-ph="메모… (단어 드래그 후 A+/A-)" style="background:${c}"></div><div class="rs2"></div>`;
+  </div><div class="mtext" contenteditable="true" data-ph="메모… (단어 드래그 후 A+/A-)" style="background:${c}"></div><div class="rn"></div><div class="rs"></div><div class="re"></div><div class="rw"></div><div class="rs2"></div>`;
   document.body.appendChild(m);
   const ed=m.querySelector('.mtext');
   const [minB,xB]=m.querySelectorAll('.mbtn2');
@@ -1970,15 +2046,33 @@ $('memoBtn').addEventListener('click',()=>{
     b.addEventListener('click',()=>applyFontSize(ed,+b.dataset.f));
   });
   m.querySelector('input[type=range]').addEventListener('input',e=>m.style.opacity=e.target.value/100);
+  // 글꼴 바꾸기 (Windows 기본 한글 글꼴 순환)
+  const MFONTS=[['맑은 고딕','"Malgun Gothic",sans-serif'],['바탕','"Batang",serif'],['굴림','"Gulim",sans-serif'],['궁서','"Gungsuh",serif']];
+  let mFi=0;
+  m.querySelector('#mFont').addEventListener('mousedown',e=>e.preventDefault());
+  m.querySelector('#mFont').addEventListener('click',()=>{
+    mFi=(mFi+1)%MFONTS.length;ed.style.fontFamily=MFONTS[mFi][1];
+    toast('🔤 글꼴: '+MFONTS[mFi][0]);
+  });
   makeDrag(m.querySelector('.mbar'),(e,s)=>{
     if(!s){const r=m.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     m.style.left=(e.clientX-s.dx)+'px';m.style.top=(e.clientY-s.dy)+'px';
   },e=>['BUTTON','INPUT'].includes(e.target.tagName));
-  makeDrag(m.querySelector('.rs2'),(e,s)=>{
-    if(!s)return{sx:e.clientX,sy:e.clientY,sw:m.offsetWidth,sh:ed.offsetHeight};
-    m.style.width=Math.max(150,s.sw+(e.clientX-s.sx))+'px';
-    ed.style.minHeight=Math.max(60,s.sh+(e.clientY-s.sy))+'px';
-  });
+  // 4방향 + 모서리 리사이즈 (화면 끝 스냅)
+  const SNAP=14, barH=()=>m.querySelector('.mbar').offsetHeight;
+  function memoResize(sel,dir){
+    const h=m.querySelector(sel); if(!h)return;
+    makeDrag(h,(e,s)=>{
+      if(!s){const r=m.getBoundingClientRect();return{sx:e.clientX,sy:e.clientY,L:r.left,T:r.top,W:r.width,H:ed.offsetHeight};}
+      const d=(typeof dispAt==='function'?dispAt(e.clientX,e.clientY):null)||dockDisp();
+      const dx=e.clientX-s.sx, dy=e.clientY-s.sy;
+      if(dir.includes('e')){ let nw=s.W+dx; if(s.L+nw>=d.x+d.w-SNAP)nw=d.x+d.w-s.L; m.style.width=Math.max(170,nw)+'px'; }
+      if(dir.includes('w')){ let nl=s.L+dx; if(nl<=d.x+SNAP)nl=d.x; const nw=s.W+(s.L-nl); if(nw>=170){m.style.left=nl+'px';m.style.width=nw+'px';} }
+      if(dir.includes('s')){ let nh=s.H+dy; if(s.T+barH()+nh>=d.y+d.h-SNAP)nh=(d.y+d.h)-(s.T+barH()); ed.style.height=Math.max(60,nh)+'px'; }
+      if(dir.includes('n')){ let nt=s.T+dy; if(nt<=d.y+SNAP)nt=d.y; const nh=s.H+(s.T-nt); if(nh>=60){m.style.top=nt+'px';ed.style.height=nh+'px';} }
+    });
+  }
+  memoResize('.re','e');memoResize('.rw','w');memoResize('.rs','s');memoResize('.rn','n');memoResize('.rs2','se');
   ed.focus();
 });
 
@@ -2512,11 +2606,13 @@ function showTextHud(){
   hud.classList.add('on');
   clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
 }
-function openTextEditor(x,y){
+function openTextEditor(x,y,w,fs){
   const ed=document.createElement('div');
   ed.className='cvtext iv';ed.contentEditable='true';
   ed.style.left=x+'px';ed.style.top=y+'px';
-  ed.style.color=penColor;ed.style.fontSize=txSize+'px';
+  ed.style.color=penColor;ed.style.fontSize=(fs||txSize)+'px';
+  if(w&&w>40){ed.style.width=w+'px';ed.style.maxWidth='none';ed.dataset.maxw=w;}
+  if(fs)txSize=fs; // 박스로 정한 크기를 기억
   ed.dataset.x=x;ed.dataset.y=y;
   document.body.appendChild(ed);txEditor=ed;
   setTimeout(()=>ed.focus(),0);
@@ -2526,18 +2622,32 @@ function openTextEditor(x,y){
     else if(e.key==='Escape'){txEditor=null;ed.remove();}
   });
 }
+function wrapText(ctx,text,maxW){
+  if(!maxW)return text.split('\n');
+  const out=[];
+  text.split('\n').forEach(para=>{
+    let cur='';
+    for(const ch of para){
+      if(cur&&ctx.measureText(cur+ch).width>maxW){out.push(cur);cur=ch;}
+      else cur+=ch;
+    }
+    out.push(cur);
+  });
+  return out;
+}
 function commitText(){
   if(!txEditor)return;
   const ed=txEditor;txEditor=null;
   const txt=ed.innerText.replace(/\n+$/,'');
   const x=+ed.dataset.x,y=+ed.dataset.y;
   const col=ed.style.color,fs=parseFloat(ed.style.fontSize);
+  const maxw=ed.dataset.maxw?parseFloat(ed.dataset.maxw):0;
   ed.remove();
   if(!txt.trim())return;
   saveSt();
   ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   ctx.fillStyle=col;ctx.font='bold '+fs+'px "Malgun Gothic"';ctx.textBaseline='top';ctx.textAlign='left';
-  txt.split('\n').forEach((ln,i)=>ctx.fillText(ln,x+4,y+4+i*fs*1.28));
+  wrapText(ctx,txt,maxw?Math.max(20,maxw-8):0).forEach((ln,i)=>ctx.fillText(ln,x+4,y+4+i*fs*1.28));
 }
 function saveSt(){if(undoStack.length>=20)undoStack.shift();undoStack.push(ctx.getImageData(0,0,dc.width,dc.height));}
 function undo(){if(undoStack.length)ctx.putImageData(undoStack.pop(),0,0);}
@@ -2579,7 +2689,25 @@ function pathStroke(c,pts,w){
 }
 dc.addEventListener('pointerdown',e=>{
   if(!drawMode)return;
-  if(penType==='text'){commitText();openTextEditor(e.clientX,e.clientY);return;}
+  if(penType==='text'){
+    commitText();
+    const sx=e.clientX, sy=e.clientY;
+    const box=document.createElement('div');box.className='txbox';
+    box.style.left=sx+'px';box.style.top=sy+'px';document.body.appendChild(box);
+    const mv=ev=>{
+      const x=Math.min(sx,ev.clientX),y=Math.min(sy,ev.clientY),w=Math.abs(ev.clientX-sx),h=Math.abs(ev.clientY-sy);
+      box.style.left=x+'px';box.style.top=y+'px';box.style.width=w+'px';box.style.height=h+'px';
+    };
+    const up=ev=>{
+      document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);
+      const x=Math.min(sx,ev.clientX),y=Math.min(sy,ev.clientY),w=Math.abs(ev.clientX-sx),h=Math.abs(ev.clientY-sy);
+      box.remove();
+      if(w<14&&h<14){openTextEditor(sx,sy);} // 그냥 클릭이면 기존 방식(현재 크기)
+      else{openTextEditor(x,y,w,Math.max(14,Math.min(240,Math.round(h))));} // 박스: 높이=글자크기, 폭=줄바꿈
+    };
+    document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up);
+    return;
+  }
   if(penType==='stamp'){stampAtDraw(e.clientX,e.clientY);return;}
   saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
@@ -3151,7 +3279,7 @@ syncPtr();
   });
 
   /* --- 💾 설정·명단 백업 (내보내기/가져오기) --- */
-  const BK_KEYS=['cm_rosters','cm_dock_order','cm_dock_hidden','cm_theme','cm_glass_alpha','su_keys','noise_guide_seen'];
+  const BK_KEYS=['cm_rosters','cm_dock_order','cm_dock_hidden','cm_theme','cm_glass_alpha','cm_shortcuts','su_keys','noise_guide_seen'];
   const bkModal=$('backupModal'),bkCard=bkModal?bkModal.querySelector('.bk-card'):null;
   function bkSay(msg,good){const s=$('bkStatus');if(!s)return;s.textContent=msg||'';s.className='bk-status'+(good===true?' ok':good===false?' err':'');}
   function openBackup(){if(!bkModal)return;bkSay('');bkModal.classList.add('on');setIgnore(false);centerOnDockDisplay(bkCard);}
@@ -3189,12 +3317,71 @@ syncPtr();
     });
   }
 
+  /* --- ⌨️ 단축키 설정 --- */
+  const SC_DEFS=[
+    ['hk-draw','✏️ 펜','Control+Alt+P'],
+    ['hk-ring','🎯 링 포인터','Control+Alt+R'],
+    ['hk-spot','🔦 스포트라이트','Control+Alt+O'],
+    ['hk-lens','🔍 돋보기','Control+Alt+L'],
+    ['hk-snip','📷 영역 캡처','Control+Alt+S'],
+    ['hk-dock','📌 툴바 표시/숨김','Control+Alt+`'],
+    ['hk-escape','⛔ 모두 끄기','Control+Alt+0'],
+  ];
+  const scModal=$('scModal'),scCard=scModal?scModal.querySelector('.sc-card'):null;
+  let scCustom=JSON.parse(localStorage.getItem('cm_shortcuts')||'{}');
+  const scEff=ch=>scCustom[ch]||(SC_DEFS.find(d=>d[0]===ch)||[])[2]||'';
+  const scPretty=a=>a.replace('Control','Ctrl').replace('Super','Win').replace(/\+/g,' + ');
+  function scApply(){try{window.cm.setShortcuts(scCustom);}catch(e){}}
+  scApply(); // 로드 시 저장된 사용자 단축키 적용
+  let scCapturing=null;
+  function scRender(){
+    const list=$('scList'); if(!list)return; list.innerHTML='';
+    SC_DEFS.forEach(([ch,lab])=>{
+      const row=document.createElement('div');row.className='sc-item';
+      row.innerHTML='<span class="sc-lab">'+lab+'</span><span class="sc-key">'+scPretty(scEff(ch))+'</span><button class="sc-chg">변경</button>';
+      const keyEl=row.querySelector('.sc-key'),btn=row.querySelector('.sc-chg');
+      btn.addEventListener('click',()=>scCapture(ch,keyEl,btn));
+      list.appendChild(row);
+    });
+  }
+  function scCapture(ch,keyEl,btn){
+    if(scCapturing)scCapturing.cancel();
+    keyEl.classList.add('capturing');keyEl.textContent='키 입력…';btn.textContent='취소';
+    const onKey=e=>{
+      e.preventDefault();e.stopPropagation();
+      if(e.key==='Escape'){done();return;}
+      if(['Control','Alt','Shift','Meta'].includes(e.key))return; // 보조키 단독 무시
+      const mods=[];if(e.ctrlKey)mods.push('Control');if(e.altKey)mods.push('Alt');if(e.shiftKey)mods.push('Shift');if(e.metaKey)mods.push('Super');
+      let k=e.key;
+      if(k===' ')k='Space';else if(/^[a-z]$/i.test(k))k=k.toUpperCase();else if(k.startsWith('Arrow'))k=k.replace('Arrow','');
+      const isF=/^F\d{1,2}$/.test(k);
+      if(!isF&&mods.length===0){keyEl.textContent='보조키 필요(Ctrl/Alt…)';return;}
+      const acc=[...mods,k].join('+');
+      scCustom[ch]=acc;localStorage.setItem('cm_shortcuts',JSON.stringify(scCustom));scApply();
+      done();scRender();toast('⌨️ 저장됨: '+scPretty(acc));
+    };
+    function done(){document.removeEventListener('keydown',onKey,true);keyEl.classList.remove('capturing');keyEl.textContent=scPretty(scEff(ch));btn.textContent='변경';scCapturing=null;}
+    scCapturing={cancel:done};
+    document.addEventListener('keydown',onKey,true);
+  }
+  function openShortcuts(){if(!scModal)return;scRender();scModal.classList.add('on');setIgnore(false);centerOnDockDisplay(scCard);}
+  function closeShortcuts(){if(scCapturing)scCapturing.cancel();if(scModal)scModal.classList.remove('on');}
+  if(scModal){
+    $('scClose').addEventListener('click',closeShortcuts);
+    makeDrag(scModal.querySelector('.bk-head'),(e,s)=>{
+      if(!s){const r=scCard.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+      scCard.style.left=(e.clientX-s.dx)+'px';scCard.style.top=(e.clientY-s.dy)+'px';
+    },e=>e.target.id==='scClose');
+    $('scReset').addEventListener('click',()=>{scCustom={};localStorage.removeItem('cm_shortcuts');scApply();scRender();toast('⌨️ 기본값으로 되돌렸어요');});
+  }
+
   /* --- 메뉴 액션 --- */
   setMenu.addEventListener('click',e=>{
     const b=e.target.closest('button[data-act]');if(!b)return;
     closeSet();
     if(b.dataset.act==='theme')toggleTheme();
     else if(b.dataset.act==='dockedit')enterEdit();
+    else if(b.dataset.act==='shortcuts')openShortcuts();
     else if(b.dataset.act==='backup')openBackup();
     else if(b.dataset.act==='feedback')openFeedback();
   });
@@ -3202,7 +3389,8 @@ syncPtr();
   /* --- Esc 로 닫기 --- */
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
-    if(bkModal&&bkModal.classList.contains('on')){closeBackup();}
+    if(scModal&&scModal.classList.contains('on')){closeShortcuts();}
+    else if(bkModal&&bkModal.classList.contains('on')){closeBackup();}
     else if(fbModal.classList.contains('on')){closeFeedback();}
     else if(setMenu.classList.contains('on')){closeSet();}
     else if(editing){exitEdit();}

@@ -283,6 +283,37 @@ function createOverlay() {
 
   ipcMain.on('open-external', (_e, url) => { try { shell.openExternal(url); } catch (e) {} });
 
+  const SU_API = 'https://classmate-links.suhun099.workers.dev';
+  // 단축 URL 삭제 (생성자: 슬러그의 수정키로 인증)
+  ipcMain.handle('su-delete', async (_e, { slug, key, token }) => {
+    try {
+      const res = await net.fetch(SU_API + '/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-token': token || '' },
+        body: JSON.stringify({ slug, key }),
+      });
+      return { ok: res.ok, status: res.status, message: await res.text() };
+    } catch (err) { return { ok: false, status: 0, message: 'NET:' + String(err && err.message || err) }; }
+  });
+  // 관리자(코코아팹): 전체 목록 조회 — 관리자 토큰 필요
+  ipcMain.handle('su-admin-list', async (_e, { admin }) => {
+    try {
+      const res = await net.fetch(SU_API + '/api/admin/list', { headers: { 'x-admin': admin || '' } });
+      return { ok: res.ok, status: res.status, message: await res.text() };
+    } catch (err) { return { ok: false, status: 0, message: 'NET:' + String(err && err.message || err) }; }
+  });
+  // 관리자: 임의 URL 삭제
+  ipcMain.handle('su-admin-delete', async (_e, { slug, admin }) => {
+    try {
+      const res = await net.fetch(SU_API + '/api/admin/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin': admin || '' },
+        body: JSON.stringify({ slug }),
+      });
+      return { ok: res.ok, status: res.status, message: await res.text() };
+    } catch (err) { return { ok: false, status: 0, message: 'NET:' + String(err && err.message || err) }; }
+  });
+
   // 명단 양식 다운로드
   ipcMain.handle('save-template', async () => {
     try {
@@ -312,6 +343,7 @@ function createOverlay() {
   });
 
   ipcMain.on('quit-app', () => { app.isQuiting = true; app.quit(); });
+  ipcMain.on('set-shortcuts', (_e, obj) => { scCustom = obj || {}; registerShortcuts(); }); // 렌더러가 저장된 사용자 단축키 적용
   // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
   ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });
   // 명단 파일 선택 (메인 프로세스 dialog → 투명/클릭통과 오버레이에서도 확실히 동작)
@@ -357,21 +389,20 @@ function createOverlay() {
   });
 }
 
+const SC_DEFAULT = {
+  'hk-draw':'Control+Alt+P','hk-ring':'Control+Alt+R','hk-spot':'Control+Alt+O',
+  'hk-lens':'Control+Alt+L','hk-snip':'Control+Alt+S','hk-dock':'Control+Alt+`','hk-escape':'Control+Alt+0',
+};
+const SC_EXTRA = [['F6','hk-ring'],['F7','hk-spot'],['F8','hk-lens'],['F9','hk-draw'],
+  ['Control+Alt+1','hk-ring'],['Control+Alt+2','hk-spot'],['Control+Alt+3','hk-lens'],['Control+Alt+4','hk-draw']];
+let scCustom = {};
 function registerShortcuts() {
+  globalShortcut.unregisterAll();
   const send = ch => win && win.webContents.send(ch);
-  // 단일 F키(F6~F9: 대부분 비어 있음) + 외우기 쉬운 Ctrl+Alt 니모닉(펜=P 등) + 이전 조합 호환
-  // ※ F2~F5는 시스템 공용키(F5 새로고침 등)라 전역 가로채기 위험이 있어 사용하지 않음
-  const map = [
-    ['F6', 'hk-ring'], ['F7', 'hk-spot'], ['F8', 'hk-lens'], ['F9', 'hk-draw'],
-    // 외우기 쉬운 니모닉 (펜 P, 링 R, 스포트 O, 돋보기 L, 캡처 S)
-    ['Control+Alt+P', 'hk-draw'], ['Control+Alt+R', 'hk-ring'],
-    ['Control+Alt+O', 'hk-spot'], ['Control+Alt+L', 'hk-lens'],
-    // 이전 조합 호환 유지
-    ['Control+Alt+1', 'hk-ring'], ['Control+Alt+2', 'hk-spot'],
-    ['Control+Alt+3', 'hk-lens'], ['Control+Alt+4', 'hk-draw'],
-    ['Control+Alt+S', 'hk-snip'], ['Control+Alt+`', 'hk-dock'], ['Control+Alt+0', 'hk-escape'],
-  ];
-  map.forEach(([k, ch]) => { try { globalShortcut.register(k, () => send(ch)); } catch (e) {} });
+  const eff = { ...SC_DEFAULT, ...scCustom }; // 사용자 지정이 기본을 덮어씀
+  const used = new Set();
+  Object.entries(eff).forEach(([ch, k]) => { if (k) { try { if (globalShortcut.register(k, () => send(ch))) used.add(k); } catch (e) {} } });
+  SC_EXTRA.forEach(([k, ch]) => { if (!used.has(k)) { try { globalShortcut.register(k, () => send(ch)); } catch (e) {} } }); // F6~9·레거시는 충돌 없을 때만
 }
 
 // 중복 실행 방지
