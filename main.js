@@ -5,9 +5,8 @@ const path = require('path');
 
 let win = null, tray = null, origin = { x: 0, y: 0 };
 
-// Windows에서 desktopCapturer가 빈(투명) 화면으로 잡히는 GPU 합성 경로 문제 방지.
-// 오버레이 렌더링이 눈에 띄게 느려지면 이 한 줄만 지우면 원복됩니다.
-app.disableHardwareAcceleration();
+// 주의: 투명(transparent) 오버레이 창에서는 하드웨어 가속을 끄면 캔버스(펜 필기)가
+// 화면에 그려지지 않는 Windows 이슈가 있어, app.disableHardwareAcceleration()는 쓰지 않는다.
 
 // 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
 function unionBounds() {
