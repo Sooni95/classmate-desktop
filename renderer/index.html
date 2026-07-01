@@ -136,6 +136,20 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .qr-act{display:none;gap:6px;margin-top:8px;}
 .qr-act.on{display:flex;}
 .su-hint{font-size:10.5px;color:#6b7884;line-height:1.6;margin-top:9px;}
+.btn-rec,.btn-cam{border:none;border-radius:11px;padding:11px;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;color:#fff;}
+.btn-rec{background:#e0584a;} .btn-rec:hover{background:#cf4a3d;}
+.btn-cam{background:#2aa5b5;} .btn-cam:hover{background:#2492a0;}
+.fw-sz{border:none;background:rgba(255,255,255,.12);color:#cdd8e2;width:22px;height:22px;border-radius:6px;font-size:14px;line-height:1;cursor:pointer;margin-left:2px;font-family:inherit;}
+.fw-sz:hover{background:var(--or);color:#fff;}
+#lottoW{width:312px;}
+.lotto-set{display:flex;align-items:center;gap:4px;justify-content:center;font-size:11.5px;color:#9fb0bf;flex-wrap:wrap;padding:2px 8px 8px;}
+.lotto-set input{width:46px;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:7px;padding:5px 4px;text-align:center;font-family:inherit;}
+#lottoCv{display:block;margin:0 auto;background:radial-gradient(circle at 50% 38%,#1b2533,#0d1217);border-radius:50%;box-shadow:inset 0 4px 18px rgba(0,0,0,.5);}
+#lottoResult{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;min-height:40px;padding:11px 8px 4px;}
+.lotto-ball{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;color:#fff;font-weight:800;font-size:15px;box-shadow:0 3px 8px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.25),inset 0 3px 5px rgba(255,255,255,.3);animation:lottoPop .42s cubic-bezier(.2,1.5,.4,1);}
+@keyframes lottoPop{from{transform:scale(0)}to{transform:scale(1)}}
+#lottoDraw{width:86%;margin:4px auto 10px;display:block;}
+body.light .lotto-set input{background:#f4efe6;color:#33312c;border-color:#e6ddcc;}
 #suListBox{display:none;margin-top:8px;flex-direction:column;gap:5px;max-height:190px;overflow:auto;}
 #suListBox.on{display:flex;}
 .su-li{display:flex;align-items:center;gap:5px;background:var(--dk2);border:1px solid var(--line);border-radius:9px;padding:6px 8px;}
@@ -209,8 +223,8 @@ body.light .su-li-b{background:#ece5d6;color:#5b5446;}
 .egg-ttl{font-size:34px;font-weight:900;color:#fff;margin-top:6px;letter-spacing:-.5px;}
 .egg-ttl::after{content:" Pro";color:var(--or);}
 .egg-sub{font-size:13px;color:#9fb0bf;margin-top:8px;}
-.egg-names{font-size:15px;color:#cdd8e2;margin-top:22px;line-height:1.7;}
-.egg-names b{color:var(--or);font-size:21px;font-weight:800;}
+.egg-names{font-size:15px;color:#dbe3ec;margin-top:22px;line-height:1.7;}
+.egg-names b{color:#dbe3ec;font-size:15px;font-weight:700;}
 .egg-team{font-size:13px;color:#9fb0bf;margin-top:20px;}
 .egg-team b{color:var(--or);font-weight:800;font-size:15px;}
 .egg-roster{max-width:440px;margin:11px auto 0;line-height:2;}
@@ -617,26 +631,49 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
 
 /* Pro 안내 모달 */
 /* 사다리타기 */
-#ladderWrap{position:fixed;left:0;top:0;z-index:80;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:600px;}
+#ladderWrap{position:fixed;left:0;top:0;z-index:80;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:720px;max-width:96vw;}
 #ladderWrap.on{display:block;}
 #ladderHead{height:46px;display:flex;align-items:center;gap:10px;padding:0 11px 0 16px;cursor:grab;background:linear-gradient(135deg,var(--or),var(--or2));}
 #ladderHead:active{cursor:grabbing;}
 #ladderHead span:first-child{font-size:14px;font-weight:800;color:#fff;}
 #ladderInfo{flex:1;font-size:12px;color:rgba(255,255,255,.9);font-weight:700;}
 #ladderClose{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;}
-#ladderCv{display:block;background:#0f1419;width:100%;}
-#ladderResult{padding:10px 16px;font-size:14px;font-weight:700;color:var(--or);text-align:center;min-height:22px;}
-.lhbtn{border:none;background:rgba(0,0,0,.18);width:28px;height:28px;border-radius:8px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;line-height:1;}
-.lhbtn:hover{background:rgba(0,0,0,.32);}
-#ladderTops,#ladderBots{display:flex;gap:6px;padding:9px 14px 4px;}
-#ladderBots{padding:4px 14px 9px;}
-#ladderTops input,#ladderBots input{flex:1 1 0;min-width:0;width:0;text-align:center;font-weight:700;font-size:12.5px;padding:7px 2px;background:var(--dk2);border:1px solid var(--line);border-radius:8px;color:#e7edf3;}
-#ladderTops input{border-color:#3a4a5c;}
-#ladderBots input{border-color:#3a4a5c;color:#ffd9a8;}
-#ladderBots input.win{background:var(--or);color:#fff;border-color:var(--or);}
-.ltrace{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:4px 14px 0;}
-.ltrace button{border:none;border-radius:8px;min-width:30px;height:28px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:var(--dk3);color:#cdd8e2;}
-.ltrace button:hover{background:var(--or);color:#fff;}
+.lstep{display:none;padding:20px 18px;}
+.lstep.on{display:block;}
+.lstep-q{text-align:center;font-size:16px;font-weight:800;color:#e7edf3;line-height:1.6;margin-bottom:18px;}
+.lstep-q small{font-size:12px;font-weight:500;color:#9fb0bf;}
+.lstep-q2{text-align:center;font-size:14px;font-weight:800;color:#e7edf3;margin-bottom:14px;}
+.lcount{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:18px;}
+.lcount button{width:46px;height:46px;border:none;border-radius:50%;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;font-size:24px;font-weight:800;cursor:pointer;line-height:1;}
+.lcount button:hover{background:var(--or);color:#fff;border-color:var(--or);}
+.lcount #lcNum{font-size:42px;font-weight:900;color:var(--or);min-width:70px;text-align:center;}
+.lchk{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#9fb0bf;margin-bottom:16px;}
+.lstep .btn-go{width:100%;}
+.lio{display:flex;gap:5px;flex-wrap:nowrap;}
+.lio input{flex:1 1 0;min-width:0;width:0;text-align:center;font-weight:700;font-size:12px;padding:8px 2px;background:var(--dk2);border:1px solid #3a4a5c;border-radius:8px;color:#e7edf3;}
+#lInBots input{color:#ffd9a8;}
+.lio-mid{text-align:center;font-size:11px;color:#6b7884;padding:10px 0;font-weight:600;}
+.llabels{display:flex;gap:0;padding:0 4px;}
+.llab{flex:1 1 0;min-width:0;border:none;background:transparent;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;padding:7px 1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;color:#e7edf3;touch-action:manipulation;}
+#ladderWrap.lbusy .lstep-foot button,#ladderWrap.lbusy .llab{pointer-events:none;opacity:.55;}
+.lstep-foot button{touch-action:manipulation;}
+.llab:hover{background:rgba(246,140,31,.16);}
+.llab.lbot{color:#ffd9a8;font-weight:700;}
+#ladderCv{display:block;background:#0f1419;width:100%;border-radius:10px;}
+.lstep-hint{text-align:center;font-size:11.5px;color:#9fb0bf;margin:9px 0 12px;}
+.lstep-foot{display:flex;gap:8px;}
+.lstep-foot button{flex:1;}
+#lAllResult{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto;margin-bottom:14px;}
+.lares{display:flex;align-items:center;gap:10px;justify-content:center;background:var(--dk2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:14px;}
+.lar-arrow{color:#6b7884;}
+.lar-res{font-weight:800;color:#ffd9a8;}
+body.light .lstep-q,body.light .lstep-q2{color:#33312c;}
+body.light .lcount button{background:#f4efe6;color:#33312c;border-color:#e6ddcc;}
+body.light .lio input{color:#33312c;background:#f4efe6;border-color:#e6ddcc;}
+body.light #lInBots input{color:#9a6a1e;}
+body.light .llab{color:#33312c;}
+body.light .lares{background:#f4efe6;border-color:#e6ddcc;}
+body.light .lar-res{color:#9a6a1e;}
 #ladderFoot{display:flex;flex-wrap:nowrap;gap:8px;padding:0 14px 13px;justify-content:center;}
 #ladderFoot button{flex:1 1 0;width:auto;min-width:0;white-space:nowrap;padding-left:6px;padding-right:6px;}
 
@@ -775,7 +812,7 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
     <div class="gcard" id="gcPk"><div class="gi">🎢</div><div class="gl">핀볼</div></div>
     <div class="gcard" id="gcScore"><div class="gi">🏆</div><div class="gl">모둠 점수판</div></div>
     <div class="gcard" id="gcDice"><div class="gi">🎲</div><div class="gl">주사위</div></div>
-    <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
+    <div class="gcard" id="gcLotto"><div class="gi">🎱</div><div class="gl">행운 번호 뽑기</div></div>
     <div class="gcard" id="gcLadder"><div class="gi">🪜</div><div class="gl">사다리타기</div></div>
   </div>
 
@@ -820,13 +857,6 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
     <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
-  <div class="gcfg" id="cfgLadder">
-    <div class="nrow"><span>참가자 수</span><input type="number" id="ladderCnt" value="4" min="2" max="12"></div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
-    <div class="gdesc">🪜 위에 <b style="color:#F68C1F">이름</b>, 아래에 <b style="color:#F68C1F">결과</b>를 직접 입력하고 [▶ 전체 동시] 또는 아래 번호 버튼으로 한 명씩 따라가요.</div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#9fb0bf;margin-bottom:9px"><input type="checkbox" id="ladderAuto" checked> 결과 자동(당첨 1 + 나머지 꽝)</label>
-    <button class="btn-go" id="ladderOpen">사다리 만들기</button>
-  </div>
 </div>
 
 <!-- 도구 패널 (칠판·가리개 등 화면 보조 도구) -->
@@ -836,6 +866,7 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
     <div class="gcard" id="gcBoard"><div class="gi">🟩</div><div class="gl">칠판</div></div>
     <div class="gcard" id="gcShade"><div class="gi">🪟</div><div class="gl">가리개</div></div>
     <div class="gcard" id="gcSymbol"><div class="gi">🪧</div><div class="gl">활동 상징</div></div>
+    <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
     <div class="gcard" id="gcSeats"><div class="gi">🪑</div><div class="gl">자리 배치</div></div>
     <div class="gcard" id="gcPdf"><div class="gi">📄</div><div class="gl">PDF 편집</div></div>
   </div>
@@ -844,19 +875,31 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
 
 <!-- 사다리타기 모달 (재작성) -->
 <div id="ladderWrap" class="iv">
-  <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span>
-    <button id="ladderMinus" class="lhbtn" title="줄이기">－</button>
-    <button id="ladderPlus" class="lhbtn" title="늘리기">＋</button>
-    <button id="ladderClose">✕</button></div>
-  <div id="ladderTops" class="lrow"></div>
-  <canvas id="ladderCv" class="iv"></canvas>
-  <div id="ladderBots" class="lrow"></div>
-  <div id="ladderTrace" class="ltrace"></div>
-  <div id="ladderResult"></div>
-  <div id="ladderFoot">
-    <button class="btn-go" id="ladderStart">▶ 전체 동시</button>
-    <button class="btn-g" id="ladderReset">🔀 새 사다리</button>
-    <button class="btn-g" id="ladderRoster">📋 명단</button>
+  <div id="ladderHead"><span>🪜 사다리타기</span><span id="ladderInfo"></span><button id="ladderClose">✕</button></div>
+  <div id="lstep1" class="lstep on">
+    <div class="lstep-q">참여 인원 수를 알려주세요 🙂<br><small>2명부터 24명까지 함께할 수 있어요.</small></div>
+    <div class="lcount"><button id="lcMinus">－</button><span id="lcNum">6</span><button id="lcPlus">＋</button></div>
+    <label class="lchk"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
+    <button class="btn-go" id="lstart1">시작 →</button>
+  </div>
+  <div id="lstep2" class="lstep">
+    <div class="lstep-q2">이름과 당첨/결과를 적어주세요 ✍️</div>
+    <div id="lInTops" class="lio"></div>
+    <div class="lio-mid">↕ 사다리로 연결돼요 ↕</div>
+    <div id="lInBots" class="lio"></div>
+    <div class="lstep-foot"><button class="btn-g" id="lback2">← 인원</button><button class="btn-go" id="lstart2">사다리 시작 🪜</button></div>
+  </div>
+  <div id="lstep3" class="lstep">
+    <div id="lTops" class="llabels"></div>
+    <canvas id="ladderCv"></canvas>
+    <div id="lBots" class="llabels"></div>
+    <div class="lstep-hint">👆 이름이나 결과를 클릭하면 길을 따라갑니다</div>
+    <div class="lstep-foot"><button class="btn-g" id="lback3">↺ 새 사다리</button><button class="btn-go" id="lstart3">전체 결과 보기 🔍</button></div>
+  </div>
+  <div id="lstep4" class="lstep">
+    <div class="lstep-q2">전체 결과 🎉</div>
+    <div id="lAllResult"></div>
+    <div class="lstep-foot"><button class="btn-g" id="lback4">← 사다리</button><button class="btn-go" id="lrestart">다시하기 ↻</button></div>
   </div>
 </div>
 
@@ -1009,25 +1052,29 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
 </div>
 
 <div class="panel iv" id="p-pin">
-  <div class="ph">📌 핀</div>
+  <div class="ph">📷 캡처·핀</div>
   <p style="font-size:12px;color:#9fb0bf;line-height:1.7;margin-bottom:12px">
-    화면 일부를 캡처하거나 카메라로 찍어 항상 위에 고정.<br>복사한 이미지는 <b style="color:var(--or)">Ctrl+V</b>로 핀하세요.<br>핀의 <b style="color:var(--or)">✎</b> 버튼으로 핀 위에 메모를 달 수 있어요.
+    화면의 원하는 부분을 <b style="color:var(--or)">잘라서 화면 맨 위에 붙여둡니다.</b> 자료를 비교하거나 강조할 때 좋아요.<br>
+    • 복사한 그림은 <b style="color:var(--or)">Ctrl+V</b>로 바로 붙일 수 있어요.<br>
+    • 붙인 그림의 <b style="color:var(--or)">✎</b> 버튼으로 메모도 달 수 있어요.
   </p>
   <div class="ctrl" style="flex-direction:column;gap:7px">
-    <button class="btn-go" id="snipBtn">✂ 영역 캡처 → 핀</button>
-    <button class="btn-g" id="snipRecBtn">🎬 영역 녹화 → 핀 (최대 15초)</button>
-    <button class="btn-g" id="camBtn">📷 카메라 촬영 → 핀</button>
+    <button class="btn-go" id="snipBtn">✂ 영역 잘라 붙이기</button>
+    <button class="btn-rec" id="snipRecBtn">🎬 영역 녹화해 붙이기 (최대 15초)</button>
+    <button class="btn-cam" id="camBtn">📷 카메라로 찍어 붙이기</button>
   </div>
-  <p style="font-size:10.5px;color:#6b7884;margin-top:9px">캡처 전역 단축키: Ctrl+Alt+S</p>
+  <p style="font-size:10.5px;color:#6b7884;margin-top:9px">전역 단축키: <b>Ctrl+Alt+S</b> (단축키 설정에서 변경 가능)</p>
 </div>
 
 <div class="panel iv" id="p-noise">
   <div class="ph">📢 소음 측정 — 폭탄 게이지 <button id="nHelp" style="float:right;border:none;background:var(--dk2);color:#9fb0bf;border-radius:6px;font-size:10.5px;padding:3px 8px;cursor:pointer;font-family:inherit">❓ 작동 방식</button></div>
   <div class="noise-bar"><div class="noise-fill" id="nFill"></div></div>
   <div class="noise-val" id="nVal">대기 중</div>
-  <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="20" max="90" value="45"><span id="nThV" style="font-size:12px;color:#cdd8e2">45</span></div>
+  <div class="srow"><span>기준 소음</span><input type="range" id="nTh" min="10" max="100" value="45"><span id="nThV" style="font-size:12px;color:#cdd8e2">45</span></div>
+  <div class="srow"><span>감도 ↑↓</span><input type="range" id="nGain" min="100" max="400" value="100"><span id="nGainV" style="font-size:12px;color:#cdd8e2">1.0×</span></div>
+  <div class="srow"><span>💣 폭발 시간</span><input type="number" id="nBombMin" min="0" max="60" value="0" style="width:54px;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:7px;padding:5px 7px;font-family:inherit;text-align:center"><span style="font-size:11.5px;color:#9fb0bf">분 (0=시간제한 없음)</span></div>
   <p style="font-size:10.5px;color:#6b7884;line-height:1.7;margin:7px 0 10px">
-    기준 60 ≈ 교실이 "시끄럽다"고 느끼는 수준(약 70dB).<br>마이크 감도가 제각각이라 슬라이더로 보정하세요.<br>기준을 <b style="color:var(--amber)">계속 넘으면 💣 게이지가 차오르고</b>, 가득 차면 💥 터집니다.
+    기준을 <b style="color:var(--amber)">계속 넘으면 💣 게이지가 차오르고</b>, 가득 차면 💥 터집니다.<br>마이크가 둔하면 <b style="color:var(--or)">감도</b>를 올려 더 민감하게, <b style="color:var(--or)">폭발 시간</b>을 정하면 그 시간이 지나도 터집니다.
   </p>
   <div class="ctrl">
     <button class="btn-go" id="nStart">측정 시작</button>
@@ -1047,8 +1094,18 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
   <div id="diceTotal"></div>
   <button class="btn-go" id="diceRoll" style="width:86%;margin:0 auto 4px;display:block">굴리기!</button>
 </div>
+<div id="lottoW" class="fw iv">
+  <div class="fwh"><span class="ic">🎱</span><span class="tt">행운 번호 뽑기</span><button class="x">✕</button></div>
+  <div class="lotto-set">
+    <span>범위</span><input type="number" id="lottoMin" value="1" min="0" max="999">~<input type="number" id="lottoMax" value="45" min="0" max="999">
+    <span style="margin-left:6px">뽑을 개수</span><input type="number" id="lottoCnt" value="6" min="1" max="20">
+  </div>
+  <canvas id="lottoCv" width="280" height="240"></canvas>
+  <div id="lottoResult"></div>
+  <button class="btn-go" id="lottoDraw">🎉 추첨!</button>
+</div>
 <div id="lightW" class="fw iv">
-  <div class="fwh"><span class="ic">🚦</span><span class="tt">신호등</span><button class="x">✕</button></div>
+  <div class="fwh"><span class="ic">🚦</span><span class="tt">신호등</span><button class="fw-sz" data-d="-1" title="작게">－</button><button class="fw-sz" data-d="1" title="크게">＋</button><button class="x">✕</button></div>
   <div class="tl">
     <button class="r" data-m="🤫 조용히 집중"></button>
     <button class="y" data-m="🗣 짝과 소곤소곤"></button>
@@ -1325,9 +1382,7 @@ body.light #imLabel{color:#1a1d21;}
 body.light .fb-head,body.light .fb-sub{color:#33312c;}
 body.light .fb-sub{color:#7a7363;}
 /* 게임·도구 창 헤더 (공통 .whead 류) */
-body.light #ladderTops input{background:#fff;color:#222;border-color:#d9cfba;}
-body.light #ladderBots input{background:#fff;color:#a85b00;border-color:#d9cfba;}
-body.light #ladderResult{color:var(--or2);}
+body.light #ladderHead span:first-child{color:#fff;}
 body.light .ltrace button{background:#ece5d6;color:#5b5446;}
 /* 토스트 */
 body.light #toast{background:#fffdf9;color:#33312c;border:1px solid #e6ddcc;}
@@ -1346,24 +1401,33 @@ body.light .vc-row select,body.light .rm-tmpl{background:#ece5d6;color:#5b5446;b
 body.light .presets button:hover,body.light .tr-langs button:hover,
 body.light .su-ttl button:hover,body.light .pkr-all:hover,
 body.light .ai-quick button:hover,body.light .rm-tmpl:hover{background:#e0d7c4;color:#1a1d21;}
-/* 🫧 투명(글래스) 모드 — 배경만 반투명, 글자·아이콘은 또렷. 독은 가독성 바닥값 유지 */
-body.glass #dock{background:rgba(22,28,36,max(.5,var(--glass-alpha)));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);}
-body.glass .panel,body.glass #setMenu,body.glass #dockDrawer,body.glass .fw,
-body.glass #boardTb,body.glass #toast,body.glass .gcard{
-  background:rgba(22,28,36,var(--glass-alpha))!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+/* 🫧 투명도 — 다크·라이트 어느 테마든 적용 (슬라이더는 항상 표시) */
+body.translucent #dock{background:rgba(22,28,36,max(.18,var(--glass-alpha)));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);}
+body.translucent .panel,body.translucent #setMenu,body.translucent #dockDrawer,body.translucent .fw,
+body.translucent #boardTb,body.translucent #toast,body.translucent .gcard{
+  background:rgba(22,28,36,max(.5,var(--glass-alpha)))!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
 }
-body.glass .tool,body.glass .brand .nm{text-shadow:0 1px 3px rgba(0,0,0,.55);}
-/* 설정 메뉴 투명도 슬라이더 행 */
-#glassRow{display:none;align-items:center;gap:9px;padding:9px 12px 4px;font-size:12px;color:#9fb0bf;}
+/* 투명 시 글자 가독성: 그림자로 어떤 배경 위에서도 또렷하게 */
+body.translucent .panel,body.translucent #setMenu,body.translucent .fw,body.translucent .gcard{text-shadow:0 1px 3px rgba(0,0,0,.65);}
+body.translucent .tool,body.translucent .brand .nm{text-shadow:0 1px 3px rgba(0,0,0,.7);}
+/* 라이트 테마에서의 투명: 밝은 반투명 배경 + 밝은 글자그림자 (fw·칠판툴바는 어두운 채 유지) */
+body.light.translucent #dock{background:rgba(255,255,255,max(.2,var(--glass-alpha)))!important;}
+body.light.translucent .panel,body.light.translucent #setMenu,body.light.translucent #dockDrawer,
+body.light.translucent #toast,body.light.translucent .gcard{
+  background:rgba(255,253,249,max(.55,var(--glass-alpha)))!important;
+}
+body.light.translucent .panel,body.light.translucent #setMenu,body.light.translucent .gcard,
+body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px 2px rgba(255,255,255,.85);}
+/* 투명도 슬라이더 (설정 메뉴, 항상 표시) */
+#glassRow{display:flex;align-items:center;gap:9px;padding:9px 12px 4px;font-size:12px;color:#9fb0bf;}
 #glassRow input[type=range]{flex:1;accent-color:var(--or);}
-body.glass #glassRow{display:flex;}
 </style>
 <div id="dock" class="iv">
-  <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사툴</small></div></div>
+  <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사 위젯</small></div></div>
   <button class="tool" data-id="timer" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
   <button class="tool" data-id="game" data-p="p-game"><span class="ti">🎲</span>뽑기·게임</button>
   <button class="tool" data-id="qr" data-p="p-qr"><span class="ti">🔗</span>URL</button>
-  <button class="tool" data-id="pin" data-p="p-pin"><span class="ti">📌</span>핀</button>
+  <button class="tool" data-id="pin" data-p="p-pin"><span class="ti">📷</span>캡처·핀</button>
   <button class="tool" data-id="memo" id="memoBtn"><span class="ti">📝</span>메모</button>
   <button class="tool" data-id="ptr" data-p="p-ptr"><span class="ti">🎯</span>포인터</button>
   <button class="tool" data-id="noise" data-p="p-noise"><span class="ti">📢</span>소음</button>
@@ -1435,8 +1499,8 @@ body.glass #glassRow{display:flex;}
   </div>
 </div>
 <div id="setMenu" class="iv">
-  <button data-act="theme">🎨 테마 전환 (다크·라이트·투명)</button>
-  <div id="glassRow"><span>투명도</span><input type="range" id="glassRange" min="15" max="90" value="50"></div>
+  <button data-act="theme">🌗 테마 전환 (다크·라이트)</button>
+  <div id="glassRow"><span>투명도</span><input type="range" id="glassRange" min="5" max="100" value="100"></div>
   <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
   <button data-act="shortcuts">⌨️ 단축키 설정</button>
   <button data-act="backup">💾 설정·명단 백업</button>
@@ -1479,5 +1543,6 @@ body.glass #glassRow{display:flex;}
 </div>
 <div id="toast"></div>
 <script src="app.js"></script>
+<script src="ladder.js"></script>
 </body>
 </html>
