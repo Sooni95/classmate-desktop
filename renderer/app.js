@@ -2,21 +2,6 @@
    독 버전칩/필 표시는 main.js의 app.getVersion()을 그대로 읽음. */
 const $ = id => document.getElementById(id);
 
-/* ===== 클릭 통과(click-through) 관리 ===== */
-let ignoring = true;
-let dockEditing = false; // 독 편집 중에는 click-through를 끄고 고정 (드래그 끊김 방지)
-function setIgnore(v){ if(ignoring!==v){ ignoring=v; window.cm.setIgnore(v); } }
-document.addEventListener('mousemove', e => {
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  const overUI = !!(el && el.closest('.iv'));
-  // 포인터(링/스포트/렌즈)·펜 모드일 때 독·툴바 위에서는 커스텀 포인터를 숨겨 시스템 커서가 보이게
-  document.body.classList.toggle('ptr-over-ui', overUI && (PS.ring || PS.spot>0 || lensOn || drawMode));
-  // 독 편집 중에는 커서가 독을 잠깐 벗어나도 입력을 계속 받도록 통과 전환을 막음
-  if (drawMode || lensOn || snipOn || PS.spot>0 || PS.ring || dockEditing) { setIgnore(false); trackPtr(e); return; }
-  setIgnore(!overUI);
-  trackPtr(e);
-});
-
 /* ===== 공통 헬퍼 ===== */
 function rollPick(el, arr, fmt, onDone){
   let n=0; el.classList.add('spin');
@@ -2131,6 +2116,7 @@ $('camRec').addEventListener('click',()=>{
 
 /* ===== 영역 캡처 → 핀 ===== */
 let snipOn=false,snipImgData=null,sx0,sy0;
+registerCaptureMode(()=>snipOn, {hidesPointer:false}); // [클릭통과 규칙] 캡처 스닙 중엔 통과 차단, 커스텀 포인터는 그대로
 const snipWrap=$('snipWrap'),snipRect=$('snipRect');
 let snipB=null;
 async function startSnip(){
@@ -2246,6 +2232,7 @@ async function recordRegion(x,y,w,h){
 /* ===== 포인터: 링 / 스포트라이트 — v0.4: 모양은 별도 선택, 버튼 혼동 제거 ===== */
 const halo=$('halo'),spotEl=$('spot'),spotHole=$('spotHole');
 const PS={ring:false,spot:0,size:160};
+registerCaptureMode(()=>PS.ring||PS.spot>0); // [클릭통과 규칙] 링/스포트 포인터 활성 중엔 통과 차단 + 커스텀 포인터 표시
 let spotShape=1; // 1 원 / 2 사각 (스포트라이트 켜기 전 미리 선택)
 let hx=innerWidth/2,hy=innerHeight/2,ptrRAF=0;
 function syncPtr(){
@@ -2341,6 +2328,7 @@ document.addEventListener('wheel',e=>{
 
 /* ===== 부분 렌즈 ===== */
 let lensOn=false,lensShape=0,lz=2,lensImgW=0,lensB=null,lensSize=280;
+registerCaptureMode(()=>lensOn); // [클릭통과 규칙] 돋보기 활성 중엔 통과 차단 + 커스텀 포인터 표시
 const lens2=$('lens2'),lensImg=$('lensImg'),lensTip=$('lensTip');
 async function setLens(shape){
   if(shape>0&&lensShape===0){
@@ -2379,6 +2367,7 @@ $('mLens').addEventListener('click',cycleLens);
 const dc=$('dc'),ctx=dc.getContext('2d');
 const dctmp=$('dctmp'),tctx=dctmp.getContext('2d');
 let drawMode=false,drawing=false,penColor='#ff3b3b',penType='pen',undoStack=[];
+registerCaptureMode(()=>drawMode); // [클릭통과 규칙] 펜(필기) 모드 활성 중엔 통과 차단 + 커스텀 포인터 표시
 const PW={pen:5,hl:16,eraser:26,rect:4,circle:4}; // 도구별 굵기 (휠로 조절)
 let rectStart=null,rectMode=false,circleMode=false;
 let stroke=[]; // 현재 스트로크 점들
