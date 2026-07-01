@@ -41,14 +41,14 @@ async function callAI({prompt,system,max_tokens}){
   if(isPro()){
     const proKey=localStorage.getItem('cm_pro_key')||'';
     if(proKey){
-      const r=await window.cm.aiProxy({prompt,system,proKey,max_tokens});
+      const r=await ipc.aiProxy({prompt,system,proKey,max_tokens});
       if(r.ok)return r;
       // 프록시 실패 시 개인키로 폴백 (있으면)
     }
   }
   const key=localStorage.getItem('ai_key')||'';
   if(!key)return {ok:false,message:'NO_KEY'};
-  return await window.cm.aiChat({prompt,system,apiKey:key});
+  return await ipc.aiChat({prompt,system,apiKey:key});
 }
 
 /* ===== 음성 실시간 자막 (Whisper 서버 방식) ===== */
@@ -117,7 +117,7 @@ async function vcCycle(){
     if(blob.size>2000){ // 무음 제외
       const buf=await blob.arrayBuffer();
       const proKey=localStorage.getItem('cm_pro_key')||'';
-      const r=await window.cm.sttProxy({bytes:Array.from(new Uint8Array(buf)),proKey});
+      const r=await ipc.sttProxy({bytes:Array.from(new Uint8Array(buf)),proKey});
       if(r.ok&&r.text)vcProcess(r.text);
       else if(r.message&&r.message.includes('OPENAI'))$('vcMsg').textContent='서버에 음성인식 키 설정 필요';
     }
@@ -159,7 +159,7 @@ $('aiGo').addEventListener('click',async()=>{
   else if(r.status===401){$('aiMsg').textContent='API 키가 올바르지 않아요';$('aiKeyRow').classList.add('on');}
   else{$('aiMsg').textContent='오류: '+(r.message||'연결 확인');}
 });
-$('aiCopy').addEventListener('click',()=>{window.cm.copyText($('aiOut').textContent);toast('📋 복사됨');});
+$('aiCopy').addEventListener('click',()=>{ipc.copyText($('aiOut').textContent);toast('📋 복사됨');});
 $('aiSave').addEventListener('click',async()=>{
   const q=$('aiIn').value.trim();
   const a=$('aiOut').textContent;
@@ -167,7 +167,7 @@ $('aiSave').addEventListener('click',async()=>{
   const content='[질문]\n'+q+'\n\n[AI 답변]\n'+a+'\n\n— ClassMate AI 교수보조';
   const now=new Date();
   const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
-  const r=await window.cm.saveText({text:content,filename:'AI보조_'+stamp+'.txt'});
+  const r=await ipc.saveText({text:content,filename:'AI보조_'+stamp+'.txt'});
   if(r&&r.ok)toast('💾 저장 완료');
 });
 $('aiMemo').addEventListener('click',()=>{
@@ -333,7 +333,7 @@ $('expGo').addEventListener('click',async()=>{
     const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
     const base=(title?title.replace(/[\\\\/:*?"<>|]/g,'_'):'수업기록')+'_'+stamp;
     if(expFmt==='png'){
-      const r=await window.cm.saveImage({dataURL:cv.toDataURL('image/png'),filename:base+'.png'});
+      const r=await ipc.saveImage({dataURL:cv.toDataURL('image/png'),filename:base+'.png'});
       if(r&&r.ok)$('expMsg').textContent='✅ 이미지 저장 완료';
     }else{
       const {jsPDF}=window.jspdf;
@@ -357,7 +357,7 @@ $('expGo').addEventListener('click',async()=>{
         }
       }
       const buf=pdf.output('arraybuffer');
-      const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:base+'.pdf',ext:'pdf'});
+      const r=await ipc.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:base+'.pdf',ext:'pdf'});
       if(r&&r.ok)$('expMsg').textContent='✅ PDF 저장 완료';
     }
   }catch(e){$('expMsg').textContent='오류: '+e.message;}
@@ -385,7 +385,7 @@ $('proKeyGo').addEventListener('click',async()=>{
   const msg=$('proKeyMsg');
   if(!key){msg.className='pro-key-msg err';msg.textContent='키를 입력하세요';return;}
   $('proKeyGo').disabled=true;msg.className='pro-key-msg';msg.textContent='확인 중…';
-  const r=await window.cm.verifyPro({key});
+  const r=await ipc.verifyPro({key});
   $('proKeyGo').disabled=false;
   if(r.ok){
     localStorage.setItem('cm_pro','1');
@@ -514,13 +514,13 @@ $('rosterModal').addEventListener('click',e=>{if(e.target.id==='rosterModal')$('
 
 // ── 엑셀 명단 가져오기 (드래그앤드롭 + 파일선택) ──
 $('rmTemplate').addEventListener('click',async()=>{
-  const r=await window.cm.saveTemplate();
+  const r=await ipc.saveTemplate();
   if(r&&r.ok)toast('📥 양식을 저장했어요');
 });
 const rmDrop=$('rmDrop');
 function b64ToU8(b64){const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return u8;}
 async function pickRoster(){
-  try{const r=await window.cm.pickRosterFile();if(r)parseRosterData(r.name,b64ToU8(r.b64));}
+  try{const r=await ipc.pickRosterFile();if(r)parseRosterData(r.name,b64ToU8(r.b64));}
   catch(e){toast('파일 선택 창을 열지 못했어요');}
 }
 $('rmPick').addEventListener('click',e=>{e.stopPropagation();pickRoster();});
@@ -531,7 +531,7 @@ $('rmFile').addEventListener('change',e=>{if(e.target.files[0])parseRosterFile(e
 rmDrop.addEventListener('drop',async e=>{
   e.preventDefault();rmDrop.classList.remove('drag');
   const f=e.dataTransfer.files[0];if(!f)return;
-  if(f.path){const r=await window.cm.readPath(f.path);if(r){parseRosterData(r.name,b64ToU8(r.b64));return;}}
+  if(f.path){const r=await ipc.readPath(f.path);if(r){parseRosterData(r.name,b64ToU8(r.b64));return;}}
   parseRosterFile(f); // 경로를 못 얻으면 브라우저 방식으로
 });
 // 창 전체에 파일을 떨어뜨려도 페이지가 파일로 이동하지 않도록 차단
@@ -581,7 +581,7 @@ function parseRosterData(fname,u8){
 const PRO_FORM_URL='https://forms.gle/ZK8hxnx65injpK3R8';
 $('proCta').addEventListener('click',()=>{
   proWrap.classList.remove('on');
-  window.cm.openExternal(PRO_FORM_URL);
+  ipc.openExternal(PRO_FORM_URL);
   toast('📋 구독 신청 폼을 브라우저에서 열었어요');
 });
 document.querySelectorAll('.tabs').forEach(tb=>{
@@ -649,7 +649,7 @@ setProUI();
 // 버전 + 빌드 날짜 표시
 (async()=>{
   try{
-    const info=await window.cm.getAppInfo();
+    const info=await ipc.getAppInfo();
     const ver='v'+info.version;
     $('dockVer').textContent=ver;
     $('dockVer').title='ClassMate '+ver+(info.buildDate&&info.buildDate!=='개발 빌드'?(' (빌드: '+info.buildDate+')'):'');
@@ -661,7 +661,7 @@ setProUI();
 async function checkForUpdate(buildDate){
   try{
     if(!buildDate||!/^\d{4}\.\d{2}\.\d{2}$/.test(buildDate))return; // 개발 빌드 등은 건너뜀
-    const r=await window.cm.checkUpdate();
+    const r=await ipc.checkUpdate();
     if(!r||!r.ok||!r.publishedAt)return;
     const bn=+buildDate.replace(/\./g,'');                 // 20260619
     const p=new Date(r.publishedAt);
@@ -671,7 +671,7 @@ async function checkForUpdate(buildDate){
     const chip=$('dockVer');
     if(chip){chip.textContent='⬆ 업데이트';chip.style.cursor='pointer';
       chip.title='새 버전이 있어요 — 클릭하면 다운로드 페이지가 열립니다';
-      chip.addEventListener('click',()=>window.cm.openExternal(r.url));}
+      chip.addEventListener('click',()=>ipc.openExternal(r.url));}
     setTimeout(()=>toast('⬆ 새 버전이 나왔어요 — 버전 칩을 누르면 받을 수 있어요'),1500);
   }catch(e){}
 }
@@ -702,7 +702,7 @@ try{
   console.log('%c   ∧,,,∧\n  (  ̳• · • ̳)\n  /    づ♥  함께 만들어요','color:#D9760F;font-size:12px;');
 }catch(e){}
 // 모니터 연결/해제 시: 독이 화면 밖에 있으면 주 모니터로 복귀
-window.cm.onBoundsChanged(async()=>{
+ipc.onBoundsChanged(async()=>{
   await refreshDisplays(); fitC();
   const r=dock.getBoundingClientRect();
   const cx=r.left+r.width/2, cy=r.top+r.height/2;
@@ -714,7 +714,7 @@ window.cm.onBoundsChanged(async()=>{
   }
   placePanels();
 });
-$('quitBtn').addEventListener('click',()=>window.cm.hideToTray());
+$('quitBtn').addEventListener('click',()=>ipc.hideToTray());
 let toastT;
 function toast(msg){
   const t=$('toast');const d=dockDisp();
@@ -938,8 +938,8 @@ $('gcDice').addEventListener('click',()=>{gShowCfg();openWidget('diceW');});
 $('gcLight').addEventListener('click',()=>{gShowCfg();openWidget('lightW');});
 $('gcShade')&&$('gcShade').addEventListener('click',()=>{gShowCfg();openShade();});
 $('gcSymbol')&&$('gcSymbol').addEventListener('click',()=>{gShowCfg();openWidget('symbolW');});
-$('gcSeats')&&$('gcSeats').addEventListener('click',()=>{window.cm.openExternal('https://ksk0903.github.io/table_setting/');toast('🪑 자리 배치를 브라우저에서 열었어요');});
-$('gcPdf')&&$('gcPdf').addEventListener('click',()=>{window.cm.openExternal('https://ksk0903.github.io/pdf_editor/');toast('📄 PDF 편집을 브라우저에서 열었어요');});
+$('gcSeats')&&$('gcSeats').addEventListener('click',()=>{ipc.openExternal('https://ksk0903.github.io/table_setting/');toast('🪑 자리 배치를 브라우저에서 열었어요');});
+$('gcPdf')&&$('gcPdf').addEventListener('click',()=>{ipc.openExternal('https://ksk0903.github.io/pdf_editor/');toast('📄 PDF 편집을 브라우저에서 열었어요');});
 $('gcLadder').addEventListener('click',()=>{gShowCfg();if(window.openLadder)window.openLadder();});
 
 /* ===== 입력 모달 (Electron prompt 대체) ===== */
@@ -1619,13 +1619,13 @@ function qrDataURL(box){
 async function saveQRImage(box,filename){
   const d=qrDataURL(box);
   if(!d){toast('QR을 먼저 생성하세요');return;}
-  const r=await window.cm.saveImage({dataURL:d,filename});
+  const r=await ipc.saveImage({dataURL:d,filename});
   if(r.ok)toast('💾 QR 이미지 저장 완료');
 }
 function copyQRImage(box){
   const d=qrDataURL(box);
   if(!d){toast('QR을 먼저 생성하세요');return;}
-  window.cm.copyImage(d);
+  ipc.copyImage(d);
   toast('📋 QR 복사됨 — 한글/PPT에 Ctrl+V');
 }
 $('qrSave').addEventListener('click',()=>saveQRImage($('qrbox'),'QR코드.png'));
@@ -1696,7 +1696,7 @@ $('trGo').addEventListener('click',async()=>{
     $('trCard').classList.add('on');trSay('');
   }
 });
-$('trCopy').addEventListener('click',()=>{window.cm.copyText($('trOut').innerText);toast('📋 복사됨');});
+$('trCopy').addEventListener('click',()=>{ipc.copyText($('trOut').innerText);toast('📋 복사됨');});
 
 /* ===== 단축주소 (코코아팹.kr) — 온라인 기능 ===== */
 const SU_BASE='코코아팹.kr';
@@ -1721,7 +1721,7 @@ $('suGo').addEventListener('click',async()=>{
   if(/[\/\s?#]/.test(slug)||slug.toLowerCase()==='api'){suSay('단축 이름에 공백, /, ?, # 은 쓸 수 없어요');return;}
   $('suGo').disabled=true;$('suGo').textContent='만드는 중…';suSay('');
   const key=suKeys()[slug]||genKey();
-  const res=await window.cm.shorten({slug,target,ttl:suTtl,token,key});
+  const res=await ipc.shorten({slug,target,ttl:suTtl,token,key});
   $('suGo').disabled=false;$('suGo').textContent='단축주소 만들기';
   if(res.ok){
     suKeySave(slug,key);
@@ -1739,7 +1739,7 @@ $('suGo').addEventListener('click',async()=>{
   else{suSay('오류: '+(res.message||res.status));}
 });
 $('suCopy').addEventListener('click',()=>{
-  window.cm.copyText('https://'+$('suUrl').textContent);
+  ipc.copyText('https://'+$('suUrl').textContent);
   toast('📋 단축주소 복사됨');
 });
 $('suQrBtn').addEventListener('click',()=>{
@@ -1774,15 +1774,15 @@ function renderSuList(){
   if(!slugs.length){box.innerHTML='<div class="su-empty">아직 만든 단축 URL이 없어요.</div>';}
   slugs.forEach(slug=>{
     box.appendChild(suRow(slug,
-      ()=>window.cm.openExternal('https://'+new URL('https://'+SU_BASE+'/'+slug).host+'/'+slug),
-      ()=>{window.cm.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
+      ()=>ipc.openExternal('https://'+new URL('https://'+SU_BASE+'/'+slug).host+'/'+slug),
+      ()=>{ipc.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
       ()=>{ // 연결 수정: 슬러그 채우고 새 URL 입력 유도
         $('suSlug').value=slug;$('suTarget').value='';$('suTarget').focus();
         suSay('새 원본 URL을 넣고 [단축주소 만들기]를 누르면 연결만 바뀝니다.');
       },
       async()=>{
         if(!confirm('"'+slug+'" 단축 URL을 삭제할까요? 배포된 QR·링크가 더 이상 연결되지 않습니다.'))return;
-        const r=await window.cm.suDelete({slug,key:keys[slug],token:SU_TOKEN_DEFAULT});
+        const r=await ipc.suDelete({slug,key:keys[slug],token:SU_TOKEN_DEFAULT});
         if(r.ok||r.status===404){const m=suKeys();delete m[slug];localStorage.setItem('su_keys',JSON.stringify(m));renderSuList();toast('🗑 삭제됨');}
         else toast('삭제 실패 — 서버에 삭제 기능 배포가 필요해요');
       }));
@@ -1795,7 +1795,7 @@ function renderSuList(){
 async function adminListAll(token){
   if(!token)return;
   const box=$('suListBox');box.innerHTML='<div class="su-empty">불러오는 중…</div>';
-  const r=await window.cm.suAdminList({admin:token});
+  const r=await ipc.suAdminList({admin:token});
   box.innerHTML='';
   if(!r.ok){box.innerHTML='<div class="su-empty">'+(r.status===401?'토큰이 올바르지 않아요':r.status===404?'서버에 관리자 기능 배포가 필요해요':'불러오기 실패')+'</div>';
     const back=document.createElement('button');back.className='su-admin';back.textContent='← 내 목록으로';back.addEventListener('click',renderSuList);box.appendChild(back);return;}
@@ -1804,12 +1804,12 @@ async function adminListAll(token){
   items.forEach(it=>{
     const slug=it.slug||it;
     box.appendChild(suRow(slug,
-      ()=>window.cm.openExternal('https://'+SU_BASE+'/'+slug),
-      ()=>{window.cm.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
+      ()=>ipc.openExternal('https://'+SU_BASE+'/'+slug),
+      ()=>{ipc.copyText('https://'+SU_BASE+'/'+slug);toast('📋 복사됨');},
       null,
       async()=>{
         if(!confirm('[관리자] "'+slug+'"를 삭제할까요?'))return;
-        const d=await window.cm.suAdminDelete({slug,admin:token});
+        const d=await ipc.suAdminDelete({slug,admin:token});
         if(d.ok||d.status===404){adminListAll(token);toast('🗑 삭제됨');}else toast('삭제 실패');
       },
       it.target?' <small style="color:#8a94a1;font-weight:400">→ '+String(it.target).slice(0,28)+'</small>':''));
@@ -1852,7 +1852,7 @@ function addAudioToMemo(m,ed,blob){
     const buf=await blob.arrayBuffer();
     const now=new Date();
     const fn='음성_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+'.webm';
-    const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:fn});
+    const r=await ipc.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:fn});
     if(r&&r.ok)toast('💾 음성 파일 저장 완료');
   });
   del.addEventListener('click',()=>{URL.revokeObjectURL(url);box.remove();});
@@ -1883,7 +1883,7 @@ $('memoBtn').addEventListener('click',()=>{
   m.querySelector('#mCopy').addEventListener('click',()=>{
     const t=ed.innerText.trim();
     if(!t){toast('메모가 비어있어요');return;}
-    window.cm.copyText(t);toast('📋 메모 복사됨');
+    ipc.copyText(t);toast('📋 메모 복사됨');
   });
   m.querySelector('#mSave').addEventListener('mousedown',e=>e.preventDefault());
   m.querySelector('#mSave').addEventListener('click',async()=>{
@@ -1891,7 +1891,7 @@ $('memoBtn').addEventListener('click',()=>{
     if(!t){toast('메모가 비어있어요');return;}
     const now=new Date();
     const fn='메모_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.txt';
-    const r=await window.cm.saveText({text:t,filename:fn});
+    const r=await ipc.saveText({text:t,filename:fn});
     if(r&&r.ok)toast('💾 메모 저장 완료');
   });
   // 음성 녹음 (MediaRecorder — getUserMedia만 사용해 Electron에서 안정적)
@@ -2028,7 +2028,7 @@ async function savePin(p,isVideo,capEl){
     try{
       const resp=await fetch(p._src);const blob=await resp.blob();
       const buf=await blob.arrayBuffer();
-      const r=await window.cm.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:'영상_'+stamp+'.webm'});
+      const r=await ipc.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:'영상_'+stamp+'.webm'});
       if(r&&r.ok)toast('💾 영상 저장 완료');
     }catch(e){toast('영상 저장 실패');}
     return;
@@ -2053,7 +2053,7 @@ async function savePin(p,isVideo,capEl){
     }
     cv.toBlob(async b=>{
       const buf=await b.arrayBuffer();
-      const r=await window.cm.saveImage({dataURL:cv.toDataURL('image/png'),filename:'핀_'+stamp+'.png'});
+      const r=await ipc.saveImage({dataURL:cv.toDataURL('image/png'),filename:'핀_'+stamp+'.png'});
       if(r&&r.ok)toast('💾 핀'+(cap?' (메모 포함)':'')+' 저장 완료');
     });
   };
@@ -2121,7 +2121,7 @@ const snipWrap=$('snipWrap'),snipRect=$('snipRect');
 let snipB=null;
 async function startSnip(){
   if(snipOn)return;
-  const res=await window.cm.captureScreen();
+  const res=await ipc.captureScreen();
   if(!res){toast('📷 화면 캡처에 실패했어요. 다시 시도해 주세요');return;}
   snipImgData=res.dataURL;snipB=res.bounds;
   const im=$('snipImg');
@@ -2159,7 +2159,7 @@ snipWrap.addEventListener('pointerup',e=>{
     cv.getContext('2d').drawImage(img,lx*scX,ly*scY,w*scX,h*scY,0,0,w*scX,h*scY);
     const out=cv.toDataURL('image/png');
     addPin(out,'캡처',x,y,w);
-    window.cm.copyImage(out);
+    ipc.copyImage(out);
     toast('📋 클립보드에 복사됨 — Ctrl+V로 붙여넣기 가능');
     endSnip();
   };
@@ -2177,7 +2177,7 @@ async function startSnipRec(){
 $('snipRecBtn').addEventListener('click',startSnipRec);
 async function recordRegion(x,y,w,h){
   // 커서 모니터 화면 스트림 받기
-  const src=await window.cm.getScreenSource();
+  const src=await ipc.getScreenSource();
   if(!src){toast('화면 녹화를 시작할 수 없어요');return;}
   let stream;
   try{
@@ -2236,7 +2236,7 @@ registerCaptureMode(()=>PS.ring||PS.spot>0); // [클릭통과 규칙] 링/스포
 let spotShape=1; // 1 원 / 2 사각 (스포트라이트 켜기 전 미리 선택)
 let hx=innerWidth/2,hy=innerHeight/2,ptrRAF=0;
 function syncPtr(){
-  if(PS.ring||PS.spot>0)window.cm.grabFocus();
+  if(PS.ring||PS.spot>0)ipc.grabFocus();
   $('mRing').classList.toggle('on',PS.ring);
   $('mSpot').classList.toggle('on',PS.spot>0);
   $('shC').classList.toggle('on',spotShape===1);
@@ -2332,7 +2332,7 @@ registerCaptureMode(()=>lensOn); // [클릭통과 규칙] 돋보기 활성 중�
 const lens2=$('lens2'),lensImg=$('lensImg'),lensTip=$('lensTip');
 async function setLens(shape){
   if(shape>0&&lensShape===0){
-    const res=await window.cm.captureScreen();
+    const res=await ipc.captureScreen();
     if(!res){toast('📷 화면 캡처에 실패했어요. 다시 시도해 주세요');return;}
     lensB=res.bounds;lensImg.src=res.dataURL;
     await new Promise(r=>{lensImg.onload=r;});
@@ -2340,7 +2340,7 @@ async function setLens(shape){
     lz=2;
   }
   lensShape=shape;lensOn=shape>0;
-  if(lensOn)window.cm.grabFocus();
+  if(lensOn)ipc.grabFocus();
   lens2.className=(shape===2?'rect':'circle')+(lensOn?' on':'');
   if(lensOn){const d=dispAt(hx,hy);lensTip.style.left=(d.x+d.w/2)+'px';lensTip.style.top=(d.y+16)+'px';}
   lensTip.classList.toggle('on',lensOn);
@@ -2771,7 +2771,7 @@ function allOff(){
   if($('boardWrap')){$('boardWrap').classList.remove('on');}
   setIgnore(true); // 클릭 통과 복구
 }
-window.cm.onHotkey(ch=>{
+ipc.onHotkey(ch=>{
   switch(ch){
     case 'hk-ring': PS.ring=!PS.ring;syncPtr();break;
     case 'hk-spot': PS.spot=PS.spot>0?0:spotShape;syncPtr();break; // v0.4: 켜기/끄기 (모양은 패널에서)
@@ -2855,7 +2855,7 @@ syncPtr();
     ed.style.color=bColor;ed.style.font='34px '+boardFont();ed.style.lineHeight='1.25';
     ed.dataset.x=x;ed.dataset.y=y;
     document.body.appendChild(ed);bTextEd=ed;
-    window.cm.grabFocus&&window.cm.grabFocus();
+    ipc.grabFocus&&ipc.grabFocus();
     setTimeout(()=>ed.focus(),0);
     ed.addEventListener('keydown',ev=>{ ev.stopPropagation();
       if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();commitBText();}
@@ -3034,7 +3034,7 @@ syncPtr();
   const FEEDBACK_TO='ksh0502@nepes.co.kr'; // 메일 앱 폴백 수신처 (NEPES 회사메일; 차단 시 ksh0502@kocoa.or.kr 로 변경)
   function openFeedback(){
     fbStatus.textContent='';fbStatus.className='fb-status';fbSend.disabled=false;
-    fbModal.classList.add('on');setIgnore(false);window.cm.grabFocus&&window.cm.grabFocus();
+    fbModal.classList.add('on');setIgnore(false);ipc.grabFocus&&ipc.grabFocus();
     // 독이 있는 모니터 중앙에 (멀티모니터 중간 걸침 방지)
     centerOnDockDisplay(fbCard);
     setTimeout(()=>fbMsg.focus(),60);
@@ -3052,8 +3052,8 @@ syncPtr();
     if(!message){fbStatus.className='fb-status err';fbStatus.textContent='내용을 입력해 주세요.';return;}
     const contact=fbContact.value.trim();
     fbSend.disabled=true;fbStatus.className='fb-status';fbStatus.textContent='보내는 중…';
-    let meta='';try{const i=await window.cm.getAppInfo();meta='v'+((i&&i.version)||'?');}catch(e){}
-    let r=null;try{r=await window.cm.feedback({message,contact,meta});}catch(e){r=null;}
+    let meta='';try{const i=await ipc.getAppInfo();meta='v'+((i&&i.version)||'?');}catch(e){}
+    let r=null;try{r=await ipc.feedback({message,contact,meta});}catch(e){r=null;}
     if(r&&r.ok){
       fbStatus.className='fb-status ok';fbStatus.textContent='접수되었습니다. 감사합니다! 🧡';
       fbMsg.value='';fbContact.value='';setTimeout(closeFeedback,1400);return;
@@ -3184,13 +3184,13 @@ syncPtr();
       const bytes=Array.from(new TextEncoder().encode(json));
       const now=new Date();
       const fn='ClassMate_백업_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.json';
-      const r=await window.cm.saveBinary({bytes,filename:fn,ext:'json'});
+      const r=await ipc.saveBinary({bytes,filename:fn,ext:'json'});
       if(r&&r.ok)bkSay('내보내기 완료 — 안전한 곳에 보관하세요.',true);
       else if(r&&r.canceled)bkSay('');
       else bkSay('저장에 실패했어요.',false);
     });
     $('bkImport').addEventListener('click',async()=>{
-      const f=await window.cm.pickBackup();
+      const f=await ipc.pickBackup();
       if(!f)return;
       let obj=null;
       try{obj=JSON.parse(f.text.replace(/^\uFEFF/,''));}catch(e){bkSay('백업 파일을 읽을 수 없어요(형식 오류).',false);return;}
@@ -3218,7 +3218,7 @@ syncPtr();
   let scCustom=JSON.parse(localStorage.getItem('cm_shortcuts')||'{}');
   const scEff=ch=>scCustom[ch]||(SC_DEFS.find(d=>d[0]===ch)||[])[2]||'';
   const scPretty=a=>a.replace('Control','Ctrl').replace('Super','Win').replace(/\+/g,' + ');
-  function scApply(){try{window.cm.setShortcuts(scCustom);}catch(e){}}
+  function scApply(){try{ipc.setShortcuts(scCustom);}catch(e){}}
   scApply(); // 로드 시 저장된 사용자 단축키 적용
   let scCapturing=null;
   function scRender(){

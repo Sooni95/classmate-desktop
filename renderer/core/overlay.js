@@ -4,7 +4,7 @@
    registerCaptureMode()로 등록할 것. */
 let ignoring = true;
 let dockEditing = false; // 독 편집 중에는 click-through를 끄고 고정 (드래그 끊김 방지)
-function setIgnore(v){ if(ignoring!==v){ ignoring=v; window.cm.setIgnore(v); } }
+function setIgnore(v){ if(ignoring!==v){ ignoring=v; ipc.setIgnore(v); } }
 
 const captureModes = [];     // 활성화 시 클릭통과를 끄는 입력 모드들
 const pointerHideModes = []; // 활성화 시 커스텀 포인터(링/스폿/렌즈)를 숨기는 모드들

@@ -1,7 +1,7 @@
 /* ===== 디스플레이 정보 (멀티/싱글 모니터 공통) ===== */
 let DISPLAYS = [{ x: 0, y: 0, w: innerWidth, h: innerHeight, primary: true }];
 async function refreshDisplays() {
-  try { const d = await window.cm.getDisplays(); if (d && d.length) DISPLAYS = d; } catch (e) {}
+  try { const d = await ipc.getDisplays(); if (d && d.length) DISPLAYS = d; } catch (e) {}
 }
 function dispAt(x, y) {
   return DISPLAYS.find(d => x >= d.x && x < d.x + d.w && y >= d.y && y < d.y + d.h)
