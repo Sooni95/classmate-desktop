@@ -425,6 +425,17 @@ body.ptr-over-ui #halo{display:none!important;}
 #tFloat .tf.done{color:var(--red);animation:bl .55s infinite;}
 #tFloat .tx{border:none;background:none;color:#6b7884;font-size:15px;cursor:pointer;}
 #tFloat .tx:hover{color:var(--red);}
+.sch-help{font-size:11px;color:#9fb0bf;margin-bottom:8px;line-height:1.6;}
+.sch-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:#cdd8e2;margin:4px 0 10px;cursor:pointer;}
+.sch-msg{font-size:11px;color:#6b7884;margin-top:8px;min-height:14px;}
+#scheduleFloat{position:fixed;left:30px;top:26px;z-index:60;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:14px;padding:9px 16px;box-shadow:var(--shadow);display:none;align-items:center;gap:10px;cursor:grab;}
+#scheduleFloat.on{display:flex;}
+#scheduleFloat:active{cursor:grabbing;}
+#scheduleFloat .sf-p{font-size:12px;font-weight:800;color:var(--or);white-space:nowrap;}
+#scheduleFloat .sf-t{font-size:20px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+#scheduleFloat .sf-t.warn{color:var(--amber);}
+#scheduleFloat .sf-x{border:none;background:none;color:#6b7884;font-size:13px;cursor:pointer;}
+#scheduleFloat .sf-x:hover{color:var(--red);}
 /* toast */
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:95;background:rgba(22,28,36,.95);color:#fff;font-size:13px;padding:10px 20px;border-radius:100px;box-shadow:var(--shadow);display:none;}
 #toast.on{display:block;}
@@ -888,8 +899,9 @@ body.light .lar-res{color:#9a6a1e;}
     <div class="gcard" id="gcLight"><div class="gi">🚦</div><div class="gl">신호등</div></div>
     <div class="gcard" id="gcSeats"><div class="gi">🪑</div><div class="gl">자리 배치</div></div>
     <div class="gcard" id="gcPdf"><div class="gi">📄</div><div class="gl">PDF 편집</div></div>
+    <div class="gcard" id="gcSchedule"><div class="gi">🕐</div><div class="gl">시간표</div></div>
   </div>
-  <div class="gdesc" style="margin-top:10px">🟩 <b style="color:#F68C1F">칠판</b>은 초록칠판·화이트보드로 전환되고 글자 입력·크기 조절이 됩니다. 🪟 <b style="color:#F68C1F">가리개</b>는 화면 일부를 가려 집중시킬 때 좋아요. 🪧 <b style="color:#F68C1F">활동 상징</b>은 지금 활동 방식을 화면에 크게 띄웁니다. 🪑 <b style="color:#F68C1F">자리 배치</b>·📄 <b style="color:#F68C1F">PDF 편집</b>은 누르면 브라우저에서 열립니다.</div>
+  <div class="gdesc" style="margin-top:10px">🟩 <b style="color:#F68C1F">칠판</b>은 초록칠판·화이트보드로 전환되고 글자 입력·크기 조절이 됩니다. 🪟 <b style="color:#F68C1F">가리개</b>는 화면 일부를 가려 집중시킬 때 좋아요. 🪧 <b style="color:#F68C1F">활동 상징</b>은 지금 활동 방식을 화면에 크게 띄웁니다. 🪑 <b style="color:#F68C1F">자리 배치</b>·📄 <b style="color:#F68C1F">PDF 편집</b>은 누르면 브라우저에서 열립니다. 🕐 <b style="color:#F68C1F">시간표</b>는 교시를 한 번 입력해두면 지금 몇 교시인지, 종료까지 얼마나 남았는지 자동으로 알려줘요.</div>
 </div>
 
 <!-- 사다리타기 모달 (재작성) -->
@@ -1115,6 +1127,21 @@ body.light .lar-res{color:#9a6a1e;}
   <div id="diceFaces"></div>
   <div id="diceTotal"></div>
   <button class="btn-go" id="diceRoll" style="width:86%;margin:0 auto 4px;display:block">굴리기!</button>
+</div>
+<div id="scheduleW" class="fw iv" style="width:270px;">
+  <div class="fwh"><span class="ic">🕐</span><span class="tt">시간표</span><button class="x">✕</button></div>
+  <div style="padding:0 14px 14px;">
+    <div class="sch-help">한 줄에 한 교시씩, <b style="color:var(--or)">09:00-09:40</b> 형식으로 입력하세요. 줄 순서가 교시 순서예요.</div>
+    <textarea class="names" id="scheduleIn" style="height:130px" placeholder="09:00-09:40&#10;09:50-10:30&#10;10:40-11:20"></textarea>
+    <label class="sch-chk"><input type="checkbox" id="scheduleShow" checked>화면에 항상 표시</label>
+    <button class="btn-go" id="scheduleSave">저장</button>
+    <div id="scheduleMsg" class="sch-msg"></div>
+  </div>
+</div>
+<div id="scheduleFloat" class="iv">
+  <div class="sf-p" id="sfPeriod">1교시</div>
+  <div class="sf-t" id="sfTime">00:00</div>
+  <button class="sf-x" id="sfHide" title="숨기기(시간표에서 다시 켤 수 있어요)">✕</button>
 </div>
 <div id="lottoW" class="fw iv">
   <div class="fwh"><span class="ic">🎱</span><span class="tt">행운 번호 뽑기</span><button class="x">✕</button></div>
@@ -1611,6 +1638,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <script src="tools/picker.js"></script>
 <script src="dock/menu.js"></script>
 <script src="tools/lottery.js"></script>
+<script src="tools/schedule.js"></script>
 <script src="tools/wheel.js"></script>
 <script src="tools/pinball.js"></script>
 <script src="service/settingsMenu.js"></script>
