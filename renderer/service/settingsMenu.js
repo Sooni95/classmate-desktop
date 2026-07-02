@@ -77,7 +77,7 @@
   });
 
   /* --- 🧩 독 편집 (도구 표시/숨김 + 순서) --- */
-  const TOOL_META={timer:'⏱ 타이머',game:'🎲 뽑기·게임',qr:'🔗 URL',pin:'📌 핀',memo:'📝 메모',ptr:'🎯 포인터',noise:'📢 소음',tools:'🧰 도구',draw:'✏️ 펜',exp:'📋 기록저장',pro:'🧡 Pro'};
+  const TOOL_META={timer:'⏱ 타이머',game:'🎲 뽑기·게임',draw:'✏️ 펜',ptr:'🎯 포인터',noise:'📢 소음',memo:'📝 메모',pin:'📌 핀',tools:'🧰 도구',qr:'🔗 URL',exp:'📋 기록저장',pro:'🧡 Pro'};
   const ALL_IDS=Object.keys(TOOL_META);
   const drawer=$('dockDrawer'),hiddenBox=$('dockHidden');
   const toolBtn=id=>dockEl.querySelector('.tool[data-id="'+id+'"]');
