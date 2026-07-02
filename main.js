@@ -8,6 +8,15 @@ let win = null, tray = null, origin = { x: 0, y: 0 };
 // 주의: 투명(transparent) 오버레이 창에서는 하드웨어 가속을 끄면 캔버스(펜 필기)가
 // 화면에 그려지지 않는 Windows 이슈가 있어, app.disableHardwareAcceleration()는 쓰지 않는다.
 
+// 오버레이는 항상 최상위(screen-saver 레벨)라, 네이티브 파일 대화상자가 그 뒤에 가려져
+// 보이지도 클릭되지도 않는 문제가 있다. 대화상자를 띄우는 동안만 always-on-top을 잠깐
+// 풀었다가, 끝나면(선택/취소/에러 무관) 다시 복구한다.
+async function withDialog(fn) {
+  if (win) win.setAlwaysOnTop(false);
+  try { return await fn(); }
+  finally { if (win) win.setAlwaysOnTop(true, 'screen-saver'); }
+}
+
 // 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
 function unionBounds() {
   const ds = screen.getAllDisplays();
@@ -126,10 +135,10 @@ function createOverlay() {
   // 메모를 txt 파일로 저장 (저장 위치 선택)
   ipcMain.handle('save-text', async (_e, { text, filename }) => {
     try {
-      const r = await dialog.showSaveDialog({
+      const r = await withDialog(() => dialog.showSaveDialog({
         defaultPath: filename || '메모.txt',
         filters: [{ name: '텍스트 파일', extensions: ['txt'] }],
-      });
+      }));
       if (r.canceled || !r.filePath) return { ok: false, canceled: true };
       fs.writeFileSync(r.filePath, '\uFEFF' + text, 'utf8'); // BOM: 한글 메모장 호환
       return { ok: true };
@@ -138,10 +147,10 @@ function createOverlay() {
 
   ipcMain.handle('save-image', async (_e, { dataURL, filename }) => {
     try {
-      const r = await dialog.showSaveDialog({
+      const r = await withDialog(() => dialog.showSaveDialog({
         defaultPath: filename || 'QR.png',
         filters: [{ name: 'PNG 이미지', extensions: ['png'] }],
-      });
+      }));
       if (r.canceled || !r.filePath) return { ok: false, canceled: true };
       fs.writeFileSync(r.filePath, Buffer.from(dataURL.split(',')[1], 'base64'));
       return { ok: true };
@@ -154,10 +163,10 @@ function createOverlay() {
       const filt = ext === 'pdf'
         ? [{ name: 'PDF 문서', extensions: ['pdf'] }]
         : [{ name: '파일', extensions: [ext || 'webm'] }];
-      const r = await dialog.showSaveDialog({
+      const r = await withDialog(() => dialog.showSaveDialog({
         defaultPath: filename || ('파일.' + (ext || 'webm')),
         filters: filt,
-      });
+      }));
       if (r.canceled || !r.filePath) return { ok: false, canceled: true };
       fs.writeFileSync(r.filePath, Buffer.from(bytes));
       return { ok: true };
@@ -318,10 +327,10 @@ function createOverlay() {
   ipcMain.handle('save-template', async () => {
     try {
       const src = require('path').join(__dirname, 'assets', 'roster_template.xlsx');
-      const r = await dialog.showSaveDialog({
+      const r = await withDialog(() => dialog.showSaveDialog({
         defaultPath: 'ClassMate_명단양식.xlsx',
         filters: [{ name: 'Excel', extensions: ['xlsx'] }],
-      });
+      }));
       if (r.canceled || !r.filePath) return { ok: false };
       require('fs').copyFileSync(src, r.filePath);
       return { ok: true };
@@ -346,17 +355,14 @@ function createOverlay() {
   ipcMain.on('set-shortcuts', (_e, obj) => { scCustom = obj || {}; registerShortcuts(); }); // 렌더러가 저장된 사용자 단축키 적용
   // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
   ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });
-  // 명단 파일 선택
-  // 주의: win은 항상 최상위(screen-saver 레벨) 오버레이라, 이 창을 parent로 넘기면
-  // 네이티브 파일 선택 창이 그 z-order에 눌려 열리지 못하고 예외를 던지는 경우가 있어
-  // 일부러 parent 없이(독립 창으로) 연다.
+  // 명단 파일 선택 (parent 없이 독립 창으로 열고, withDialog로 잠깐 최상위 해제 — 두 문제 모두 회피)
   ipcMain.handle('pick-roster', async () => {
     try {
-      const r = await dialog.showOpenDialog({
+      const r = await withDialog(() => dialog.showOpenDialog({
         title: '명단 파일 선택',
         filters: [{ name: '명단 (Excel/CSV)', extensions: ['xlsx', 'xls', 'csv'] }],
         properties: ['openFile'],
-      });
+      }));
       if (r.canceled || !r.filePaths[0]) return null;
       return { name: path.basename(r.filePaths[0]), b64: fs.readFileSync(r.filePaths[0]).toString('base64') };
     } catch (e) { return { error: String(e && e.message || e) }; }
@@ -369,11 +375,11 @@ function createOverlay() {
   // 백업(JSON) 파일 선택 → 텍스트로 반환
   ipcMain.handle('pick-backup', async () => {
     try {
-      const r = await dialog.showOpenDialog({
+      const r = await withDialog(() => dialog.showOpenDialog({
         title: 'ClassMate 백업 파일 선택',
         filters: [{ name: 'ClassMate 백업 (JSON)', extensions: ['json'] }],
         properties: ['openFile'],
-      });
+      }));
       if (r.canceled || !r.filePaths[0]) return null;
       return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') };
     } catch (e) { return { error: String(e && e.message || e) }; }
