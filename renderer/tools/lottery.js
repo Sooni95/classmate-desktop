@@ -212,14 +212,3 @@ $('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventLis
   });
 })();
 
-$('wheelOpen').addEventListener('click',()=>openGame('wheel'));
-$('plinkoOpen').addEventListener('click',()=>openGame('plinko'));
-makeDrag($('gameHead'),(e,s)=>{
-  if(!s){const r=gameWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
-  gameWrap.style.left=(e.clientX-s.dx)+'px';gameWrap.style.top=(e.clientY-s.dy)+'px';
-},e=>e.target.id==='gameClose');
-gGo.addEventListener('click',()=>{
-  gGo.disabled=true;gRes.textContent='';
-  if(gameMode==='wheel')spinWheel(gameNames);else dropPlinko();
-});
-

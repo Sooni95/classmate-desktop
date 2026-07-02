@@ -120,3 +120,16 @@ function spinWheel(names){
   gameAnim=requestAnimationFrame(tick);
 }
 
+// gameWrap/gGo는 이 파일 맨 위에서 정의됨 — tools/lottery.js에 있으면 gGo가 아직
+// 정의되기 전이라 ReferenceError로 클릭 등록 자체가 실패했던 버그(실행 버튼 무반응)
+$('wheelOpen').addEventListener('click',()=>openGame('wheel'));
+$('plinkoOpen').addEventListener('click',()=>openGame('plinko'));
+makeDrag($('gameHead'),(e,s)=>{
+  if(!s){const r=gameWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  gameWrap.style.left=(e.clientX-s.dx)+'px';gameWrap.style.top=(e.clientY-s.dy)+'px';
+},e=>e.target.id==='gameClose');
+gGo.addEventListener('click',()=>{
+  gGo.disabled=true;gRes.textContent='';
+  if(gameMode==='wheel')spinWheel(gameNames);else dropPlinko();
+});
+
