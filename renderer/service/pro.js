@@ -222,3 +222,5 @@ $('proCta').addEventListener('click',()=>{
   ipc.openExternal(PRO_FORM_URL);
   toast('📋 구독 신청 폼을 브라우저에서 열었어요');
 });
+// app.js는 이 파일보다 먼저 로드되어 여기서 직접 호출할 수 없으므로, 정의된 이 파일 쪽에서 초기 실행
+setProUI();

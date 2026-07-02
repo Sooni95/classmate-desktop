@@ -85,3 +85,5 @@ function renderLens(){
   lensImg.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
 }
 $('mLens').addEventListener('click',cycleLens);
+// app.js는 이 파일보다 먼저 로드되어 여기서 직접 호출할 수 없으므로, 정의된 이 파일 쪽에서 초기 실행
+syncPtr();

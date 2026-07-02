@@ -87,7 +87,6 @@ async function initDockPos(){
   placePanels();
 }
 initDockPos();
-setProUI();
 // 버전 + 빌드 날짜 표시
 (async()=>{
   try{
@@ -260,5 +259,4 @@ ipc.onHotkey(ch=>{
     case 'hk-escape': allOff();break;
   }
 });
-syncPtr();
 
