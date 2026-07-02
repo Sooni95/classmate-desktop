@@ -495,8 +495,10 @@ body.ptr-over-ui #halo{display:none!important;}
 @keyframes pop{50%{transform:scale(1.5);}}
 .srow2 button{width:24px;height:24px;border:none;border-radius:7px;background:var(--dk2);color:#cdd8e2;cursor:pointer;font-size:13px;}
 .srow2 button:hover{background:var(--or);color:#fff;}
-#scoreAdd{display:block;margin:7px auto 10px;border:1px dashed var(--line);background:none;color:#6b7884;border-radius:8px;padding:5px 16px;font-family:inherit;font-size:11px;cursor:pointer;}
-#scoreAdd:hover{color:var(--or);border-color:var(--or);}
+.srow2 .sdel{background:none;color:#5c6773;font-size:12px;}
+.srow2 .sdel:hover{background:none;color:#e05544;}
+#scoreAdd,#scoreReset{display:inline-block;margin:7px 4px 10px;border:1px dashed var(--line);background:none;color:#6b7884;border-radius:8px;padding:5px 16px;font-family:inherit;font-size:11px;cursor:pointer;}
+#scoreAdd:hover,#scoreReset:hover{color:var(--or);border-color:var(--or);}
 
 /* 주사위 */
 #diceW{width:226px;padding-bottom:10px;}
@@ -1085,7 +1087,10 @@ body.light .lar-res{color:#9a6a1e;}
 <div id="scoreW" class="fw iv">
   <div class="fwh"><span class="ic">🏆</span><span class="tt">모둠 점수판</span><button class="x">✕</button></div>
   <div id="scoreRows"></div>
-  <button id="scoreAdd">＋ 모둠 추가</button>
+  <div style="text-align:center">
+    <button id="scoreAdd">＋ 모둠 추가</button>
+    <button id="scoreReset">🔄 초기화</button>
+  </div>
 </div>
 <div id="diceW" class="fw iv">
   <div class="fwh"><span class="ic">🎲</span><span class="tt">주사위</span><button class="x">✕</button></div>

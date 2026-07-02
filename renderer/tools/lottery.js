@@ -54,7 +54,11 @@ function openWidget(id){
     },e=>e.target.classList.contains('x'));
     w.querySelector('.x').addEventListener('click',()=>w.classList.remove('on'));
     w.dataset.init='1';
-    if(id==='scoreW'){[1,2,3].forEach(()=>scoreAddRow());}
+    if(id==='scoreW'){
+      const saved=loadScores();
+      if(saved.length)saved.forEach(s=>scoreAddRow(s.name,s.score));
+      else [1,2,3].forEach(()=>scoreAddRow());
+    }
     if(id==='diceW')diceRender(1);
   }
   w.classList.add('on');
@@ -63,21 +67,30 @@ function openWidget(id){
   w.style.top=(d.y+d.h/2-w.offsetHeight/2)+'px';
 }
 
-/* --- 모둠 점수판 --- */
+/* --- 모둠 점수판 (localStorage에 자동 저장 — 앱 재시작해도 유지) --- */
 let scoreN=0;const SCORE_COL=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e'];
-function scoreAddRow(name){
+function loadScores(){try{const a=JSON.parse(localStorage.getItem('cm_score')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function saveScores(){
+  const rows=[...$('scoreRows').children].map(r=>({name:r.querySelector('.nm2').value,score:+r.dataset.score}));
+  localStorage.setItem('cm_score',JSON.stringify(rows));
+}
+function scoreAddRow(name,score){
   scoreN++;const i=scoreN;
   const row=document.createElement('div');row.className='srow2';
-  row.dataset.score='0';
+  row.dataset.score=score||0;
   row.innerHTML=`<span class="crown"></span>
     <span style="width:9px;height:9px;border-radius:50%;background:${SCORE_COL[(i-1)%6]}"></span>
     <input class="nm2" value="${name||('모둠 '+i)}">
-    <button class="mn">－</button><span class="sc">0</span><button class="pl2">＋</button>`;
+    <button class="mn">－</button><span class="sc">${score||0}</span><button class="pl2">＋</button>
+    <button class="sdel" title="모둠 삭제">✕</button>`;
   $('scoreRows').appendChild(row);
   const sc=row.querySelector('.sc');
-  const upd=d=>{let v=+row.dataset.score+d;row.dataset.score=v;sc.textContent=v;sc.classList.remove('pop');void sc.offsetWidth;sc.classList.add('pop');scoreRank();};
+  const upd=d=>{let v=+row.dataset.score+d;row.dataset.score=v;sc.textContent=v;sc.classList.remove('pop');void sc.offsetWidth;sc.classList.add('pop');scoreRank();saveScores();};
   row.querySelector('.pl2').addEventListener('click',()=>upd(1));
   row.querySelector('.mn').addEventListener('click',()=>upd(-1));
+  row.querySelector('.nm2').addEventListener('input',saveScores);
+  row.querySelector('.sdel').addEventListener('click',()=>{row.remove();scoreRank();saveScores();});
+  scoreRank();
 }
 function scoreRank(){
   const rows=[...$('scoreRows').children];
@@ -88,7 +101,13 @@ function scoreRank(){
     r.querySelector('.crown').textContent=lead?'👑':'';
   });
 }
-$('scoreAdd').addEventListener('click',()=>scoreAddRow());
+$('scoreAdd').addEventListener('click',()=>{scoreAddRow();saveScores();});
+$('scoreReset').addEventListener('click',()=>{
+  if(!confirm('모둠 점수판을 초기화할까요? 지금 점수가 모두 사라져요.'))return;
+  $('scoreRows').innerHTML='';
+  [1,2,3].forEach(()=>scoreAddRow());
+  saveScores();
+});
 
 /* --- 주사위 --- */
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
