@@ -28,6 +28,7 @@ function createOverlay() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false,
+      backgroundThrottling: false, // 포커스 없는 오버레이 상태가 대부분이라, 꺼두지 않으면 setTimeout 등이 크게 지연됨(토스트가 안 사라지는 등)
     },
   });
   // ★ 멀티모니터 스팬 강제: 생성 직후 한 번 더 명시적으로 배치
@@ -125,7 +126,7 @@ function createOverlay() {
   // 메모를 txt 파일로 저장 (저장 위치 선택)
   ipcMain.handle('save-text', async (_e, { text, filename }) => {
     try {
-      const r = await dialog.showSaveDialog(win, {
+      const r = await dialog.showSaveDialog({
         defaultPath: filename || '메모.txt',
         filters: [{ name: '텍스트 파일', extensions: ['txt'] }],
       });
@@ -137,7 +138,7 @@ function createOverlay() {
 
   ipcMain.handle('save-image', async (_e, { dataURL, filename }) => {
     try {
-      const r = await dialog.showSaveDialog(win, {
+      const r = await dialog.showSaveDialog({
         defaultPath: filename || 'QR.png',
         filters: [{ name: 'PNG 이미지', extensions: ['png'] }],
       });
@@ -153,7 +154,7 @@ function createOverlay() {
       const filt = ext === 'pdf'
         ? [{ name: 'PDF 문서', extensions: ['pdf'] }]
         : [{ name: '파일', extensions: [ext || 'webm'] }];
-      const r = await dialog.showSaveDialog(win, {
+      const r = await dialog.showSaveDialog({
         defaultPath: filename || ('파일.' + (ext || 'webm')),
         filters: filt,
       });
@@ -317,7 +318,7 @@ function createOverlay() {
   ipcMain.handle('save-template', async () => {
     try {
       const src = require('path').join(__dirname, 'assets', 'roster_template.xlsx');
-      const r = await dialog.showSaveDialog(win, {
+      const r = await dialog.showSaveDialog({
         defaultPath: 'ClassMate_명단양식.xlsx',
         filters: [{ name: 'Excel', extensions: ['xlsx'] }],
       });
@@ -345,16 +346,20 @@ function createOverlay() {
   ipcMain.on('set-shortcuts', (_e, obj) => { scCustom = obj || {}; registerShortcuts(); }); // 렌더러가 저장된 사용자 단축키 적용
   // ✕(종료) 버튼 → 완전 종료 대신 트레이로 숨김 (백그라운드 유지)
   ipcMain.on('hide-to-tray', () => { if (win) win.hide(); });
-  // 명단 파일 선택 (메인 프로세스 dialog → 투명/클릭통과 오버레이에서도 확실히 동작)
+  // 명단 파일 선택
+  // 주의: win은 항상 최상위(screen-saver 레벨) 오버레이라, 이 창을 parent로 넘기면
+  // 네이티브 파일 선택 창이 그 z-order에 눌려 열리지 못하고 예외를 던지는 경우가 있어
+  // 일부러 parent 없이(독립 창으로) 연다.
   ipcMain.handle('pick-roster', async () => {
-    const r = await dialog.showOpenDialog(win, {
-      title: '명단 파일 선택',
-      filters: [{ name: '명단 (Excel/CSV)', extensions: ['xlsx', 'xls', 'csv'] }],
-      properties: ['openFile'],
-    });
-    if (r.canceled || !r.filePaths[0]) return null;
-    try { return { name: path.basename(r.filePaths[0]), b64: fs.readFileSync(r.filePaths[0]).toString('base64') }; }
-    catch (e) { return null; }
+    try {
+      const r = await dialog.showOpenDialog({
+        title: '명단 파일 선택',
+        filters: [{ name: '명단 (Excel/CSV)', extensions: ['xlsx', 'xls', 'csv'] }],
+        properties: ['openFile'],
+      });
+      if (r.canceled || !r.filePaths[0]) return null;
+      return { name: path.basename(r.filePaths[0]), b64: fs.readFileSync(r.filePaths[0]).toString('base64') };
+    } catch (e) { return { error: String(e && e.message || e) }; }
   });
   // 드래그앤드롭으로 받은 파일 경로 읽기
   ipcMain.handle('read-path', async (e, p) => {
@@ -363,14 +368,15 @@ function createOverlay() {
   });
   // 백업(JSON) 파일 선택 → 텍스트로 반환
   ipcMain.handle('pick-backup', async () => {
-    const r = await dialog.showOpenDialog(win, {
-      title: 'ClassMate 백업 파일 선택',
-      filters: [{ name: 'ClassMate 백업 (JSON)', extensions: ['json'] }],
-      properties: ['openFile'],
-    });
-    if (r.canceled || !r.filePaths[0]) return null;
-    try { return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') }; }
-    catch (e) { return null; }
+    try {
+      const r = await dialog.showOpenDialog({
+        title: 'ClassMate 백업 파일 선택',
+        filters: [{ name: 'ClassMate 백업 (JSON)', extensions: ['json'] }],
+        properties: ['openFile'],
+      });
+      if (r.canceled || !r.filePaths[0]) return null;
+      return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') };
+    } catch (e) { return { error: String(e && e.message || e) }; }
   });
   // 사용자 의견 보내기 → 워커가 ksh0502@nepes.co.kr 로 메일 발송
   ipcMain.handle('feedback', async (_e, { message, contact, meta }) => {

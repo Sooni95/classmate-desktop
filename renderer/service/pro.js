@@ -154,8 +154,12 @@ $('rmTemplate').addEventListener('click',async()=>{
 const rmDrop=$('rmDrop');
 function b64ToU8(b64){const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return u8;}
 async function pickRoster(){
-  try{const r=await ipc.pickRosterFile();if(r)parseRosterData(r.name,b64ToU8(r.b64));}
-  catch(e){toast('파일 선택 창을 열지 못했어요');}
+  try{
+    const r=await ipc.pickRosterFile();
+    if(r&&r.error){toast('파일 선택 창을 열지 못했어요: '+r.error);}
+    else if(r)parseRosterData(r.name,b64ToU8(r.b64));
+  }
+  catch(e){toast('파일 선택 창을 열지 못했어요: '+(e&&e.message||e));}
 }
 $('rmPick').addEventListener('click',e=>{e.stopPropagation();pickRoster();});
 rmDrop.addEventListener('click',()=>pickRoster());

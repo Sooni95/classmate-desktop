@@ -204,6 +204,7 @@
     $('bkImport').addEventListener('click',async()=>{
       const f=await ipc.pickBackup();
       if(!f)return;
+      if(f.error){bkSay('파일 선택 창을 열지 못했어요: '+f.error,false);return;}
       let obj=null;
       try{obj=JSON.parse(f.text.replace(/^\uFEFF/,''));}catch(e){bkSay('백업 파일을 읽을 수 없어요(형식 오류).',false);return;}
       if(!obj||obj.app!=='ClassMate'||!obj.data){bkSay('ClassMate 백업 파일이 아니에요.',false);return;}
