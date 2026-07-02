@@ -283,6 +283,7 @@
     else if(b.dataset.act==='dockedit')enterEdit();
     else if(b.dataset.act==='shortcuts')openShortcuts();
     else if(b.dataset.act==='backup')openBackup();
+    else if(b.dataset.act==='guide'){if(typeof openOnboarding==='function')openOnboarding();}
     else if(b.dataset.act==='feedback')openFeedback();
   });
 

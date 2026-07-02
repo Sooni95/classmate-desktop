@@ -745,6 +745,23 @@ body.light .lar-res{color:#9a6a1e;}
 #noiseGuide .ng-step span{font-size:18px;}
 #noiseGuide .ng-step b{color:var(--or);}
 #noiseGuide .ng-foot{font-size:11px;color:#6b7884;margin:4px 0 14px;line-height:1.6;}
+/* 첫 실행 온보딩 */
+#onboardWrap{position:fixed;inset:0;z-index:140;display:none;pointer-events:none;}
+#onboardWrap.on{display:block;}
+.ob-card{position:absolute;left:0;top:0;background:var(--dk);border:2px solid var(--or);border-radius:18px;padding:22px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,.6);color:#e7edf3;pointer-events:auto;}
+.ob-head{font-size:14px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:grab;color:#9fb0bf;}
+.ob-head button{border:none;background:none;color:#6b7884;font-size:12px;cursor:pointer;}
+.ob-head button:hover{color:var(--or);}
+.ob-step{display:none;text-align:center;}
+.ob-step.on{display:block;}
+.ob-ic{font-size:38px;margin-bottom:10px;}
+.ob-t{font-size:17px;font-weight:800;margin-bottom:10px;}
+.ob-d{font-size:13px;line-height:1.7;color:#cdd8e2;}
+.ob-d b{color:var(--or);}
+.ob-foot{margin-top:18px;}
+.ob-dots{display:flex;justify-content:center;gap:6px;margin-bottom:14px;}
+.ob-dots span{width:7px;height:7px;border-radius:50%;background:var(--dk2);}
+.ob-dots span.on{background:var(--or);}
 
 /* 카메라 모달 */
 #camWrap{position:fixed;left:0;top:0;z-index:82;background:var(--dk);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:none;overflow:hidden;width:480px;}
@@ -1126,6 +1143,35 @@ body.light .lar-res{color:#9a6a1e;}
 
 <button id="recStop" class="iv">⏹ 녹화 정지</button>
 <div id="noiseAlert"></div>
+<div id="onboardWrap" class="iv">
+  <div class="ob-card">
+    <div class="ob-head" id="obHead"><span>👋 ClassMate 처음이시죠?</span><button id="obSkip">건너뛰기</button></div>
+    <div class="ob-step on" data-step="0">
+      <div class="ob-ic">🖥️</div>
+      <div class="ob-t">투명 오버레이예요</div>
+      <div class="ob-d">PPT·웹브라우저 등 <b>어떤 화면 위에도</b> 떠서 도구를 쓸 수 있어요. 독·도구 위가 아니면 클릭은 그대로 아래 화면으로 통과돼요.</div>
+    </div>
+    <div class="ob-step" data-step="1">
+      <div class="ob-ic">🧲</div>
+      <div class="ob-t">독은 자유롭게 옮길 수 있어요</div>
+      <div class="ob-d">로고 부분을 드래그해서 원하는 위치로 옮기세요. <b>﹀</b> 버튼으로 잠깐 접어둘 수 있고, 다시 누르면 펼쳐져요.</div>
+    </div>
+    <div class="ob-step" data-step="2">
+      <div class="ob-ic">⌨️</div>
+      <div class="ob-t">자주 쓰는 단축키</div>
+      <div class="ob-d">✏️ 펜 <b>Ctrl+Alt+P</b><br>🎯 링 포인터 <b>Ctrl+Alt+R</b><br>⛔ 전체 끄기 <b>Ctrl+Alt+0</b><br>설정 → 단축키 설정에서 바꿀 수 있어요.</div>
+    </div>
+    <div class="ob-step" data-step="3">
+      <div class="ob-ic">🔴</div>
+      <div class="ob-t">완전히 끄려면</div>
+      <div class="ob-d">독의 ✕는 트레이로 잠깐 숨기는 것뿐이에요(계속 실행 중). <b>완전히 끄려면</b> 작업표시줄 숨긴 아이콘의 ClassMate를 우클릭 → <b>완전 종료</b>를 누르세요.</div>
+    </div>
+    <div class="ob-foot">
+      <div class="ob-dots"><span class="on"></span><span></span><span></span><span></span></div>
+      <button class="btn-go" id="obNext">다음</button>
+    </div>
+  </div>
+</div>
 <div id="noiseGuide" class="iv">
   <div class="ng-head"><span>📢 소음 폭탄, 이렇게 작동해요</span><button id="ngClose">✕</button></div>
   <div class="ng-step"><span>1️⃣</span><span>마이크가 교실 소리를 실시간으로 들어요 (막대가 움직여요)</span></div>
@@ -1356,7 +1402,7 @@ body.light{
 }
 /* 패널·설정·서랍·모달 컨테이너 */
 body.light .panel,body.light #setMenu,body.light #dockDrawer,body.light #inputModal .im-card,
-body.light .im-card,body.light #noiseGuide,body.light .fb-card{background:#fffdf9;border-color:#e6ddcc;}
+body.light .im-card,body.light #noiseGuide,body.light .fb-card,body.light .ob-card{background:#fffdf9;border-color:#e6ddcc;}
 body.light .panel{color:#33312c;}
 body.light .ph{color:#1a1d21;}
 body.light .panel .sub,body.light .gdesc,body.light .pres,body.light .hist{color:#7a7363;}
@@ -1509,6 +1555,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
   <button data-act="shortcuts">⌨️ 단축키 설정</button>
   <button data-act="backup">💾 설정·명단 백업</button>
+  <button data-act="guide">👋 처음 사용 가이드 다시보기</button>
   <button data-act="feedback">✉️ 의견 보내기</button>
 </div>
 <div id="dockDrawer" class="iv">
@@ -1570,6 +1617,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <script src="service/pro.js"></script>
 <script src="tools/export.js"></script>
 <script src="service/ai.js"></script>
+<script src="service/onboarding.js"></script>
 <script src="dock/dock.js"></script>
 <script src="ladder.js"></script>
 </body>
