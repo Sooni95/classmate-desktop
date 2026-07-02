@@ -136,6 +136,11 @@
         }
       }
     }
+    // 순전히 랜덤이라 가로줄이 한 개도 안 나오는 경우가 있음(특히 2명일 때 ~1.4% 확률) —
+    // 그러면 사다리가 그냥 일직선이 돼버려 게임이 의미 없어지므로, 최소 1개는 보장
+    if (rungs.length === 0 && n >= 2) {
+      rungs.push({ row: Math.floor(Math.random() * rows), col: Math.floor(Math.random() * (n - 1)) });
+    }
     return rungs;
   }
 
