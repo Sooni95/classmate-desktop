@@ -1357,8 +1357,8 @@ body.light .lar-res{color:#9a6a1e;}
 .dd-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;}
 .dd-head span{font-size:12px;font-weight:700;color:#cdd8e2;}
 #dockDone{border:none;background:var(--or);color:#fff;border-radius:9px;padding:7px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
-#dockResetOrder{border:1px solid var(--line);background:none;color:#9fb0bf;border-radius:9px;padding:7px 12px;font-family:inherit;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;}
-#dockResetOrder:hover{color:var(--or);border-color:var(--or);}
+#dockResetOrder{display:block;width:100%;margin:0 0 12px;border:1px dashed var(--line);background:rgba(246,140,31,.08);color:#cdd8e2;border-radius:9px;padding:9px 0;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
+#dockResetOrder:hover{border-color:var(--or);color:var(--or);background:rgba(246,140,31,.16);}
 .dd-t{font-size:11px;color:#8a94a1;margin-bottom:8px;}
 .dd-list{display:flex;flex-wrap:wrap;gap:8px;min-height:42px;align-items:center;}
 .dd-list:empty::after{content:'숨긴 도구가 없습니다 — 독에서 × 를 눌러 여기로 정리하세요';font-size:11px;color:#6b7884;}
@@ -1590,7 +1590,8 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="feedback">✉️ 의견 보내기</button>
 </div>
 <div id="dockDrawer" class="iv">
-  <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><span style="display:flex;gap:6px"><button id="dockResetOrder" title="기본 순서로 되돌리기">🔄 기본값</button><button id="dockDone">완료</button></span></div>
+  <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><button id="dockDone">완료</button></div>
+  <button id="dockResetOrder">🔄 기본 순서로 되돌리기</button>
   <div class="dd-t">서랍 (숨긴 도구 — 클릭하면 독에 다시 추가)</div>
   <div id="dockHidden" class="dd-list"></div>
 </div>
