@@ -35,24 +35,6 @@ function pickSourceForDisplay(sources, d) {
   return sources[idx] || sources[0];
 }
 
-// 임시 진단 로그: 멀티모니터에서 엉뚱한 모니터가 잡히는 원인 파악용.
-// 문제 해결되면 이 함수와 호출부는 삭제할 것.
-function logCaptureDebug(pt, d, sources) {
-  try {
-    const chosen = pickSourceForDisplay(sources, d);
-    const lines = [
-      `[capture-screen] ${new Date().toISOString()}`,
-      `cursor=(${pt.x},${pt.y})`,
-      `target display: id=${d.id} bounds=${JSON.stringify(d.bounds)} size=${JSON.stringify(d.size)} scaleFactor=${d.scaleFactor}`,
-      `all displays: ${screen.getAllDisplays().map(x => `id=${x.id} bounds=${JSON.stringify(x.bounds)}`).join(' | ')}`,
-      `sources: ${sources.map(s => { const sz = s.thumbnail.getSize(); return `id=${s.id} display_id=${s.display_id} name="${s.name}" thumb=${sz.width}x${sz.height}`; }).join(' | ')}`,
-      `chosen: id=${chosen && chosen.id} display_id=${chosen && chosen.display_id} name="${chosen && chosen.name}"`,
-      '',
-    ];
-    fs.appendFileSync(path.join(app.getPath('desktop'), 'classmate-capture-debug.txt'), lines.join('\n') + '\n');
-  } catch (e) {}
-}
-
 // 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
 function unionBounds() {
   const ds = screen.getAllDisplays();
@@ -136,7 +118,6 @@ function createOverlay() {
       win.setOpacity(0);
       await new Promise(r => setTimeout(r, 150));
       const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: NATIVE_THUMB_CAP });
-      logCaptureDebug(pt, d, sources);
       const src = pickSourceForDisplay(sources, d);
       if (!src || src.thumbnail.isEmpty()) return null; // 빈(투명) 캡처 방지
       return {
