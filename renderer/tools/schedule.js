@@ -44,7 +44,8 @@
   makeDrag(floatEl,(e,s)=>{
     if(!s){const r=floatEl.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     floatEl.style.left=(e.clientX-s.dx)+'px';floatEl.style.top=(e.clientY-s.dy)+'px';floatEl.style.right='auto';
-  },e=>e.target.tagName==='BUTTON');
+  },e=>e.target.tagName==='BUTTON'||e.target.classList.contains('sz-grip'));
+  makeScaleHandle($('sfGrip'),floatEl,{min:0.7,max:2.6,key:'cm_schedule_scale'});
 
   let warnedIdx=-1; // 이번 교시에 5분 전 알림을 이미 보냈는지 (교시 바뀌면 리셋)
   function fmt(sec){return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');}

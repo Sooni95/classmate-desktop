@@ -372,6 +372,7 @@ body.ptr-over-ui #halo{display:none!important;}
 .memo .mtext:empty::before{content:attr(data-ph);color:rgba(90,61,0,.4);}
 .memo.min .mtext,.memo.min .rn,.memo.min .rs,.memo.min .re,.memo.min .rw,.memo.min .rs2{display:none;}
 .memo .rs2{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(120,80,0,.5) 100%);z-index:3;}
+.sz-grip{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,var(--or) 100%);border-radius:0 0 14px 0;z-index:5;}
 .memo .rn,.memo .rs,.memo .re,.memo .rw{position:absolute;z-index:2;}
 .memo .rn{top:-3px;left:8px;right:8px;height:7px;cursor:ns-resize;}
 .memo .rs{bottom:-3px;left:8px;right:16px;height:7px;cursor:ns-resize;}
@@ -1142,6 +1143,7 @@ body.light .lar-res{color:#9a6a1e;}
   <div class="sf-p" id="sfPeriod">1교시</div>
   <div class="sf-t" id="sfTime">00:00</div>
   <button class="sf-x" id="sfHide" title="숨기기(시간표에서 다시 켤 수 있어요)">✕</button>
+  <div class="sz-grip" id="sfGrip" title="끌어서 크기 조절"></div>
 </div>
 <div id="lottoW" class="fw iv">
   <div class="fwh"><span class="ic">🎱</span><span class="tt">행운 번호 뽑기</span><button class="x">✕</button></div>
@@ -1161,11 +1163,13 @@ body.light .lar-res{color:#9a6a1e;}
     <button class="g" data-m="👥 모둠 활동"></button>
   </div>
   <div id="lightLabel">신호를 눌러주세요</div>
+  <div class="sz-grip" id="lightGrip" title="끌어서 크기 조절"></div>
 </div>
 <div id="symbolW" class="fw iv">
   <div class="fwh"><span class="ic">🪧</span><span class="tt">활동 상징</span><button class="x">✕</button></div>
   <div id="symDisplay"><div id="symBig">🪧</div><div id="symLabel">활동을 골라주세요</div></div>
   <div id="symPick"></div>
+  <div class="sz-grip" id="symGrip" title="끌어서 크기 조절"></div>
 </div>
 
 <button id="recStop" class="iv">⏹ 녹화 정지</button>

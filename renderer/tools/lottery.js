@@ -201,11 +201,10 @@ $('diceRoll').addEventListener('click',()=>{
 $('gcLotto')&&$('gcLotto').addEventListener('click',()=>{gShowCfg();openWidget('lottoW');if(window.lottoStart)lottoStart();});
 
 /* --- 신호등 --- */
-let lightScale=1;
+const lightHandle=makeScaleHandle($('lightGrip'),$('lightW'),{min:0.7,max:2.4,key:'cm_light_scale'});
 document.querySelectorAll('#lightW .fw-sz').forEach(b=>b.addEventListener('click',e=>{
   e.stopPropagation();
-  lightScale=Math.min(2.4,Math.max(0.7,lightScale+(+b.dataset.d>0?0.15:-0.15)));
-  const w=$('lightW');w.style.transformOrigin='top left';w.style.transform='scale('+lightScale+')';
+  lightHandle.setScale(lightHandle.getScale()+(+b.dataset.d>0?0.15:-0.15));
 }));
 $('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventListener('click',()=>{
   $('lightW').querySelectorAll('.tl button').forEach(x=>x.classList.remove('on'));
@@ -213,6 +212,7 @@ $('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventLis
 }));
 
 /* --- 활동 상징 (조용히·짝·모둠 등을 화면에 크게) --- */
+makeScaleHandle($('symGrip'),$('symbolW'),{min:0.7,max:2.6,key:'cm_symbol_scale'});
 (function(){
   const pick=$('symPick'); if(!pick)return;
   const SYMS=[
