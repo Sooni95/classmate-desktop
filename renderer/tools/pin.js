@@ -190,8 +190,9 @@ snipWrap.addEventListener('pointerup',e=>{
   const x=Math.min(sx0,e.clientX),y=Math.min(sy0,e.clientY);
   const w=Math.abs(e.clientX-sx0),h=Math.abs(e.clientY-sy0);
   sx0=undefined;
-  if(w<8||h<8){endSnip();snipRecMode=false;return;}
+  if(w<8||h<8){endSnip();snipRecMode=false;snipOcrMode=false;return;}
   if(snipRecMode){snipRecMode=false;endSnip();recordRegion(x,y,w,h);return;}
+  const wasOcr=snipOcrMode;snipOcrMode=false;
   const img=new Image();
   img.onload=()=>{
     const lx=x-snipB.x, ly=y-snipB.y;
@@ -199,6 +200,7 @@ snipWrap.addEventListener('pointerup',e=>{
     const cv=document.createElement('canvas');cv.width=w*scX;cv.height=h*scY;
     cv.getContext('2d').drawImage(img,lx*scX,ly*scY,w*scX,h*scY,0,0,w*scX,h*scY);
     const out=cv.toDataURL('image/png');
+    if(wasOcr){endSnip();runOcr(out);return;}
     addPin(out,'캡처',x,y,w);
     ipc.copyImage(out);
     toast('📋 클립보드에 복사됨 — Ctrl+V로 붙여넣기 가능');
@@ -216,6 +218,32 @@ async function startSnipRec(){
   $('snipHint').textContent='녹화할 영역을 드래그하세요';
 }
 $('snipRecBtn').addEventListener('click',startSnipRec);
+
+/* ===== 영역 OCR (Pro) — 드래그한 영역의 글자를 추출해 클립보드+메모로 ===== */
+let snipOcrMode=false;
+async function startSnipOcr(){
+  if(typeof isPro==='function'&&!isPro())return; // Pro 잠금은 pro.js의 [data-pro] 핸들러가 안내 모달을 띄움
+  snipOcrMode=true;
+  await startSnip();
+  $('snipHint').textContent='글자를 추출할 영역을 드래그하세요';
+}
+async function runOcr(dataURL){
+  toast('🔤 글자를 읽는 중…');
+  const proKey=localStorage.getItem('cm_pro_key')||'';
+  const apiKey=localStorage.getItem('ai_key')||'';
+  const r=await ipc.aiOcr({dataURL,proKey,apiKey});
+  if(r&&r.ok&&r.text){
+    ipc.copyText(r.text);
+    $('memoBtn').click();
+    setTimeout(()=>{const m=[...document.querySelectorAll('.memo')].pop();if(m)m.querySelector('.mtext').innerText=r.text;},60);
+    toast('📋 글자를 복사했어요 — 메모에도 담아뒀어요');
+  }
+  else if(r&&r.ok)toast('이 영역에서 글자를 찾지 못했어요');
+  else if(r&&r.message==='NO_KEY')toast('🔒 Pro 인증 또는 AI 키 설정이 필요해요');
+  else if(r&&r.message==='NO_ROUTE')toast('서버에 OCR 기능 배포가 필요해요 (관리자에게 문의)');
+  else toast('글자 추출 실패: '+((r&&r.message)||'인터넷 연결을 확인하세요'));
+}
+$('ocrBtn')&&$('ocrBtn').addEventListener('click',startSnipOcr);
 async function recordRegion(x,y,w,h){
   // 커서 모니터 화면 스트림 받기
   const src=await ipc.getScreenSource();

@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('cm', {
   aiChat: (p) => ipcRenderer.invoke('ai-chat', p),
   aiProxy: (p) => ipcRenderer.invoke('ai-proxy', p),
   sttProxy: (p) => ipcRenderer.invoke('stt-proxy', p),
+  aiOcr: (p) => ipcRenderer.invoke('ai-ocr', p),
   saveImage: (p) => ipcRenderer.invoke('save-image', p),
   saveText: (p) => ipcRenderer.invoke('save-text', p),
   saveBinary: (p) => ipcRenderer.invoke('save-binary', p),

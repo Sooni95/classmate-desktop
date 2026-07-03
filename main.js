@@ -233,6 +233,49 @@ function createOverlay() {
     }
   });
 
+  // 영역 OCR — Pro면 Worker(/api/ocr, 배포 필요: WORKER_ENDPOINTS.md 참고), 아니면 개인 키로 직접
+  ipcMain.handle('ai-ocr', async (_e, { dataURL, proKey, apiKey }) => {
+    try {
+      const b64 = (dataURL || '').split(',')[1] || '';
+      if (!b64) return { ok: false, message: 'NO_IMAGE' };
+      if (proKey) {
+        const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: b64, proKey }),
+        });
+        if (res.status !== 404) { // 404 = 워커에 아직 미배포 → 개인 키로 폴백
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) return { ok: true, text: data.text };
+          if (!apiKey) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+        } else if (!apiKey) return { ok: false, message: 'NO_ROUTE' };
+      }
+      if (!apiKey) return { ok: false, message: 'NO_KEY' };
+      const res = await net.fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2000,
+          messages: [{ role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
+            { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 추출해줘. 설명 없이 추출한 텍스트만 출력해.' },
+          ] }],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, status: res.status, message: (data.error && data.error.message) || '오류' };
+      const out = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      return { ok: true, text: out };
+    } catch (err) {
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
+
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {

@@ -62,3 +62,42 @@ npx wrangler deploy
 배포 후 앱에서:
 - 🗑 삭제 → 본인이 만든 URL은 바로 삭제됩니다.
 - 🔑 전체 URL 관리 → ADMIN_TOKEN 입력 시 모든 URL을 보고 삭제할 수 있습니다.
+
+---
+
+# 영역 OCR (Pro) — /api/ocr 엔드포인트 추가 안내
+
+앱의 "🔤 영역 글자 추출 (OCR)"이 Pro 인증 사용자에 대해 회사 키로 동작하려면 아래 라우트가 필요합니다.
+(미배포 상태에서는: 개인 AI 키를 설정한 사용자는 그 키로 직접 동작하고, 그 외에는 "서버에 OCR 기능 배포가 필요해요" 안내가 뜹니다.)
+
+```js
+// === /api/ocr : 영역 이미지에서 텍스트 추출 (Pro 전용, ANTHROPIC_KEY 사용) ===
+if (url.pathname === '/api/ocr' && request.method === 'POST') {
+  const { image, proKey } = await request.json(); // image: base64 PNG (data: 접두어 없이)
+  // Pro 키 검증 (pro-verify와 동일한 PROKEYS 대조)
+  const rec = proKey ? await env.PROKEYS.get(proKey) : null;
+  if (!rec) return Response.json({ ok: false, message: 'invalid proKey' }, { status: 403 });
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001', // OCR엔 Haiku가 저렴하고 충분
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } },
+        { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 추출해줘. 설명 없이 추출한 텍스트만 출력해.' },
+      ] }],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) return Response.json({ ok: false, message: (data.error && data.error.message) || 'upstream error' }, { status: 502 });
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  return Response.json({ ok: true, text });
+}
+```
+
+> 만료 키 처리(`until` 필드)가 pro-verify에 있다면 같은 검증을 여기에도 복사하세요.
