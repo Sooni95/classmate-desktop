@@ -201,11 +201,7 @@ $('diceRoll').addEventListener('click',()=>{
 $('gcLotto')&&$('gcLotto').addEventListener('click',()=>{gShowCfg();openWidget('lottoW');if(window.lottoStart)lottoStart();});
 
 /* --- 신호등 --- */
-const lightHandle=makeScaleHandle($('lightGrip'),$('lightW'),{min:0.7,max:2.4,key:'cm_light_scale'});
-document.querySelectorAll('#lightW .fw-sz').forEach(b=>b.addEventListener('click',e=>{
-  e.stopPropagation();
-  lightHandle.setScale(lightHandle.getScale()+(+b.dataset.d>0?0.15:-0.15));
-}));
+makeScaleHandle($('lightGrip'),$('lightW'),{min:0.7,max:2.4,key:'cm_light_scale'});
 $('lightW')&&$('lightW').querySelectorAll('.tl button').forEach(b=>b.addEventListener('click',()=>{
   $('lightW').querySelectorAll('.tl button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');$('lightLabel').textContent=b.dataset.m;

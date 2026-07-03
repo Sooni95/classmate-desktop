@@ -139,8 +139,6 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .btn-rec,.btn-cam{border:none;border-radius:11px;padding:11px;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;color:#fff;}
 .btn-rec{background:#e0584a;} .btn-rec:hover{background:#cf4a3d;}
 .btn-cam{background:#2aa5b5;} .btn-cam:hover{background:#2492a0;}
-.fw-sz{border:none;background:rgba(255,255,255,.12);color:#cdd8e2;width:22px;height:22px;border-radius:6px;font-size:14px;line-height:1;cursor:pointer;margin-left:2px;font-family:inherit;}
-.fw-sz:hover{background:var(--or);color:#fff;}
 #lottoW{width:312px;}
 .lotto-set{display:flex;align-items:center;gap:4px;justify-content:center;font-size:11.5px;color:#9fb0bf;flex-wrap:wrap;padding:2px 8px 8px;}
 .lotto-set input{width:46px;background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:7px;padding:5px 4px;text-align:center;font-family:inherit;}
@@ -1156,7 +1154,7 @@ body.light .lar-res{color:#9a6a1e;}
   <button class="btn-go" id="lottoDraw">🎉 추첨!</button>
 </div>
 <div id="lightW" class="fw iv">
-  <div class="fwh"><span class="ic">🚦</span><span class="tt">신호등</span><button class="fw-sz" data-d="-1" title="작게">－</button><button class="fw-sz" data-d="1" title="크게">＋</button><button class="x">✕</button></div>
+  <div class="fwh"><span class="ic">🚦</span><span class="tt">신호등</span><button class="x">✕</button></div>
   <div class="tl">
     <button class="r" data-m="🤫 조용히 집중"></button>
     <button class="y" data-m="🗣 짝과 소곤소곤"></button>
@@ -1359,6 +1357,8 @@ body.light .lar-res{color:#9a6a1e;}
 .dd-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;}
 .dd-head span{font-size:12px;font-weight:700;color:#cdd8e2;}
 #dockDone{border:none;background:var(--or);color:#fff;border-radius:9px;padding:7px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;}
+#dockResetOrder{border:1px solid var(--line);background:none;color:#9fb0bf;border-radius:9px;padding:7px 12px;font-family:inherit;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;}
+#dockResetOrder:hover{color:var(--or);border-color:var(--or);}
 .dd-t{font-size:11px;color:#8a94a1;margin-bottom:8px;}
 .dd-list{display:flex;flex-wrap:wrap;gap:8px;min-height:42px;align-items:center;}
 .dd-list:empty::after{content:'숨긴 도구가 없습니다 — 독에서 × 를 눌러 여기로 정리하세요';font-size:11px;color:#6b7884;}
@@ -1590,7 +1590,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="feedback">✉️ 의견 보내기</button>
 </div>
 <div id="dockDrawer" class="iv">
-  <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><button id="dockDone">완료</button></div>
+  <div class="dd-head"><span>🧩 독 편집 — 도구를 드래그해 순서 변경 · × 로 서랍에 넣기</span><span style="display:flex;gap:6px"><button id="dockResetOrder" title="기본 순서로 되돌리기">🔄 기본값</button><button id="dockDone">완료</button></span></div>
   <div class="dd-t">서랍 (숨긴 도구 — 클릭하면 독에 다시 추가)</div>
   <div id="dockHidden" class="dd-list"></div>
 </div>

@@ -131,6 +131,11 @@
     saveCfg(currentOrder(),currentHidden());toast('🧩 독 편집을 저장했어요');
   }
   $('dockDone').addEventListener('click',exitEdit);
+  $('dockResetOrder').addEventListener('click',()=>{
+    localStorage.removeItem('cm_dock_order');localStorage.removeItem('cm_dock_hidden');
+    applyCfg();removeDx();addDx();renderDrawer();
+    toast('🔄 독을 기본 순서로 되돌렸어요');
+  });
   // 편집 중 도구 클릭은 원래 동작(패널 열기) 대신 무시
   dockEl.addEventListener('click',e=>{
     if(!editing)return;
