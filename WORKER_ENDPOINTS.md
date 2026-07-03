@@ -85,11 +85,11 @@ if (url.pathname === '/api/ocr' && request.method === 'POST') {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001', // OCR엔 Haiku가 저렴하고 충분
+      model: 'claude-sonnet-4-6', // OCR 정확도를 위해 Sonnet 사용 (Haiku는 영역 OCR 인식률이 낮음)
       max_tokens: 2000,
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } },
-        { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 추출해줘. 설명 없이 추출한 텍스트만 출력해.' },
+        { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 정확하게 추출해줘. 표나 목록의 구조도 최대한 유지하고, 설명 없이 추출한 텍스트만 출력해.' },
       ] }],
     }),
   });

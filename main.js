@@ -17,6 +17,24 @@ async function withDialog(fn) {
   finally { if (win) win.setAlwaysOnTop(true, 'screen-saver'); }
 }
 
+// desktopCapturer 소스를 실제 Display에 매칭. Windows에서는 display_id가 비어있거나
+// getAllDisplays()와 getSources()의 배열 순서가 어긋나는 경우가 흔해, 그대로 index로
+// 폴백하면 커서 위치와 무관하게 항상 같은(엉뚱한) 모니터가 잡히는 문제가 생긴다.
+// → 1) display_id 매칭 → 2) 실제 캡처 해상도 일치 → 3) 배열 순서 폴백 순으로 시도.
+// 모니터별 실제 해상도가 그대로 나오도록 어떤 디스플레이보다도 큰 고정 상한을 준다
+// (thumbnailSize가 작으면 여러 모니터가 같은 크기로 눌려서 나와 해상도 비교가 무의미해진다)
+const NATIVE_THUMB_CAP = { width: 7680, height: 4320 };
+function pickSourceForDisplay(sources, d) {
+  if (!sources.length) return null;
+  let src = sources.find(s => s.display_id && s.display_id == String(d.id));
+  if (src) return src;
+  const tw = Math.round(d.size.width * d.scaleFactor), th = Math.round(d.size.height * d.scaleFactor);
+  src = sources.find(s => { const sz = s.thumbnail.getSize(); return sz.width === tw && sz.height === th; });
+  if (src) return src;
+  const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
+  return sources[idx] || sources[0];
+}
+
 // 모든 모니터를 합친 영역 계산 (멀티모니터 대응)
 function unionBounds() {
   const ds = screen.getAllDisplays();
@@ -85,12 +103,9 @@ function createOverlay() {
     try {
       const pt = screen.getCursorScreenPoint();
       const d = screen.getDisplayNearestPoint(pt);
-      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
-      let src = sources.find(s => s.display_id == String(d.id));
-      if (!src) {
-        const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
-        src = sources[idx] || sources[0];
-      }
+      // 해상도 매칭용이라 썸네일은 실 해상도로 받아야 함 (1x1이면 전부 같은 크기라 매칭 불가)
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: NATIVE_THUMB_CAP });
+      const src = pickSourceForDisplay(sources, d);
       return src ? { id: src.id, bounds: { x: d.bounds.x - origin.x, y: d.bounds.y - origin.y, w: d.bounds.width, h: d.bounds.height } } : null;
     } catch (e) { return null; }
   });
@@ -102,15 +117,8 @@ function createOverlay() {
     try {
       win.setOpacity(0);
       await new Promise(r => setTimeout(r, 150));
-      const sources = await desktopCapturer.getSources({
-        types: ['screen'],
-        thumbnailSize: { width: d.size.width * d.scaleFactor, height: d.size.height * d.scaleFactor },
-      });
-      let src = sources.find(s => s.display_id == String(d.id));
-      if (!src) { // Windows에서 display_id가 비는 경우: 디스플레이 순서로 폴백
-        const idx = screen.getAllDisplays().findIndex(x => x.id === d.id);
-        src = sources[idx] || sources[0];
-      }
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: NATIVE_THUMB_CAP });
+      const src = pickSourceForDisplay(sources, d);
       if (!src || src.thumbnail.isEmpty()) return null; // 빈(투명) 캡처 방지
       return {
         dataURL: src.thumbnail.toDataURL(),
@@ -259,11 +267,11 @@ function createOverlay() {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2000,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
-            { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 추출해줘. 설명 없이 추출한 텍스트만 출력해.' },
+            { type: 'text', text: '이미지에 보이는 모든 텍스트를 원문 그대로, 줄바꿈을 유지해서 정확하게 추출해줘. 표나 목록의 구조도 최대한 유지하고, 설명 없이 추출한 텍스트만 출력해.' },
           ] }],
         }),
       });
