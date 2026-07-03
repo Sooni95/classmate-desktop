@@ -193,7 +193,7 @@ let penHudT;
 function showPenHud(){
   const hud=$('penHud');const w=PW[penType];
   hud.querySelector('.dot').style.cssText=`width:${Math.min(40,w)}px;height:${Math.min(40,w)}px;color:${penType==='eraser'?'#fff':penColor}`;
-  hud.querySelector('.ptxt').textContent=({pen:'펜',hl:'형광펜',eraser:'지우개',rect:'박스',circle:'원'})[penType]+' 굵기 '+w;
+  hud.querySelector('.ptxt').textContent=({pen:'펜',hl:'형광펜',eraser:'지우개',rect:'박스',circle:'원',arrow:'화살표',mosaic:'모자이크'})[penType]+' 굵기 '+w;
   hud.style.left=(hx+24)+'px';hud.style.top=(hy+24)+'px';
   hud.classList.add('on');
   clearTimeout(penHudT);penHudT=setTimeout(()=>hud.classList.remove('on'),900);
@@ -221,7 +221,7 @@ document.addEventListener('wheel',e=>{
   else if(drawMode){
     e.preventDefault();
     const d=e.deltaY<0?2:-2;
-    const lim={pen:[2,30],hl:[8,60],eraser:[10,80],rect:[2,16],circle:[2,16]}[penType];
+    const lim={pen:[2,30],hl:[8,60],eraser:[10,80],rect:[2,16],circle:[2,16],arrow:[2,16],mosaic:[16,90]}[penType];
     PW[penType]=Math.min(lim[1],Math.max(lim[0],PW[penType]+d));
     showPenHud();
   }

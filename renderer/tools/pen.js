@@ -3,8 +3,8 @@ const dc=$('dc'),ctx=dc.getContext('2d');
 const dctmp=$('dctmp'),tctx=dctmp.getContext('2d');
 let drawMode=false,drawing=false,penColor='#ff3b3b',penType='pen',undoStack=[];
 registerCaptureMode(()=>drawMode); // [클릭통과 규칙] 펜(필기) 모드 활성 중엔 통과 차단 + 커스텀 포인터 표시
-const PW={pen:5,hl:16,eraser:26,rect:4,circle:4}; // 도구별 굵기 (휠로 조절)
-let rectStart=null,rectMode=false,circleMode=false;
+const PW={pen:5,hl:16,eraser:26,rect:4,circle:4,arrow:4,mosaic:36}; // 도구별 굵기 (휠로 조절)
+let rectStart=null,rectMode=false,circleMode=false,arrowMode=false;
 let stroke=[]; // 현재 스트로크 점들
 // 수정자 키 상태를 직접 추적 (오버레이/클릭통과 환경에서 pointer 이벤트에 ctrlKey/shiftKey가
 // 안 실려 오는 경우가 있어, keydown/keyup으로 추적한 값을 같이 사용한다)
@@ -96,9 +96,10 @@ function stampAtDraw(x,y){
 function setTool(t){
   if(penType==='text'&&t!=='text')commitText();
   penType=t;
-  ['penBtn','hlBtn','erBtn','txBtn','rectBtn','circBtn','stampBtn'].forEach(id=>$(id)&&$(id).classList.remove('on'));
-  const m={pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn',circle:'circBtn',stamp:'stampBtn'}[t];
+  ['penBtn','hlBtn','erBtn','txBtn','rectBtn','circBtn','arrowBtn','stampBtn','mosaicBtn'].forEach(id=>$(id)&&$(id).classList.remove('on'));
+  const m={pen:'penBtn',hl:'hlBtn',eraser:'erBtn',text:'txBtn',rect:'rectBtn',circle:'circBtn',arrow:'arrowBtn',stamp:'stampBtn',mosaic:'mosaicBtn'}[t];
   if(m&&$(m))$(m).classList.add('on');
+  if(t==='mosaic')prepareMosaic(); // 화면이 계속 바뀌므로 선택할 때마다 새로 캡처
   const ps=$('penStamps');
   if(ps){
     if(t==='stamp'){renderPenStamps();const r=$('dtb').getBoundingClientRect();ps.style.left=r.left+'px';ps.style.top=(r.bottom+6)+'px';ps.classList.add('on');}
@@ -111,7 +112,50 @@ $('erBtn').addEventListener('click',()=>setTool('eraser'));
 $('txBtn').addEventListener('click',()=>setTool('text'));
 $('rectBtn').addEventListener('click',()=>setTool('rect'));
 $('circBtn').addEventListener('click',()=>setTool('circle'));
+$('arrowBtn')&&$('arrowBtn').addEventListener('click',()=>setTool('arrow'));
 $('stampBtn')&&$('stampBtn').addEventListener('click',()=>setTool('stamp'));
+$('mosaicBtn')&&$('mosaicBtn').addEventListener('click',()=>setTool('mosaic'));
+
+/* --- 화살표: 직선 + 끝 화살촉 --- */
+function drawArrow(c,x0,y0,x1,y1,w){
+  const ang=Math.atan2(y1-y0,x1-x0),hl=Math.max(14,w*3.5);
+  c.lineWidth=w;c.lineCap='round';c.lineJoin='round';
+  c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);c.stroke();
+  c.beginPath();
+  c.moveTo(x1,y1);c.lineTo(x1-hl*Math.cos(ang-0.45),y1-hl*Math.sin(ang-0.45));
+  c.moveTo(x1,y1);c.lineTo(x1-hl*Math.cos(ang+0.45),y1-hl*Math.sin(ang+0.45));
+  c.stroke();
+}
+
+/* --- 모자이크 펜: 캡처한 화면을 픽셀화해 붓처럼 찍어 가림 (학생 이름 등) --- */
+let mzCv=null,mzB=null,mzBusy=false;
+async function prepareMosaic(){
+  if(mzBusy)return;mzBusy=true;
+  try{
+    const res=await ipc.captureScreen();
+    if(!res){toast('📷 화면 캡처에 실패했어요 — 모자이크를 쓸 수 없어요');mzCv=null;return;}
+    mzB=res.bounds;
+    const im=new Image();
+    await new Promise(r=>{im.onload=r;im.src=res.dataURL;});
+    const f=14; // 픽셀 굵기 (클수록 거칠게 가려짐)
+    const small=document.createElement('canvas');
+    small.width=Math.max(1,Math.round(mzB.w/f));small.height=Math.max(1,Math.round(mzB.h/f));
+    small.getContext('2d').drawImage(im,0,0,small.width,small.height);
+    mzCv=document.createElement('canvas');mzCv.width=mzB.w;mzCv.height=mzB.h;
+    const c=mzCv.getContext('2d');c.imageSmoothingEnabled=false;
+    c.drawImage(small,0,0,mzB.w,mzB.h);
+  }finally{mzBusy=false;}
+}
+function mosaicStamp(p){
+  if(!mzCv||!mzB)return;
+  const d=PW.mosaic,r=d/2;
+  let sx=p.x-mzB.x-r,sy=p.y-mzB.y-r,sw=d,sh=d,dx=p.x-r,dy=p.y-r;
+  if(sx<0){sw+=sx;dx-=sx;sx=0;}if(sy<0){sh+=sy;dy-=sy;sy=0;}
+  if(sx+sw>mzB.w)sw=mzB.w-sx;if(sy+sh>mzB.h)sh=mzB.h-sy;
+  if(sw<=0||sh<=0)return; // 캡처한 모니터 밖 (다른 모니터에선 동작 안 함)
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  ctx.drawImage(mzCv,sx,sy,sw,sh,dx,dy,sw,sh);
+}
 
 /* --- 글자 도구: 클릭한 곳에 입력 → Enter로 화면에 새김 (휠로 크기) --- */
 let txSize=28,txEditor=null;
@@ -173,6 +217,13 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
   if(drawMode&&(e.key==='c'||e.key==='C')){e.preventDefault();setTool('circle');}
+  if(drawMode&&(e.key==='a'||e.key==='A')){e.preventDefault();setTool('arrow');}
+  // 숫자키 1~7 = 팔레트 색 바로 선택 (ZoomIt의 한 글자 색 전환에 해당)
+  if(drawMode&&!e.ctrlKey&&!e.altKey&&/^[1-9]$/.test(e.key)){
+    const sws=document.querySelectorAll('.sw');
+    const s=sws[+e.key-1];
+    if(s){e.preventDefault();s.click();if(typeof showPenHud==='function')showPenHud();}
+  }
   if(e.key==='Escape'){
     const curPanel=document.querySelector('.panel.on');
     if($('proMenu')&&$('proMenu').classList.contains('on'))$('proMenu').classList.remove('on');
@@ -228,11 +279,14 @@ dc.addEventListener('pointerdown',e=>{
   if(penType==='stamp'){stampAtDraw(e.clientX,e.clientY);return;}
   saveSt();drawing=true;dc.setPointerCapture(e.pointerId);
   stroke=[{x:e.clientX,y:e.clientY}];
-  // Ctrl 드래그 = 박스, Shift 드래그 = 원 (펜/형광 중에도) — 추적 상태 OR 이벤트 플래그
+  // Ctrl 드래그 = 박스, Shift 드래그 = 원, Ctrl+Shift 드래그 = 화살표 (펜/형광 중에도)
   const ctrlDown=e.ctrlKey||keyCtrl, shiftDown=e.shiftKey||keyShift;
-  rectMode=(penType==='rect')||((penType==='pen'||penType==='hl')&&ctrlDown);
-  circleMode=(penType==='circle')||((penType==='pen'||penType==='hl')&&shiftDown);
-  if(rectMode||circleMode){rectStart={x:e.clientX,y:e.clientY};return;}
+  const freehand=penType==='pen'||penType==='hl';
+  arrowMode=(penType==='arrow')||(freehand&&ctrlDown&&shiftDown);
+  rectMode=!arrowMode&&((penType==='rect')||(freehand&&ctrlDown));
+  circleMode=!arrowMode&&((penType==='circle')||(freehand&&shiftDown));
+  if(rectMode||circleMode||arrowMode){rectStart={x:e.clientX,y:e.clientY};return;}
+  if(penType==='mosaic'){mosaicStamp({x:e.clientX,y:e.clientY});return;}
   if(penType==='eraser'){
     ctx.globalCompositeOperation='destination-out';
     ctx.strokeStyle='#000';ctx.fillStyle='#000';
@@ -241,13 +295,15 @@ dc.addEventListener('pointerdown',e=>{
 });
 dc.addEventListener('pointermove',e=>{
   if(!drawing)return;
-  if(rectMode||circleMode){
+  if(rectMode||circleMode||arrowMode){
     tctx.clearRect(0,0,dctmp.width,dctmp.height);
     dctmp.style.opacity=penType==='hl'?0.42:1;
     const x0=rectStart.x,y0=rectStart.y;
-    const lw=PW[penType==='circle'?'circle':(penType==='rect'?'rect':penType)]||PW.rect;
+    const lw=PW[penType]||PW.rect;
     tctx.strokeStyle=penColor;tctx.lineWidth=lw;tctx.lineJoin='round';
-    if(circleMode){
+    if(arrowMode){
+      drawArrow(tctx,x0,y0,e.clientX,e.clientY,lw);
+    }else if(circleMode){
       const cx=(x0+e.clientX)/2,cy=(y0+e.clientY)/2;
       const rx=Math.abs(e.clientX-x0)/2,ry=Math.abs(e.clientY-y0)/2;
       tctx.beginPath();tctx.ellipse(cx,cy,Math.max(1,rx),Math.max(1,ry),0,0,7);tctx.stroke();
@@ -260,6 +316,10 @@ dc.addEventListener('pointermove',e=>{
   }
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
   for(const ev of (evs.length?evs:[e]))stroke.push({x:ev.clientX,y:ev.clientY});
+  if(penType==='mosaic'){
+    for(const p of stroke.slice(-Math.min(stroke.length,8)))mosaicStamp(p);
+    return;
+  }
   if(penType==='eraser'){
     // 지우개는 즉시 본 캔버스에
     ctx.globalCompositeOperation='destination-out';
@@ -276,15 +336,15 @@ dc.addEventListener('pointermove',e=>{
 });
 const endD=()=>{
   if(!drawing)return;drawing=false;
-  if(rectMode||circleMode){
+  if(rectMode||circleMode||arrowMode){
     ctx.globalCompositeOperation='source-over';
     ctx.globalAlpha=penType==='hl'?0.42:1;
     ctx.drawImage(dctmp,0,0);
     ctx.globalAlpha=1;
     tctx.clearRect(0,0,dctmp.width,dctmp.height);
-    stroke=[];rectMode=false;circleMode=false;return;
+    stroke=[];rectMode=false;circleMode=false;arrowMode=false;return;
   }
-  if(penType!=='eraser'&&stroke.length){
+  if(penType!=='eraser'&&penType!=='mosaic'&&stroke.length){
     // 완성된 스트로크를 본 캔버스에 한 번만 합성 (형광은 반투명으로)
     ctx.globalCompositeOperation='source-over';
     ctx.globalAlpha=penType==='hl'?0.42:1;
