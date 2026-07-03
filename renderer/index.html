@@ -427,6 +427,7 @@ body.ptr-over-ui #halo{display:none!important;}
 /* 화면 정지 확대 (freeze zoom) — 독(70)·펜(활성 56)보다 아래라서 확대 상태에서 필기 가능 */
 #zoomWrap{position:fixed;inset:0;z-index:45;display:none;overflow:hidden;cursor:grab;}
 #zoomWrap.on{display:block;}
+#zoomWrap.pick{cursor:crosshair;}
 #zoomWrap:active{cursor:grabbing;}
 #zoomDim{position:absolute;background:rgba(8,11,15,.92);}
 #zoomWrap img{position:absolute;transform-origin:0 0;user-select:none;-webkit-user-drag:none;}

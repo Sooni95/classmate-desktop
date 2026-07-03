@@ -238,7 +238,7 @@ document.addEventListener('keydown',e=>{
     else if($('camWrap').classList.contains('on'))closeCam();
     else if($('boardWrap')&&$('boardWrap').classList.contains('on')){$('boardWrap').classList.remove('on');}
     else if(curPanel)setPanel(null); // AI보조·번역 등 열린 패널 닫기
-    else if(snipOn)endSnip();else if(typeof zoomOn!=='undefined'&&zoomOn)window.zoomOff();else if(lensOn)setLens(0);else allOff();
+    else if(snipOn)endSnip();else if(typeof zoomOn!=='undefined'&&(zoomOn||zoomPick))window.zoomOff();else if(lensOn)setLens(0);else allOff();
   }
 });
 // 부드러운 곡선 경로 (중점 quadratic) — 한 번에 그려 알파 겹침 얼룩 제거
