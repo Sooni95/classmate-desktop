@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('cm', {
   feedback: (p) => ipcRenderer.invoke('feedback', p),
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   setShortcuts: (obj) => ipcRenderer.send('set-shortcuts', obj),
-  onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-draw','hk-snip','hk-dock','hk-escape']
+  onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-lens-rect','hk-spotlens','hk-draw','hk-snip','hk-dock','hk-escape']
     .forEach(ch => ipcRenderer.on(ch, () => h(ch))),
   onBoundsChanged: (h) => ipcRenderer.on('bounds-changed', h),
 });

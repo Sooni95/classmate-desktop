@@ -252,7 +252,13 @@ ipc.onHotkey(ch=>{
   switch(ch){
     case 'hk-ring': PS.ring=!PS.ring;syncPtr();break;
     case 'hk-spot': PS.spot=PS.spot>0?0:spotShape;syncPtr();break; // v0.4: 켜기/끄기 (모양은 패널에서)
-    case 'hk-lens': cycleLens();break;
+    case 'hk-lens': setLens(lensShape===1?0:1);break; // 원형 돋보기를 바로 켜기/끄기 (순환 없음)
+    case 'hk-lens-rect': setLens(lensShape===2?0:2);break; // 사각형 돋보기를 바로 켜기/끄기
+    case 'hk-spotlens': { // 원형 스포트라이트 + 원형 돋보기를 함께 켜기/끄기
+      const bothOn=PS.spot>0&&lensOn;
+      PS.spot=bothOn?0:1;setLens(bothOn?0:1);syncPtr();
+      break;
+    }
     case 'hk-draw': toggleDraw();break;
     case 'hk-snip': startSnip();break;
     case 'hk-dock': dock.classList.contains('hide')?expandDock():collapseDock();break;

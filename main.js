@@ -402,7 +402,8 @@ function createOverlay() {
 
 const SC_DEFAULT = {
   'hk-draw':'Control+Alt+P','hk-ring':'Control+Alt+R','hk-spot':'Control+Alt+O',
-  'hk-lens':'Control+Alt+L','hk-snip':'Control+Alt+S','hk-dock':'Control+Alt+`','hk-escape':'Control+Alt+0',
+  'hk-lens':'Control+Alt+L','hk-lens-rect':'Control+Alt+K','hk-spotlens':'Control+Alt+M',
+  'hk-snip':'Control+Alt+S','hk-dock':'Control+Alt+`','hk-escape':'Control+Alt+0',
 };
 const SC_EXTRA = [['F6','hk-ring'],['F7','hk-spot'],['F8','hk-lens'],['F9','hk-draw'],
   ['Control+Alt+1','hk-ring'],['Control+Alt+2','hk-spot'],['Control+Alt+3','hk-lens'],['Control+Alt+4','hk-draw']];
