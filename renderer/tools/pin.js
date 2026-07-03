@@ -270,3 +270,48 @@ async function recordRegion(x,y,w,h){
   stopBtn.onclick=done;
 }
 
+/* ===== 전체 화면 녹화 → 파일 저장 (핀 아님, webm) =====
+   독·펜 필기도 화면에 보이는 그대로 녹화에 담김 (판서 과정 기록용) */
+let fullRecOn=false;
+async function startFullRec(){
+  if(fullRecOn){toast('이미 녹화 중이에요 — 아래 정지 버튼으로 끝내주세요');return;}
+  const src=await ipc.getScreenSource();
+  if(!src){toast('화면 녹화를 시작할 수 없어요');return;}
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:src.id,
+        maxWidth:1920,maxHeight:1080}}
+    });
+  }catch(e){toast('화면 캡처 권한이 필요해요');return;}
+  let rec;
+  try{rec=new MediaRecorder(stream,{mimeType:'video/webm'});}
+  catch(e){try{rec=new MediaRecorder(stream);}catch(e2){toast('녹화 미지원 환경');stream.getTracks().forEach(t=>t.stop());return;}}
+  const chunks=[];rec.ondataavailable=ev=>{if(ev.data.size)chunks.push(ev.data);};
+  rec.onstop=async()=>{
+    fullRecOn=false;
+    stream.getTracks().forEach(t=>t.stop());
+    $('recStop').classList.remove('on');
+    const blob=new Blob(chunks,{type:'video/webm'});
+    const buf=await blob.arrayBuffer();
+    const now=new Date();
+    const fn='수업녹화_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+'.webm';
+    const r=await ipc.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:fn});
+    if(r&&r.ok)toast('💾 녹화 파일 저장 완료');
+    else if(!(r&&r.canceled))toast('저장에 실패했어요');
+  };
+  rec.start();fullRecOn=true;
+  setPanel(null);
+  const stopBtn=$('recStop');stopBtn.classList.add('on');
+  requestAnimationFrame(()=>{
+    const dd=dockDisp();
+    stopBtn.style.left=(dd.x+(dd.w-stopBtn.offsetWidth)/2)+'px';
+    stopBtn.style.top=(dd.y+dd.h-stopBtn.offsetHeight-30)+'px';
+  });
+  let sec=0;stopBtn.textContent='⏹ 녹화 정지 0:00';
+  const tmr=setInterval(()=>{sec++;stopBtn.textContent='⏹ 녹화 정지 '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');},1000);
+  stopBtn.onclick=()=>{clearInterval(tmr);if(rec.state!=='inactive')rec.stop();};
+}
+$('fullRecBtn')&&$('fullRecBtn').addEventListener('click',startFullRec);
+
