@@ -4,7 +4,7 @@
 let zoomOn=false; // 다른 파일(pen.js의 ESC 체인, app.js의 allOff)에서 참조하는 전역 상태
 (function(){
   const wrap=$('zoomWrap'); if(!wrap)return;
-  const img=$('zoomImg'),hint=$('zoomHint');
+  const img=$('zoomImg'),hint=$('zoomHint'),dim=$('zoomDim');
   let B=null,S=1,tx=0,ty=0;
   registerCaptureMode(()=>zoomOn,{hidesPointer:false}); // [클릭통과 규칙] 확대 중엔 통과 차단
   function apply(){img.style.transform=`translate(${tx}px,${ty}px) scale(${S})`;}
@@ -18,6 +18,7 @@ let zoomOn=false; // 다른 파일(pen.js의 ESC 체인, app.js의 allOff)에서
     if(!res){toast('📷 화면 캡처에 실패했어요. 다시 시도해 주세요');return;}
     B=res.bounds;img.src=res.dataURL;
     img.style.left='0px';img.style.top='0px';img.style.width=B.w+'px';img.style.height=B.h+'px';
+    dim.style.left=B.x+'px';dim.style.top=B.y+'px';dim.style.width=B.w+'px';dim.style.height=B.h+'px';
     S=1;tx=B.x;ty=B.y;apply();
     hint.style.left=(B.x+B.w/2)+'px';hint.style.top=(B.y+14)+'px';
     zoomOn=true;wrap.classList.add('on');

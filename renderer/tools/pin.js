@@ -168,6 +168,7 @@ async function startSnip(){
   const im=$('snipImg');
   im.src=res.dataURL;
   im.style.cssText=`left:${snipB.x}px;top:${snipB.y}px;width:${snipB.w}px;height:${snipB.h}px;inset:auto;`;
+  $('snipDim').style.cssText=`left:${snipB.x}px;top:${snipB.y}px;width:${snipB.w}px;height:${snipB.h}px;`;
   const h=$('snipHint');
   h.style.left=(snipB.x+snipB.w/2)+'px';h.style.top=(snipB.y+16)+'px';
   snipOn=true;snipWrap.classList.add('on');setIgnore(false);
