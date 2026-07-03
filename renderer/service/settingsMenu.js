@@ -230,6 +230,7 @@
     ['hk-lens','🔍 돋보기(원형)','Control+Alt+L'],
     ['hk-lens-rect','⬜ 돋보기(사각형)','Control+Alt+K'],
     ['hk-spotlens','🔦🔍 스포트라이트+돋보기 동시','Control+Alt+M'],
+    ['hk-zoom','🖼️ 화면 정지 확대','Control+Alt+Z'],
     ['hk-snip','📷 영역 캡처','Control+Alt+S'],
     ['hk-dock','📌 툴바 표시/숨김','Control+Alt+`'],
     ['hk-escape','⛔ 모두 끄기','Control+Alt+0'],

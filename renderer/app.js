@@ -242,6 +242,7 @@ function allOff(){
   syncPtr();
   toggleDraw(false);
   if(snipOn)endSnip();
+  if(window.zoomOff)window.zoomOff();
   $('nStop').click();closeGame();closeCam();
   if(drawWrap)drawWrap.classList.remove('on');
   if(shadeWrap)shadeWrap.classList.remove('on');
@@ -259,6 +260,7 @@ ipc.onHotkey(ch=>{
       PS.spot=bothOn?0:1;setLens(bothOn?0:1);syncPtr();
       break;
     }
+    case 'hk-zoom': if(window.toggleFreezeZoom)toggleFreezeZoom();break;
     case 'hk-draw': toggleDraw();break;
     case 'hk-snip': startSnip();break;
     case 'hk-dock': dock.classList.contains('hide')?expandDock():collapseDock();break;

@@ -424,6 +424,12 @@ body.ptr-over-ui #halo{display:none!important;}
 #tFloat .tf.done{color:var(--red);animation:bl .55s infinite;}
 #tFloat .tx{border:none;background:none;color:#6b7884;font-size:15px;cursor:pointer;}
 #tFloat .tx:hover{color:var(--red);}
+/* 화면 정지 확대 (freeze zoom) — 독(70)·펜(활성 56)보다 아래라서 확대 상태에서 필기 가능 */
+#zoomWrap{position:fixed;inset:0;z-index:45;display:none;overflow:hidden;background:rgba(8,11,15,.92);cursor:grab;}
+#zoomWrap.on{display:block;}
+#zoomWrap:active{cursor:grabbing;}
+#zoomWrap img{position:absolute;transform-origin:0 0;user-select:none;-webkit-user-drag:none;}
+#zoomHint{position:absolute;transform:translateX(-50%);padding:7px 14px;background:rgba(22,28,36,.92);border:1px solid var(--line);border-radius:10px;font-size:11.5px;color:#cdd8e2;white-space:nowrap;z-index:2;}
 .sch-help{font-size:11px;color:#9fb0bf;margin-bottom:8px;line-height:1.6;}
 .sch-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:#cdd8e2;margin:4px 0 10px;cursor:pointer;}
 .sch-msg{font-size:11px;color:#6b7884;margin-top:8px;min-height:14px;}
@@ -987,6 +993,7 @@ body.light .lar-res{color:#9a6a1e;}
     <div class="shape"><button id="shC" class="on">● 원형</button><button id="shR">▬ 사각형</button></div>
   </div>
   <div class="mgrp"><button class="mbtn" id="mLens"><span class="mi">🔍</span>돋보기 (확대)<span class="key">F8</span></button></div>
+  <div class="mgrp"><button class="mbtn" id="mZoom"><span class="mi">🖼️</span>화면 정지 확대<span class="key">Ctrl+Alt+Z</span></button></div>
   <div class="srow"><span>크기</span><input type="range" id="pSize" min="80" max="600" value="200"></div>
   <div id="pStat">현재: <b>꺼짐</b></div>
 </div>
@@ -1171,6 +1178,10 @@ body.light .lar-res{color:#9a6a1e;}
 </div>
 
 <button id="recStop" class="iv">⏹ 녹화 정지</button>
+<div id="zoomWrap" class="iv">
+  <img id="zoomImg" draggable="false">
+  <div id="zoomHint">🖼️ 휠: 확대/축소 · 드래그: 이동 · ESC/우클릭: 닫기 (이 상태에서 펜 필기도 돼요)</div>
+</div>
 <div id="noiseAlert"></div>
 <div id="onboardWrap" class="iv">
   <div class="ob-card">
@@ -1633,6 +1644,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <script src="app.js"></script>
 <script src="tools/timer.js"></script>
 <script src="tools/pointer.js"></script>
+<script src="tools/zoom.js"></script>
 <script src="tools/noise.js"></script>
 <script src="tools/qr.js"></script>
 <script src="tools/pin.js"></script>
