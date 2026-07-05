@@ -4,8 +4,7 @@ let pillMoved=false;
 function collapseDock(){
   const r=dock.getBoundingClientRect();
   dock.classList.add('hide');pill.classList.add('on');
-  Object.values(panels).forEach(p=>p.classList.remove('on'));openPanel=null;
-  document.querySelectorAll('.tool[data-p]').forEach(b=>b.classList.remove('on'));
+  // 열려있던 패널(독편집·명단 등)은 그대로 둔다 — 독을 접어도 작업 중이던 팝업은 유지
   // pill을 독이 있던 그 자리에 (중앙 이동 ✕)
   const pr=pill.getBoundingClientRect();
   const p=clampDock(r.left+r.width/2-pr.width/2, r.top+r.height/2-pr.height/2, pr.width, pr.height);

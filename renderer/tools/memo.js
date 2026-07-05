@@ -1,5 +1,36 @@
 /* ===== 메모 — v0.4: 부분 글자 크기 (선택한 단어만) ===== */
 const MCOLS=['#FFF3A3','#FFB3C6','#B3F0D4','#C7D2FF'];let mCnt=0;
+// 모서리에 접어둔 메모들을 세로로 쌓기 위한 화면별 스택 (edge: 'l'|'r')
+const memoFoldStacks={l:[],r:[]};
+const MFOLD_H=120, MFOLD_GAP=8;
+function restackFold(edge){
+  const d=dockDisp();
+  memoFoldStacks[edge].forEach((m,i)=>{
+    m.style.top=(d.y+16+i*(MFOLD_H+MFOLD_GAP))+'px';
+  });
+}
+function foldMemo(m,edge){
+  if(m.classList.contains('folded'))return;
+  const r=m.getBoundingClientRect();
+  m.dataset.restoreLeft=m.style.left;m.dataset.restoreTop=m.style.top;
+  m.dataset.restoreWidth=r.width+'px';
+  m.classList.add('folded','fold-'+edge);
+  const d=dispAt(r.left+r.width/2,r.top+r.height/2);
+  m.style.width='36px';m.style.height=MFOLD_H+'px';
+  m.style.left=(edge==='l'?d.x+8:d.x+d.w-36-8)+'px';
+  memoFoldStacks[edge].push(m);
+  restackFold(edge);
+}
+function unfoldMemo(m){
+  const edge=m.classList.contains('fold-l')?'l':'r';
+  memoFoldStacks[edge]=memoFoldStacks[edge].filter(x=>x!==m);
+  restackFold(edge);
+  m.classList.remove('folded','fold-l','fold-r');
+  m.style.left=m.dataset.restoreLeft||m.style.left;
+  m.style.top=m.dataset.restoreTop||m.style.top;
+  m.style.width=m.dataset.restoreWidth||'';
+  m.style.height='';
+}
 function applyFontSize(ed,dir){
   const sel=getSelection();
   const hasSel=sel.rangeCount&&!sel.isCollapsed&&ed.contains(sel.anchorNode)&&ed.contains(sel.focusNode);
@@ -52,13 +83,22 @@ $('memoBtn').addEventListener('click',()=>{
       <button class="fbtn" id="mMic" title="음성 녹음">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
-    <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
+    <span><button class="mbtn2 mfold" data-fold="l" title="왼쪽 모서리로 접기">⏴</button><button class="mbtn2 mfold" data-fold="r" title="오른쪽 모서리로 접기">⏵</button><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
+    <span class="mfoldtab">📝 펼치기</span>
   </div><div class="mtext" contenteditable="true" data-ph="메모… (단어 드래그 후 A+/A-)" style="background:${c}"></div><div class="rn"></div><div class="rs"></div><div class="re"></div><div class="rw"></div><div class="rs2"></div>`;
   document.body.appendChild(m);
   const ed=m.querySelector('.mtext');
-  const [minB,xB]=m.querySelectorAll('.mbtn2');
-  xB.addEventListener('click',()=>m.remove());
+  const [minB,xB]=m.querySelectorAll('.mbtn2:not(.mfold)');
+  xB.addEventListener('click',()=>{unfoldMemo(m);m.remove();});
   minB.addEventListener('click',()=>{m.classList.toggle('min');minB.textContent=m.classList.contains('min')?'▢':'─';});
+  // 좌/우 모서리로 접기 · 접힌 탭 클릭 시 펼치기
+  m.querySelectorAll('.mfold').forEach(b=>{
+    b.addEventListener('mousedown',e=>e.preventDefault());
+    b.addEventListener('click',()=>foldMemo(m,b.dataset.fold));
+  });
+  m.querySelector('.mbar').addEventListener('click',e=>{
+    if(m.classList.contains('folded')&&!e.target.closest('button'))unfoldMemo(m);
+  });
   // 복사 / txt 저장
   m.querySelector('#mCopy').addEventListener('mousedown',e=>e.preventDefault());
   m.querySelector('#mCopy').addEventListener('click',()=>{
@@ -119,7 +159,7 @@ $('memoBtn').addEventListener('click',()=>{
   makeDrag(m.querySelector('.mbar'),(e,s)=>{
     if(!s){const r=m.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     m.style.left=(e.clientX-s.dx)+'px';m.style.top=(e.clientY-s.dy)+'px';
-  },e=>['BUTTON','INPUT'].includes(e.target.tagName));
+  },e=>['BUTTON','INPUT'].includes(e.target.tagName)||m.classList.contains('folded'));
   // 4방향 + 모서리 리사이즈 (화면 끝 스냅)
   const SNAP=14, barH=()=>m.querySelector('.mbar').offsetHeight;
   function memoResize(sel,dir){

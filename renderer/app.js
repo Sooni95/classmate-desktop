@@ -35,6 +35,7 @@ document.querySelectorAll('.tabs').forEach(tb=>{
 });
 const dock=$('dock');
 function placePanels(){
+  if(dock.classList.contains('hide'))return; // 독이 접혀있으면(rect=0) 잘못된 위치로 재배치되지 않게 건너뜀
   const r=dock.getBoundingClientRect();
   const d=dockDisp();
   // 패널이 독이 있는 모니터를 벗어나지 않도록 클램프

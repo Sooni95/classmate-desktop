@@ -70,10 +70,16 @@
       fbStatus.className='fb-status ok';fbStatus.textContent='접수되었습니다. 감사합니다! 🧡';
       fbMsg.value='';fbContact.value='';setTimeout(closeFeedback,1400);return;
     }
-    // 서버 전송 실패 (오프라인 또는 워커 라우트 미배포)
-    if(r&&r.status===0)fbStatus.textContent='인터넷 연결을 확인한 뒤 다시 보내 주세요.';
-    else fbStatus.textContent='전송에 실패했어요. 잠시 후 다시 시도해 주세요.';
-    fbStatus.className='fb-status err';fbSend.disabled=false;
+    // 서버 전송 실패 (오프라인 또는 워커 라우트 미배포) → 메일 앱으로 폴백
+    const subject=encodeURIComponent('[ClassMate 의견] '+meta);
+    const body=encodeURIComponent(message+(contact?`\n\n연락처: ${contact}`:''));
+    try{ipc.openExternal(`mailto:${FEEDBACK_TO}?subject=${subject}&body=${body}`);
+      fbStatus.className='fb-status ok';fbStatus.textContent='서버 연결이 안 돼서 메일 앱으로 대신 보내드릴게요.';
+      setTimeout(closeFeedback,1800);
+    }catch(e){
+      fbStatus.className='fb-status err';fbStatus.textContent='전송에 실패했어요. 잠시 후 다시 시도해 주세요.';
+    }
+    fbSend.disabled=false;
   });
 
   /* --- 🧩 독 편집 (도구 표시/숨김 + 순서) --- */
@@ -160,18 +166,30 @@
         requestAnimationFrame(()=>{b.style.transition='transform .22s cubic-bezier(.2,.8,.2,1)';b.style.transform='';});}
     });
   }
+  function overDrawer(x,y){
+    if(!drawer.classList.contains('on'))return false;
+    const r=drawer.getBoundingClientRect();
+    return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+  }
   dockEl.addEventListener('pointerdown',e=>{
     if(!editing)return;
     const t=e.target.closest('.tool[data-id]');
     if(!t||e.target.classList.contains('dx'))return;
     e.preventDefault();
     dragEl=t;t.classList.add('dragging');
-    dragMove=ev=>reorderAt(ev.clientX);
-    dragUp=()=>{
+    dragMove=ev=>{
+      const over=overDrawer(ev.clientX,ev.clientY);
+      drawer.classList.toggle('drop-target',over);
+      if(!over)reorderAt(ev.clientX); // 서랍 위에 있는 동안은 독 재배치 로직을 건드리지 않음
+    };
+    dragUp=ev=>{
       document.removeEventListener('pointermove',dragMove);
       document.removeEventListener('pointerup',dragUp);
       document.removeEventListener('pointercancel',dragUp);
+      drawer.classList.remove('drop-target');
       if(dragEl){
+        // 서랍 위에서 놓으면 그 도구를 숨김 처리 (Pro는 항상 표시라 제외)
+        if(overDrawer(ev.clientX,ev.clientY)&&dragEl.dataset.id!=='pro')dragEl.style.display='none';
         dragEl.classList.remove('dragging');
         dockEl.querySelectorAll('.tool[data-id]').forEach(b=>{b.style.transition='';b.style.transform='';});
         saveCfg(currentOrder(),currentHidden());renderDrawer();dragEl=null;
