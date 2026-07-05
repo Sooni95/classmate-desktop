@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>ClassMate Desktop 소개</title>
+<style>
+  :root{
+    --or:#F68C1F;--or2:#D9760F;--dk:#161c24;--dk2:#212a36;--dk3:#2c3744;
+    --line:rgba(255,255,255,.09);--red:#e05544;--amber:#ffb020;--ink:#e7edf3;--sub:#9fb0bf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:100%;background:var(--dk);}
+  body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:var(--ink);}
+  .slide{
+    width:100%;min-height:100vh;padding:64px 88px;
+    display:flex;flex-direction:column;justify-content:center;
+    position:relative;overflow:hidden;
+    page-break-after:always;
+  }
+  .slide::before{ /* 은은한 브랜드 오렌지 글로우 */
+    content:'';position:absolute;width:900px;height:900px;border-radius:50%;
+    background:radial-gradient(circle,rgba(246,140,31,.16),transparent 70%);
+    top:-360px;right:-280px;pointer-events:none;
+  }
+  .kicker{color:var(--or);font-size:16px;font-weight:800;letter-spacing:.14em;margin-bottom:14px;text-transform:uppercase;}
+  h1{font-size:44px;font-weight:900;line-height:1.28;letter-spacing:-.01em;margin-bottom:18px;}
+  h1 b{color:var(--or);}
+  .lead{font-size:18px;color:var(--sub);line-height:1.7;max-width:760px;margin-bottom:44px;}
+
+  /* ===== Page 1: 문제 상황 ===== */
+  .chaos{display:flex;align-items:center;gap:36px;flex-wrap:wrap;position:relative;z-index:1;}
+  .tool-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;flex:1;min-width:520px;}
+  .tool-card{
+    background:var(--dk2);border:1px solid var(--line);border-radius:18px;
+    padding:22px 16px;text-align:center;position:relative;
+  }
+  .tool-card .ico{font-size:38px;display:block;margin-bottom:12px;filter:grayscale(.15);}
+  .tool-card .name{font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:4px;}
+  .tool-card .role{font-size:12px;color:var(--sub);line-height:1.5;}
+  .tool-card .pin{
+    position:absolute;top:-10px;right:-10px;width:26px;height:26px;border-radius:50%;
+    background:var(--red);color:#fff;font-size:13px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(224,85,68,.5);
+  }
+  .plus{font-size:26px;color:var(--sub);font-weight:900;align-self:center;}
+
+  .pain-row{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap;position:relative;z-index:1;}
+  .pain{
+    display:flex;align-items:center;gap:10px;background:rgba(224,85,68,.1);
+    border:1px solid rgba(224,85,68,.35);border-radius:100px;padding:11px 20px;
+    font-size:14px;font-weight:700;color:#ffb3ab;
+  }
+  .pain .dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex:none;}
+
+  .quote{
+    margin-top:44px;padding:22px 26px;border-left:4px solid var(--or);
+    background:rgba(246,140,31,.07);border-radius:0 14px 14px 0;
+    font-size:16px;color:#f3e2c9;line-height:1.7;position:relative;z-index:1;
+  }
+  .quote b{color:var(--or);}
+
+  /* ===== Page 2: 해결책 ===== */
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;background:var(--or);color:#1a1206;
+    font-weight:900;font-size:14px;padding:9px 20px;border-radius:100px;margin-bottom:22px;width:fit-content;
+  }
+  .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;position:relative;z-index:1;margin-bottom:40px;}
+  .feature{
+    background:var(--dk2);border:1px solid var(--line);border-radius:18px;padding:22px 20px;
+    transition:transform .2s;
+  }
+  .feature .ico{
+    width:46px;height:46px;border-radius:13px;background:rgba(246,140,31,.14);
+    display:flex;align-items:center;justify-content:center;font-size:23px;margin-bottom:14px;
+  }
+  .feature .name{font-size:15.5px;font-weight:800;margin-bottom:6px;}
+  .feature .desc{font-size:12.5px;color:var(--sub);line-height:1.6;}
+  .feature .from{
+    display:inline-block;margin-top:10px;font-size:11px;color:var(--or);
+    background:rgba(246,140,31,.12);padding:3px 10px;border-radius:100px;font-weight:700;
+  }
+
+  .foot-row{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    background:linear-gradient(135deg,rgba(246,140,31,.16),rgba(246,140,31,.03));
+    border:1px solid rgba(246,140,31,.3);border-radius:18px;padding:26px 32px;position:relative;z-index:1;
+  }
+  .foot-row .big{font-size:21px;font-weight:900;}
+  .foot-row .big b{color:var(--or);}
+  .foot-row .small{font-size:13px;color:var(--sub);margin-top:4px;}
+  .cta{background:var(--or);color:#1a1206;font-weight:900;font-size:14.5px;padding:14px 26px;border-radius:12px;white-space:nowrap;}
+
+  .pageno{position:absolute;bottom:28px;right:36px;font-size:12px;color:var(--sub);font-weight:700;}
+
+  @media print{
+    .slide{page-break-after:always;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== PAGE 1 ===================== -->
+<section class="slide">
+  <div class="kicker">Why ClassMate Desktop</div>
+  <h1>선생님 컴퓨터 화면엔<br>이미 <b>도구가 너무 많습니다</b></h1>
+  <p class="lead">여러 연수를 다녀보니, 수업 하나를 준비하려고 화면 캡처·확대·포인터·타이머까지<br>각각 다른 프로그램을 켜고 계셨습니다. 하나씩은 좋은 도구인데, 다 같이 켜두면 얘기가 달라집니다.</p>
+
+  <div class="chaos">
+    <div class="tool-grid">
+      <div class="tool-card"><span class="pin">1</span><span class="ico">✂️</span><div class="name">스니페이스트</div><div class="role">화면 캡처·메모</div></div>
+      <div class="tool-card"><span class="pin">2</span><span class="ico">🔍</span><div class="name">ZoomIt</div><div class="role">화면 확대·펜 필기</div></div>
+      <div class="tool-card"><span class="pin">3</span><span class="ico">🐳</span><div class="name">네이버 웨일</div><div class="role">화면 그리기·타이머</div></div>
+      <div class="tool-card"><span class="pin">4</span><span class="ico">🖱️</span><div class="name">마우스 포인터</div><div class="role">포인터 강조 프로그램</div></div>
+    </div>
+  </div>
+
+  <div class="pain-row">
+    <div class="pain"><span class="dot"></span>프로그램마다 다른 단축키</div>
+    <div class="pain"><span class="dot"></span>수업 중 창 전환 딜레이</div>
+    <div class="pain"><span class="dot"></span>중복 설치·중복 업데이트</div>
+    <div class="pain"><span class="dot"></span>발표 흐름이 자꾸 끊김</div>
+  </div>
+
+  <div class="quote">"켜야 할 프로그램이 <b>4개, 5개…</b> 수업 하나 준비하는데 이게 맞나 싶더라고요." — 연수 현장에서 만난 선생님들의 공통된 이야기</div>
+  <div class="pageno">1 / 2</div>
+</section>
+
+<!-- ===================== PAGE 2 ===================== -->
+<section class="slide">
+  <div class="badge">🎒 하나로 합쳤습니다</div>
+  <h1>수업에 필요한 도구,<br><b>ClassMate Desktop</b> 하나면 끝</h1>
+  <p class="lead">여러 프로그램에 흩어져 있던 기능을 투명 오버레이 하나로 모았습니다.<br>설치 하나, 단축키 하나, 켜져 있는 창 하나로 수업 흐름이 끊기지 않습니다.</p>
+
+  <div class="feature-grid">
+    <div class="feature">
+      <div class="ico">🖼️</div>
+      <div class="name">화면 정지 확대</div>
+      <div class="desc">화면을 그대로 멈추고 휠로 확대·드래그로 이동. 멀티모니터에서 원하는 화면을 클릭해서 확대할 수 있습니다.</div>
+      <span class="from">ZoomIt 대체</span>
+    </div>
+    <div class="feature">
+      <div class="ico">✂️</div>
+      <div class="name">영역 캡처 · 글자 추출</div>
+      <div class="desc">드래그한 영역을 바로 핀으로 붙이거나, AI로 글자만 뽑아 클립보드·메모에 저장.</div>
+      <span class="from">스니페이스트 대체</span>
+    </div>
+    <div class="feature">
+      <div class="ico">🔦</div>
+      <div class="name">스포트라이트 · 돋보기</div>
+      <div class="desc">화면 일부만 밝히거나 부분 확대. 원형/사각형, 단축키로 바로 전환.</div>
+      <span class="from">포인터 프로그램 대체</span>
+    </div>
+    <div class="feature">
+      <div class="ico">✏️</div>
+      <div class="name">펜 필기 · 도형 · 모자이크</div>
+      <div class="desc">화면 위에 바로 판서. 화살표·도형·모자이크까지 색상 단축키로 즉시 전환.</div>
+      <span class="from">웨일 그리기 대체</span>
+    </div>
+    <div class="feature">
+      <div class="ico">⏱️</div>
+      <div class="name">타이머 · 교시 스케줄</div>
+      <div class="desc">수업 타이머와 시간표 기반 자동 알림을 화면에 항상 띄워둘 수 있어요.</div>
+      <span class="from">별도 타이머 앱 대체</span>
+    </div>
+    <div class="feature">
+      <div class="ico">🎲</div>
+      <div class="name">랜덤 뽑기 · 명단 관리</div>
+      <div class="desc">제비뽑기·룰렛·사다리타기와 학생 명단·점수판까지 한 화면에서.</div>
+      <span class="from">기타 수업 도구 대체</span>
+    </div>
+  </div>
+
+  <div class="foot-row">
+    <div>
+      <div class="big">여러 개의 프로그램 대신, <b>하나의 오버레이</b></div>
+      <div class="small">교실 어디서든 같은 단축키, 같은 위치의 독(Dock) — 수업 준비 시간을 줄여드립니다.</div>
+    </div>
+    <div class="cta">지금 시작하기 →</div>
+  </div>
+  <div class="pageno">2 / 2</div>
+</section>
+
+</body>
+</html>
