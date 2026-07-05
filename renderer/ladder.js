@@ -24,6 +24,7 @@
   let rafId = 0;      // 애니메이션 RAF는 항상 이 하나만
   let lCount = 6;     // step1 인원 선택값
   let resizeT = 0;
+  let pendingQueue = []; // 애니메이션 중 들어온 클릭을 버리지 않고 순서대로 재생하기 위한 대기열
 
   // ---------- 유틸 ----------
   const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
@@ -32,6 +33,7 @@
   function cancelAnim() {
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
     if (S) S.busy = false;
+    pendingQueue = [];
     setBusyUI(false);
   }
   function setBusyUI(b) {
@@ -255,6 +257,7 @@
         S.traces.push({ col: path.col, pts: path.pts, startCol: path.startCol, endCol: path.endCol });
         draw();
         try { if (typeof beep === 'function') beep(1); } catch (_) {}
+        if (pendingQueue.length) { const next = pendingQueue.shift(); traceFrom(next); }
       }
     };
     rafId = requestAnimationFrame(frame);
@@ -262,8 +265,13 @@
 
   // ---------- 추적 (단일 진입점 → traceFrom/traceToResult 충돌 제거) ----------
   function traceFrom(c) {
-    if (!S || S.busy) return;                    // 진행 중이면 무시 (빠른 연타 안전)
+    if (!S) return;
     if (c < 0 || c >= S.n) return;
+    if (S.busy) {                                 // 애니메이션 진행 중이면 버리지 않고 대기열에 (중복 방지)
+      if (pendingQueue.indexOf(c) < 0) pendingQueue.push(c);
+      return;
+    }
+    const qi = pendingQueue.indexOf(c); if (qi >= 0) pendingQueue.splice(qi, 1);
     const idx = (S.traces || []).findIndex(t => t.startCol === c);
     if (idx >= 0) { S.traces.splice(idx, 1); draw(); return; }  // 같은 줄 재클릭 → 경로 해제(토글)
     const { endCol, pts } = pathFor(c);
