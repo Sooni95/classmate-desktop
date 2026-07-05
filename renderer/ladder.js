@@ -243,21 +243,29 @@
     S.busy = true; setBusyUI(true);
     let prog = 0, last = performance.now();
     const segs = Math.max(1, path.pts.length - 1);
+    const finishTrace = () => { // 정상 완주든 예외로 인한 강제 종료든, 항상 이 경로로 마무리 → busy 고착 방지
+      rafId = 0; S.busy = false; setBusyUI(false);
+      S.traces.push({ col: path.col, pts: path.pts, startCol: path.startCol, endCol: path.endCol });
+      draw();
+      try { if (typeof beep === 'function') beep(1); } catch (_) {}
+      if (pendingQueue.length) { const next = pendingQueue.shift(); traceFrom(next); }
+    };
     const frame = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      prog += dt * 1.4;
-      const upto = Math.min(segs, prog * segs);
-      const seg = Math.floor(upto), frac = upto - seg;
-      const drawn = path.pts.slice(0, seg + 1).map(p => ({ x: p.x, y: p.y }));
-      if (seg < segs) { const a = path.pts[seg], b = path.pts[seg + 1]; drawn.push({ x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac }); }
-      draw({ col: path.col, pts: drawn });
-      if (prog < 1) { rafId = requestAnimationFrame(frame); }
-      else {
-        rafId = 0; S.busy = false; setBusyUI(false);
-        S.traces.push({ col: path.col, pts: path.pts, startCol: path.startCol, endCol: path.endCol });
-        draw();
-        try { if (typeof beep === 'function') beep(1); } catch (_) {}
-        if (pendingQueue.length) { const next = pendingQueue.shift(); traceFrom(next); }
+      try {
+        const dt = Math.min(0.05, (now - last) / 1000); last = now;
+        prog += dt * 1.4;
+        const upto = Math.min(segs, prog * segs);
+        const seg = Math.floor(upto), frac = upto - seg;
+        const drawn = path.pts.slice(0, seg + 1).map(p => ({ x: p.x, y: p.y }));
+        if (seg < segs) { const a = path.pts[seg], b = path.pts[seg + 1]; drawn.push({ x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac }); }
+        draw({ col: path.col, pts: drawn });
+        if (prog < 1) { rafId = requestAnimationFrame(frame); }
+        else { finishTrace(); }
+      } catch (err) {
+        // frame() 안에서 예외가 나면 다음 rAF가 예약되지 않아 "경로 따라가는 중…" 상태로 영원히 멈춤 —
+        // 그런 경우에도 반드시 완주 처리해서 애니메이션이 고착되지 않게 함
+        console.error('[ladder] animate frame error', err);
+        finishTrace();
       }
     };
     rafId = requestAnimationFrame(frame);
