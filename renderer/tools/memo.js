@@ -9,7 +9,7 @@ function restackFold(edge){
     m.style.top=(d.y+16+i*(MFOLD_H+MFOLD_GAP))+'px';
   });
 }
-function foldMemo(m,edge){
+function foldMemo(m,edge,ed){
   if(m.classList.contains('folded'))return;
   const r=m.getBoundingClientRect();
   m.dataset.restoreLeft=m.style.left;m.dataset.restoreTop=m.style.top;
@@ -18,10 +18,13 @@ function foldMemo(m,edge){
   const d=dispAt(r.left+r.width/2,r.top+r.height/2);
   m.style.width='36px';m.style.height=MFOLD_H+'px';
   m.style.left=(edge==='l'?d.x+8:d.x+d.w-36-8)+'px';
+  const tab=m.querySelector('.mfoldtab');
+  if(tab){const t=(ed&&ed.innerText.trim())||'메모';tab.textContent=(t.length>10?t.slice(0,10)+'…':t);}
   memoFoldStacks[edge].push(m);
   restackFold(edge);
 }
 function unfoldMemo(m){
+  if(!m.classList.contains('folded'))return;
   const edge=m.classList.contains('fold-l')?'l':'r';
   memoFoldStacks[edge]=memoFoldStacks[edge].filter(x=>x!==m);
   restackFold(edge);
@@ -30,6 +33,15 @@ function unfoldMemo(m){
   m.style.top=m.dataset.restoreTop||m.style.top;
   m.style.width=m.dataset.restoreWidth||'';
   m.style.height='';
+}
+// 드래그로 화면 가장자리 가까이 놓으면 책갈피처럼 자동으로 접힘
+const MFOLD_EDGE=28;
+function maybeAutoFold(m,ed){
+  if(m.classList.contains('folded'))return;
+  const r=m.getBoundingClientRect();
+  const d=dispAt(r.left+r.width/2,r.top+r.height/2);
+  if(r.left-d.x<=MFOLD_EDGE)foldMemo(m,'l',ed);
+  else if(d.x+d.w-r.right<=MFOLD_EDGE)foldMemo(m,'r',ed);
 }
 function applyFontSize(ed,dir){
   const sel=getSelection();
@@ -83,22 +95,16 @@ $('memoBtn').addEventListener('click',()=>{
       <button class="fbtn" id="mMic" title="음성 녹음">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
-    <span><button class="mbtn2 mfold" data-fold="l" title="왼쪽 모서리로 접기">⏴</button><button class="mbtn2 mfold" data-fold="r" title="오른쪽 모서리로 접기">⏵</button><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
-    <span class="mfoldtab">📝 펼치기</span>
+    <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
+    <span class="mfoldtab">📝</span>
   </div><div class="mtext" contenteditable="true" data-ph="메모… (단어 드래그 후 A+/A-)" style="background:${c}"></div><div class="rn"></div><div class="rs"></div><div class="re"></div><div class="rw"></div><div class="rs2"></div>`;
   document.body.appendChild(m);
   const ed=m.querySelector('.mtext');
-  const [minB,xB]=m.querySelectorAll('.mbtn2:not(.mfold)');
+  const [minB,xB]=m.querySelectorAll('.mbtn2');
   xB.addEventListener('click',()=>{unfoldMemo(m);m.remove();});
   minB.addEventListener('click',()=>{m.classList.toggle('min');minB.textContent=m.classList.contains('min')?'▢':'─';});
-  // 좌/우 모서리로 접기 · 접힌 탭 클릭 시 펼치기
-  m.querySelectorAll('.mfold').forEach(b=>{
-    b.addEventListener('mousedown',e=>e.preventDefault());
-    b.addEventListener('click',()=>foldMemo(m,b.dataset.fold));
-  });
-  m.querySelector('.mbar').addEventListener('click',e=>{
-    if(m.classList.contains('folded')&&!e.target.closest('button'))unfoldMemo(m);
-  });
+  // 접힌 상태에서 바를 클릭하면 다시 펼침
+  m.querySelector('.mbar').addEventListener('click',()=>{ if(m.classList.contains('folded'))unfoldMemo(m); });
   // 복사 / txt 저장
   m.querySelector('#mCopy').addEventListener('mousedown',e=>e.preventDefault());
   m.querySelector('#mCopy').addEventListener('click',()=>{
@@ -156,10 +162,15 @@ $('memoBtn').addEventListener('click',()=>{
     mFi=(mFi+1)%MFONTS.length;ed.style.fontFamily=MFONTS[mFi][1];
     toast('🔤 글꼴: '+MFONTS[mFi][0]);
   });
-  makeDrag(m.querySelector('.mbar'),(e,s)=>{
-    if(!s){const r=m.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
+  const mbar=m.querySelector('.mbar');
+  let mDragMoved=false;
+  makeDrag(mbar,(e,s)=>{
+    if(!s){mDragMoved=false;const r=m.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top,sx:e.clientX,sy:e.clientY};}
+    if(Math.abs(e.clientX-s.sx)+Math.abs(e.clientY-s.sy)>4)mDragMoved=true;
     m.style.left=(e.clientX-s.dx)+'px';m.style.top=(e.clientY-s.dy)+'px';
   },e=>['BUTTON','INPUT'].includes(e.target.tagName)||m.classList.contains('folded'));
+  // 드래그를 화면 가장자리 가까이서 놓으면 책갈피처럼 자동으로 접어둠
+  mbar.addEventListener('pointerup',()=>{ if(mDragMoved)maybeAutoFold(m,ed); });
   // 4방향 + 모서리 리사이즈 (화면 끝 스냅)
   const SNAP=14, barH=()=>m.querySelector('.mbar').offsetHeight;
   function memoResize(sel,dir){
