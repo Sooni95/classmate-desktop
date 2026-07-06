@@ -26,7 +26,13 @@ function setPanel(id){
 }
 document.querySelectorAll('.tool[data-p]').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.p)));
 // 모든 패널 헤더에 닫기(✕) 버튼 추가 — ESC나 같은 아이콘 재클릭 말고도 바로 닫을 수 있게
+// (float 방식은 부모 높이에 반영이 안 돼 뒤 내용에 버튼이 가려 클릭이 막히는 문제가 있었음 →
+//  기존 내용을 별도 span으로 묶고 .ph를 flex로 만들어 안전하게 우측 정렬)
 document.querySelectorAll('.panel .ph').forEach(ph=>{
+  const title=document.createElement('span');
+  title.className='ph-title';
+  while(ph.firstChild)title.appendChild(ph.firstChild);
+  ph.appendChild(title);
   const x=document.createElement('button');
   x.className='ph-x';x.textContent='✕';x.title='닫기';
   x.addEventListener('click',e=>{e.stopPropagation();setPanel(null);});
