@@ -75,7 +75,7 @@ Object.values(panels).forEach(p=>{
     p.dataset.moved='1';
     p.style.transform='none';p.style.bottom='auto';
     p.style.left=(e.clientX-s.dx)+'px';p.style.top=(e.clientY-s.dy)+'px';
-  });
+  },e=>e.target.closest('button'));
 });
 function clampDock(x,y,w,h){
   return {
