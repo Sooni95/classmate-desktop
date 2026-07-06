@@ -161,3 +161,64 @@ if (url.pathname === '/api/meeting/status' && request.method === 'GET') {
 
 > 미배포 상태에서는 앱이 "전사 요청 실패" 메시지를 보여주지만, **녹음 파일 자체는 서버 상태와 무관하게
 > 항상 로컬에 먼저 저장**되므로 원본은 유실되지 않습니다.
+
+---
+
+# 다운로드 랜딩 페이지 집계 — /download, /api/download-count 엔드포인트 추가 안내
+
+`docs/index.html`(GitHub Pages 다운로드 랜딩 페이지)의 모든 다운로드 버튼은 GitHub 직링크가 아니라
+기존 Worker(`classmate-links.suhun099.workers.dev`)의 `/download`를 거치도록 되어 있습니다.
+집계 누락을 막기 위한 것이므로, 아래 라우트를 기존 `fetch` 핸들러에 추가하세요.
+KV 네임스페이스는 기존 `LINKS`를 그대로 재사용하고, 카운터는 `download_count:win` /
+`download_count:mac` 키로 별도 저장하므로 기존 단축URL 슬러그와 충돌하지 않습니다.
+
+```js
+const RELEASE_URLS = {
+  win: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/ClassMate-portable.exe',
+  mac: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/ClassMate-Setup-mac.dmg',
+};
+
+// === /download : 다운로드 집계 후 GitHub Release 파일로 리다이렉트 ===
+if (url.pathname === '/download') {
+  const os = url.searchParams.get('os');
+  if (os !== 'win' && os !== 'mac') {
+    return new Response('Invalid os parameter. Use ?os=win or ?os=mac', { status: 400 });
+  }
+  const key = `download_count:${os}`;
+  const current = parseInt((await env.LINKS.get(key)) || '0', 10);
+  await env.LINKS.put(key, String(current + 1));
+  return Response.redirect(RELEASE_URLS[os], 302);
+}
+
+// === /api/download-count : 누적 다운로드 수 조회 (CORS 허용, 랜딩 페이지에서 fetch) ===
+if (url.pathname === '/api/download-count') {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' },
+    });
+  }
+  const win = parseInt((await env.LINKS.get('download_count:win')) || '0', 10);
+  const mac = parseInt((await env.LINKS.get('download_count:mac')) || '0', 10);
+  return new Response(JSON.stringify({ win, mac, total: win + mac }), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    },
+  });
+}
+```
+
+> ⚠️ `RELEASE_URLS`는 현재 자동 빌드(`build.yml`)가 배포하는 `latest` 릴리즈의 실제 파일명
+> (`ClassMate-portable.exe`)을 기준으로 했습니다. **Mac 빌드는 아직 CI로 자동 배포되지 않으므로**,
+> `ClassMate-Setup-mac.dmg`를 `latest` 릴리즈에 수동으로(`npm run dist:mac` 후 업로드) 올리기 전까지는
+> Mac 다운로드 버튼이 404로 연결됩니다. Mac 빌드를 자동화하려면 `build.yml`에 macOS 러너 job을 추가하세요.
+
+## 배포
+
+```
+npx wrangler deploy
+```
+
+배포 후 `docs/index.html`의 다운로드 버튼(Windows/Mac)을 각각 눌러 리다이렉트가 되는지,
+`/api/download-count`가 `{ win, mac, total }`을 반환하는지 확인하세요.

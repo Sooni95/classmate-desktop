@@ -284,29 +284,73 @@ function createOverlay() {
     }
   });
 
-  // 회의 녹음 → 화자분리 전사 제출 (Pro 전용, AssemblyAI 프록시). 오디오가 커서
-  // 업로드+분석에 시간이 걸리므로 비동기 job으로 제출만 하고, meeting-status로 폴링한다.
-  ipcMain.handle('meeting-submit', async (_e, { bytes, proKey }) => {
+  // 회의 녹음 → 화자분리 전사 제출. 오디오가 커서 업로드+분석에 시간이 걸리므로
+  // 비동기 job으로 제출만 하고, meeting-status로 폴링한다.
+  // proKey(회사 서버 경유)가 없거나 서버 라우트가 아직 미배포면, 개인 AssemblyAI
+  // 키(apiKey)로 곧바로 호출 — Worker 배포 없이도 바로 쓸 수 있게 하기 위함.
+  ipcMain.handle('meeting-submit', async (_e, { bytes, proKey, apiKey }) => {
+    const buf = Buffer.from(bytes);
+    if (proKey) {
+      try {
+        const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/submit?proKey=' + encodeURIComponent(proKey), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: buf,
+        });
+        if (res.status !== 404) {
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) return { ok: true, id: data.id };
+          if (!apiKey) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+        } else if (!apiKey) return { ok: false, message: 'NO_ROUTE' };
+      } catch (err) {
+        if (!apiKey) return { ok: false, message: 'NET:' + String(err && err.message || err) };
+      }
+    }
+    if (!apiKey) return { ok: false, message: 'NO_KEY' };
     try {
-      const buf = Buffer.from(bytes);
-      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/submit?proKey=' + encodeURIComponent(proKey), {
+      const upRes = await net.fetch('https://api.assemblyai.com/v2/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
+        headers: { authorization: apiKey },
         body: buf,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
-      return { ok: true, id: data.id };
+      const upData = await upRes.json().catch(() => ({}));
+      if (!upRes.ok || !upData.upload_url) return { ok: false, message: (upData.error) || ('업로드 실패 HTTP ' + upRes.status) };
+      const trRes = await net.fetch('https://api.assemblyai.com/v2/transcript', {
+        method: 'POST',
+        headers: { authorization: apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio_url: upData.upload_url, speaker_labels: true, language_code: 'ko' }),
+      });
+      const trData = await trRes.json().catch(() => ({}));
+      if (!trRes.ok || !trData.id) return { ok: false, message: (trData.error) || ('전사 요청 실패 HTTP ' + trRes.status) };
+      return { ok: true, id: trData.id };
     } catch (err) {
       return { ok: false, message: 'NET:' + String(err && err.message || err) };
     }
   });
-  ipcMain.handle('meeting-status', async (_e, { id, proKey }) => {
+  ipcMain.handle('meeting-status', async (_e, { id, proKey, apiKey }) => {
+    if (proKey) {
+      try {
+        const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/status?id=' + encodeURIComponent(id) + '&proKey=' + encodeURIComponent(proKey));
+        if (res.status !== 404) {
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) return { ok: true, status: data.status, utterances: data.utterances, text: data.text };
+          if (!apiKey) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+        } else if (!apiKey) return { ok: false, message: 'NO_ROUTE' };
+      } catch (err) {
+        if (!apiKey) return { ok: false, message: 'NET:' + String(err && err.message || err) };
+      }
+    }
+    if (!apiKey) return { ok: false, message: 'NO_KEY' };
     try {
-      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/status?id=' + encodeURIComponent(id) + '&proKey=' + encodeURIComponent(proKey));
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
-      return { ok: true, status: data.status, utterances: data.utterances, text: data.text };
+      const stRes = await net.fetch('https://api.assemblyai.com/v2/transcript/' + encodeURIComponent(id), {
+        headers: { authorization: apiKey },
+      });
+      const stData = await stRes.json().catch(() => ({}));
+      if (!stRes.ok) return { ok: false, message: (stData.error) || ('상태 확인 실패 HTTP ' + stRes.status) };
+      if (stData.status === 'error') return { ok: true, status: 'error', message: stData.error };
+      if (stData.status !== 'completed') return { ok: true, status: stData.status };
+      const utterances = (stData.utterances || []).map(u => ({ speaker: u.speaker, text: u.text }));
+      return { ok: true, status: 'completed', utterances, text: stData.text };
     } catch (err) {
       return { ok: false, message: 'NET:' + String(err && err.message || err) };
     }

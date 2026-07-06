@@ -31,6 +31,14 @@
 
   function setStatus(msg,isErr){statusEl.textContent=msg||'';statusEl.className='mt-status'+(isErr?' err':'');}
 
+  // 개인 AssemblyAI 키 (회사 서버 미배포 상태에서도 바로 쓸 수 있도록)
+  $('mtKey').value=localStorage.getItem('asm_key')||'';
+  $('mtGear').addEventListener('click',()=>$('mtKeyRow').classList.toggle('on'));
+  $('mtKeySave').addEventListener('click',()=>{
+    localStorage.setItem('asm_key',$('mtKey').value.trim());
+    $('mtKeyRow').classList.remove('on');toast('🔑 API 키 저장됨');
+  });
+
   // ---------- 녹음 ----------
   let recOn=false,mediaRec=null,recStream=null,recChunks=[],recTimer=null,recSec=0;
   function fmtTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
@@ -68,14 +76,22 @@
 
     // 2) 화자분리 전사 제출 → 폴링
     const proKey=localStorage.getItem('cm_pro_key')||'';
+    const apiKey=localStorage.getItem('asm_key')||'';
+    if(!proKey&&!apiKey){setStatus('⚙ 위 "화자분리 API 키 설정"에서 AssemblyAI 키를 먼저 등록해 주세요',true);return;}
     setStatus('서버로 전송 중…');
-    const sub=await ipc.meetingSubmit({bytes,proKey});
-    if(!sub||!sub.ok){setStatus('전사 요청 실패: '+((sub&&sub.message)||'서버 연결 확인'),true);return;}
+    const sub=await ipc.meetingSubmit({bytes,proKey,apiKey});
+    if(!sub||!sub.ok){
+      const m=sub&&sub.message;
+      setStatus(m==='NO_KEY'?'⚙ AssemblyAI 키가 필요해요 (위 "화자분리 API 키 설정")'
+        :m==='NO_ROUTE'?'서버에 아직 배포되지 않았어요 — 개인 키를 등록하면 바로 쓸 수 있어요'
+        :'전사 요청 실패: '+(m||'서버 연결 확인'),true);
+      return;
+    }
     setStatus('화자 분리 중… (녹음 길이에 따라 시간이 걸려요)');
     let utterances=null,tries=0;
     while(tries<120){ // 최대 약 6분 폴링
       await new Promise(r=>setTimeout(r,3000));
-      const st=await ipc.meetingStatus({id:sub.id,proKey});
+      const st=await ipc.meetingStatus({id:sub.id,proKey,apiKey});
       if(!st||!st.ok){setStatus('상태 확인 실패: '+((st&&st.message)||'서버 연결 확인'),true);return;}
       if(st.status==='completed'){utterances=st.utterances;break;}
       if(st.status==='error'){setStatus('전사 처리 중 오류가 발생했어요',true);return;}
