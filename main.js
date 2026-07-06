@@ -284,6 +284,34 @@ function createOverlay() {
     }
   });
 
+  // 회의 녹음 → 화자분리 전사 제출 (Pro 전용, AssemblyAI 프록시). 오디오가 커서
+  // 업로드+분석에 시간이 걸리므로 비동기 job으로 제출만 하고, meeting-status로 폴링한다.
+  ipcMain.handle('meeting-submit', async (_e, { bytes, proKey }) => {
+    try {
+      const buf = Buffer.from(bytes);
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/submit?proKey=' + encodeURIComponent(proKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: buf,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+      return { ok: true, id: data.id };
+    } catch (err) {
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
+  ipcMain.handle('meeting-status', async (_e, { id, proKey }) => {
+    try {
+      const res = await net.fetch('https://classmate-links.suhun099.workers.dev/api/meeting/status?id=' + encodeURIComponent(id) + '&proKey=' + encodeURIComponent(proKey));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return { ok: false, message: data.message || ('HTTP ' + res.status) };
+      return { ok: true, status: data.status, utterances: data.utterances, text: data.text };
+    } catch (err) {
+      return { ok: false, message: 'NET:' + String(err && err.message || err) };
+    }
+  });
+
   // Pro 라이선스 키 검증 (Cloudflare Worker)
   ipcMain.handle('verify-pro', async (_e, { key }) => {
     try {

@@ -101,3 +101,63 @@ if (url.pathname === '/api/ocr' && request.method === 'POST') {
 ```
 
 > 만료 키 처리(`until` 필드)가 pro-verify에 있다면 같은 검증을 여기에도 복사하세요.
+
+---
+
+# 회의 녹음 화자분리·요약 (Pro) — /api/meeting/submit, /api/meeting/status 엔드포인트 추가 안내
+
+앱의 "🎙️ 회의 녹음·화자분리·요약" 기능은 [AssemblyAI](https://www.assemblyai.com/)로 화자분리(diarization)
+전사를 처리합니다. 오디오가 길면 처리에 시간이 걸리므로, 제출(submit)과 상태 확인(status)을 분리한
+비동기 job 방식입니다. **AssemblyAI 계정을 만들고 API 키를 발급받아 아래처럼 시크릿으로 등록하세요.**
+
+```
+npx wrangler secret put ASSEMBLYAI_KEY
+# 값: AssemblyAI 대시보드에서 발급받은 API 키
+```
+
+```js
+// === /api/meeting/submit : 녹음 파일 업로드 → AssemblyAI에 화자분리 전사 요청 제출 ===
+if (url.pathname === '/api/meeting/submit' && request.method === 'POST') {
+  const proKey = url.searchParams.get('proKey');
+  const rec = proKey ? await env.PROKEYS.get(proKey) : null;
+  if (!rec) return Response.json({ ok: false, message: 'invalid proKey' }, { status: 403 });
+  const audioBuf = await request.arrayBuffer(); // 앱이 application/octet-stream으로 오디오 원본을 보냄
+  // 1) AssemblyAI에 오디오 업로드 → 임시 URL 발급
+  const upRes = await fetch('https://api.assemblyai.com/v2/upload', {
+    method: 'POST',
+    headers: { authorization: env.ASSEMBLYAI_KEY },
+    body: audioBuf,
+  });
+  const upData = await upRes.json();
+  if (!upRes.ok || !upData.upload_url) return Response.json({ ok: false, message: 'upload failed' }, { status: 502 });
+  // 2) 화자분리(speaker_labels) 전사 작업 생성 — 한국어 지정
+  const trRes = await fetch('https://api.assemblyai.com/v2/transcript', {
+    method: 'POST',
+    headers: { authorization: env.ASSEMBLYAI_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audio_url: upData.upload_url, speaker_labels: true, language_code: 'ko' }),
+  });
+  const trData = await trRes.json();
+  if (!trRes.ok || !trData.id) return Response.json({ ok: false, message: 'transcript request failed' }, { status: 502 });
+  return Response.json({ ok: true, id: trData.id });
+}
+
+// === /api/meeting/status : 전사 작업 상태 확인 (완료되면 화자별 발언 목록 반환) ===
+if (url.pathname === '/api/meeting/status' && request.method === 'GET') {
+  const proKey = url.searchParams.get('proKey');
+  const rec = proKey ? await env.PROKEYS.get(proKey) : null;
+  if (!rec) return Response.json({ ok: false, message: 'invalid proKey' }, { status: 403 });
+  const id = url.searchParams.get('id');
+  const stRes = await fetch('https://api.assemblyai.com/v2/transcript/' + id, {
+    headers: { authorization: env.ASSEMBLYAI_KEY },
+  });
+  const stData = await stRes.json();
+  if (!stRes.ok) return Response.json({ ok: false, message: 'status check failed' }, { status: 502 });
+  if (stData.status === 'error') return Response.json({ ok: true, status: 'error' });
+  if (stData.status !== 'completed') return Response.json({ ok: true, status: stData.status });
+  const utterances = (stData.utterances || []).map(u => ({ speaker: u.speaker, text: u.text }));
+  return Response.json({ ok: true, status: 'completed', utterances, text: stData.text });
+}
+```
+
+> 미배포 상태에서는 앱이 "전사 요청 실패" 메시지를 보여주지만, **녹음 파일 자체는 서버 상태와 무관하게
+> 항상 로컬에 먼저 저장**되므로 원본은 유실되지 않습니다.

@@ -1111,6 +1111,7 @@ body.light .lar-res{color:#9a6a1e;}
     <button class="btn-cam" id="camBtn">📷 카메라로 찍어 붙이기</button>
     <button class="btn-rec" id="fullRecBtn">⏺ 전체 화면 녹화 → 파일 저장</button>
     <button class="btn-go prolock" data-pro="ocr" id="ocrBtn">🔤 영역 글자 추출 (OCR) <span class="pro-badge">🔒PRO</span></button>
+    <button class="btn-go prolock" data-pro="meeting" id="meetingBtn">🎙️ 회의 녹음·화자분리·요약 <span class="pro-badge">🔒PRO</span></button>
   </div>
   <p style="font-size:10.5px;color:#6b7884;margin-top:9px">전역 단축키: <b>Ctrl+Alt+S</b> (단축키 설정에서 변경 가능)</p>
 </div>
@@ -1409,6 +1410,33 @@ body.light .lar-res{color:#9a6a1e;}
 #fbSend:disabled{background:var(--dk3);color:#6b7884;cursor:default;}
 .fb-status{font-size:12px;margin-top:10px;text-align:center;min-height:16px;}
 .fb-status.ok{color:#34c759;} .fb-status.err{color:#e05544;}
+/* 🎙️ 회의 녹음·화자분리·요약 */
+#meetingModal{position:fixed;z-index:120;display:none;left:0;top:0;}
+#meetingModal.on{display:block;}
+.mt-card{position:fixed;left:0;top:0;width:560px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;background:var(--dk);border:2px solid var(--or);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);cursor:move;}
+.mt-card button,.mt-card textarea{cursor:auto;}
+.mt-card button{cursor:pointer;}
+.mt-head{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#fff;cursor:grab;flex:none;}
+.mt-head:active{cursor:grabbing;}
+.mt-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
+.mt-sub{font-size:11.5px;color:#9fb0bf;margin:8px 0 12px;line-height:1.5;flex:none;}
+.mt-rec-row{display:flex;align-items:center;gap:10px;flex:none;}
+#mtRecBtn{flex:1;border:none;border-radius:10px;padding:12px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;background:var(--or);color:#fff;}
+#mtRecBtn.on{background:var(--red);}
+.mt-timer{font-size:13px;font-weight:800;color:#cdd8e2;min-width:52px;text-align:center;}
+.mt-status{font-size:12.5px;color:#9fb0bf;margin:12px 0 6px;text-align:center;min-height:16px;flex:none;}
+.mt-status.err{color:#e05544;}
+.mt-result{display:none;flex-direction:column;min-height:0;flex:1;margin-top:8px;}
+.mt-result.on{display:flex;}
+.mt-tabs{display:flex;gap:6px;margin-bottom:8px;flex:none;}
+.mt-tab{border:1px solid var(--line);background:var(--dk2);color:#9fb0bf;border-radius:8px;padding:6px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.mt-tab.on{background:var(--or);color:#fff;border-color:var(--or);}
+.mt-body{flex:1;overflow:auto;background:var(--dk2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;line-height:1.7;color:#e7edf3;white-space:pre-wrap;min-height:120px;}
+.mt-utt{margin-bottom:8px;}
+.mt-utt b{color:var(--or);}
+.mt-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex:none;}
+.mt-btns button{border:none;border-radius:9px;padding:8px 16px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;background:var(--dk2);color:#cdd8e2;}
+.mt-btns button:hover{background:var(--dk3);}
 /* 💾 설정·명단 백업 */
 #scModal{position:fixed;z-index:122;display:none;left:0;top:0;}
 #scModal.on{display:block;}
@@ -1650,6 +1678,29 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
     <div id="fbStatus" class="fb-status"></div>
   </div>
 </div>
+<div id="meetingModal" class="iv">
+  <div class="mt-card">
+    <div class="mt-head"><span>🎙️ 회의 녹음·화자분리·요약</span><button id="mtClose">✕</button></div>
+    <div class="mt-sub">녹음이 끝나면 자동으로 파일을 저장하고, 화자별 대화 내용과 요약을 만들어 드려요.</div>
+    <div class="mt-rec-row">
+      <button id="mtRecBtn">⏺ 녹음 시작</button>
+      <span class="mt-timer" id="mtTimer">0:00</span>
+    </div>
+    <div id="mtStatus" class="mt-status"></div>
+    <div class="mt-result" id="mtResult">
+      <div class="mt-tabs">
+        <button class="mt-tab on" data-t="summary">📝 요약</button>
+        <button class="mt-tab" data-t="transcript">🗣 화자별 전사</button>
+      </div>
+      <div class="mt-body" id="mtSummaryBody"></div>
+      <div class="mt-body" id="mtTranscriptBody" style="display:none"></div>
+      <div class="mt-btns">
+        <button id="mtCopy">📋 복사</button>
+        <button id="mtSave">💾 텍스트로 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 <script src="core/ipc.js"></script>
 <script src="core/display.js"></script>
@@ -1676,6 +1727,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <script src="service/pro.js"></script>
 <script src="tools/export.js"></script>
 <script src="service/ai.js"></script>
+<script src="tools/meeting.js"></script>
 <script src="service/onboarding.js"></script>
 <script src="dock/dock.js"></script>
 <script src="ladder.js"></script>
