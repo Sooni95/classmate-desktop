@@ -65,11 +65,11 @@
     "mac": {
       "icon": "build/icon.png",
       "target": [
-        { "target": "dmg" },
-        { "target": "zip" }
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
       ],
       "category": "public.app-category.education",
-      "artifactName": "ClassMate-mac-${arch}.${ext}",
+      "artifactName": "ClassMate-Setup-mac.${ext}",
       "hardenedRuntime": false,
       "identity": null
     },

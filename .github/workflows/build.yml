@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Windows EXE + macOS DMG
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-win:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,9 +32,37 @@ jobs:
           tag_name: latest
           name: ClassMate 최신 빌드
           body: |
-            자동 빌드된 Windows 버전입니다.
-            - **ClassMate-portable.exe** : 설치 없이 더블클릭 실행 (추천)
-            - **ClassMate-Setup.exe** : 설치 버전
-            ⚠ 서명 없는 베타라 Windows 경고가 뜨면 "추가 정보 → 실행"
+            자동 빌드된 버전입니다.
+            - **ClassMate-portable.exe** : Windows, 설치 없이 더블클릭 실행 (추천)
+            - **ClassMate-Setup.exe** : Windows 설치 버전
+            - **ClassMate-Setup-mac.dmg** : macOS (Intel·Apple Silicon 공용)
+            ⚠ 서명 없는 베타라 Windows는 "추가 정보 → 실행", macOS는 앱 아이콘을
+            우클릭(또는 control+클릭) 후 "열기"를 눌러야 실행됩니다.
           files: |
             dist/*.exe
+
+  build-mac:
+    needs: build-win
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build DMG (universal: Intel + Apple Silicon)
+        run: npm run dist:mac -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload mac build to "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: ClassMate 최신 빌드
+          files: |
+            dist/*.dmg
