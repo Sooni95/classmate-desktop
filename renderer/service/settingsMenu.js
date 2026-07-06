@@ -40,46 +40,21 @@
     applyAlpha(a);
   });
 
-  /* --- ✉️ 의견 보내기 --- */
-  const fbModal=$('feedbackModal'),fbMsg=$('fbMsg'),fbContact=$('fbContact'),fbSend=$('fbSend'),fbStatus=$('fbStatus');
-  const fbCard=fbModal.querySelector('.fb-card'),fbHead=fbModal.querySelector('.fb-head');
-  const FEEDBACK_TO='ksh0502@nepes.co.kr'; // 메일 앱 폴백 수신처 (NEPES 회사메일; 차단 시 ksh0502@kocoa.or.kr 로 변경)
+  /* --- ✉️ 의견 보내기 (MVP: 서버 접수 대신 연락처 안내 + 복사) --- */
+  const fbModal=$('feedbackModal');
+  const fbCard=fbModal.querySelector('.fb-card');
   function openFeedback(){
-    fbStatus.textContent='';fbStatus.className='fb-status';fbSend.disabled=false;
     fbModal.classList.add('on');setIgnore(false);ipc.grabFocus&&ipc.grabFocus();
-    // 독이 있는 모니터 중앙에 (멀티모니터 중간 걸침 방지)
-    centerOnDockDisplay(fbCard);
-    setTimeout(()=>fbMsg.focus(),60);
+    centerOnDockDisplay(fbCard); // 독이 있는 모니터 중앙에 (멀티모니터 중간 걸침 방지)
   }
   function closeFeedback(){fbModal.classList.remove('on');}
   $('fbClose').addEventListener('click',closeFeedback);
-  $('fbCancel').addEventListener('click',closeFeedback);
-  // 카드 어디를 잡아도 이동 (단, 입력칸·버튼 누를 땐 드래그 안 함 → 타이핑/클릭 정상)
   makeDrag(fbCard,(e,s)=>{
     if(!s){const r=fbCard.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
     fbCard.style.left=(e.clientX-s.dx)+'px';fbCard.style.top=(e.clientY-s.dy)+'px';
-  },e=>{const t=e.target;return t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='BUTTON'||t.id==='fbClose';});
-  fbSend.addEventListener('click',async()=>{
-    const message=fbMsg.value.trim();
-    if(!message){fbStatus.className='fb-status err';fbStatus.textContent='내용을 입력해 주세요.';return;}
-    const contact=fbContact.value.trim();
-    fbSend.disabled=true;fbStatus.className='fb-status';fbStatus.textContent='보내는 중…';
-    let meta='';try{const i=await ipc.getAppInfo();meta='v'+((i&&i.version)||'?');}catch(e){}
-    let r=null;try{r=await ipc.feedback({message,contact,meta});}catch(e){r=null;}
-    if(r&&r.ok){
-      fbStatus.className='fb-status ok';fbStatus.textContent='접수되었습니다. 감사합니다! 🧡';
-      fbMsg.value='';fbContact.value='';setTimeout(closeFeedback,1400);return;
-    }
-    // 서버 전송 실패 (오프라인 또는 워커 라우트 미배포) → 메일 앱으로 폴백
-    const subject=encodeURIComponent('[ClassMate 의견] '+meta);
-    const body=encodeURIComponent(message+(contact?`\n\n연락처: ${contact}`:''));
-    try{ipc.openExternal(`mailto:${FEEDBACK_TO}?subject=${subject}&body=${body}`);
-      fbStatus.className='fb-status ok';fbStatus.textContent='서버 연결이 안 돼서 메일 앱으로 대신 보내드릴게요.';
-      setTimeout(closeFeedback,1800);
-    }catch(e){
-      fbStatus.className='fb-status err';fbStatus.textContent='전송에 실패했어요. 잠시 후 다시 시도해 주세요.';
-    }
-    fbSend.disabled=false;
+  },e=>e.target.tagName==='BUTTON'||e.target.id==='fbClose');
+  fbCard.querySelectorAll('.fb-copy').forEach(b=>{
+    b.addEventListener('click',()=>{ipc.copyText(b.dataset.copy);toast('📋 복사됨');});
   });
 
   /* --- 🧩 독 편집 (도구 표시/숨김 + 순서) --- */

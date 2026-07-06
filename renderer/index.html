@@ -41,6 +41,7 @@ body{pointer-events:none;}
 .panel{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:65;width:330px;background:var(--dk);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);color:#e7edf3;padding:18px;display:none;word-break:keep-all;overflow-wrap:break-word;}
 .panel.on{display:block;}
 .ph{font-size:13px;font-weight:600;color:#9fb0bf;margin-bottom:13px;}
+.ph::after{content:'';display:table;clear:both;}
 .ph-x{float:right;border:none;background:var(--dk2);color:#9fb0bf;border-radius:6px;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1;margin-left:6px;}
 .ph-x:hover{background:var(--red);color:#fff;}
 .ph::before{content:'';display:inline-block;width:15px;height:15px;border-radius:4px;background:url('../assets/logo.png') center/cover;margin-right:8px;vertical-align:-3px;}
@@ -747,6 +748,8 @@ body.light .lar-res{color:#9a6a1e;}
 .pro-lead b{color:var(--or);}
 .pro-list{display:flex;flex-direction:column;gap:11px;margin-bottom:17px;}
 .pro-item{display:flex;gap:11px;align-items:flex-start;}
+button.pro-item{width:100%;text-align:left;border:none;background:none;font-family:inherit;cursor:pointer;padding:6px;border-radius:10px;}
+button.pro-item:hover{background:rgba(246,140,31,.1);}
 .pro-item .pi-ic{font-size:21px;width:30px;text-align:center;flex-shrink:0;}
 .pro-item .pi-t{font-size:13.5px;font-weight:700;color:#e7edf3;}
 .pro-item .pi-d{font-size:11.5px;color:#9fb0bf;line-height:1.5;margin-top:2px;}
@@ -1115,9 +1118,8 @@ body.light .lar-res{color:#9a6a1e;}
     <button class="btn-rec" id="snipRecBtn">🎬 영역 녹화해 붙이기 (최대 15초)</button>
     <button class="btn-cam" id="camBtn">📷 카메라로 찍어 붙이기</button>
     <button class="btn-rec" id="fullRecBtn">⏺ 전체 화면 녹화 → 파일 저장</button>
-    <button class="btn-go prolock" data-pro="ocr" id="ocrBtn">🔤 영역 글자 추출 (OCR) <span class="pro-badge">🔒PRO</span></button>
-    <button class="btn-go prolock" data-pro="meeting" id="meetingBtn">🎙️ 회의 녹음·화자분리·요약 <span class="pro-badge">🔒PRO</span></button>
   </div>
+  <p style="font-size:11px;color:#6b7884;margin-top:9px">🔤 영역 글자 추출(OCR)·🎙️ 회의 녹음·요약은 <b style="color:var(--or)">Pro 기능</b>으로 옮겼어요 — 독의 🧡 버튼에서 확인하세요.</p>
   <p style="font-size:10.5px;color:#6b7884;margin-top:9px">전역 단축키: <b>Ctrl+Alt+S</b> (단축키 설정에서 변경 가능)</p>
 </div>
 
@@ -1320,6 +1322,8 @@ body.light .lar-res{color:#9a6a1e;}
       <div class="pro-item"><span class="pi-ic">🌏</span><div><div class="pi-t">다문화 번역</div><div class="pi-d">텍스트 번역은 물론, <b style="color:#F68C1F">음성 인식 + AI 실시간 번역(자막)</b>까지. 한국어 → 8개 언어로 다문화 학생 안내</div></div></div>
       <div class="pro-item"><span class="pi-ic">🤖</span><div><div class="pi-t">AI 교수 보조</div><div class="pi-d">AI로 검색·발문 생성·활동 아이디어·즉석 퀴즈. 엔진은 Claude / GPT 선택 사용</div></div></div>
       <div class="pro-item"><span class="pi-ic">📋</span><div><div class="pi-t">명단 저장·불러오기</div><div class="pi-d">반별 명단을 저장해두고 발표자 뽑기·게임에 재사용</div></div></div>
+      <button class="pro-item prolock" data-pro="ocr" id="ocrBtn"><span class="pi-ic">🔤</span><div><div class="pi-t">영역 글자 추출 (OCR)</div><div class="pi-d">화면 일부를 드래그하면 그 안의 글자를 AI로 읽어서 클립보드·메모에 담아줘요</div></div></button>
+      <button class="pro-item prolock" data-pro="meeting" id="meetingBtn"><span class="pi-ic">🎙️</span><div><div class="pi-t">회의 녹음·화자분리·요약</div><div class="pi-d">회의를 녹음하면 파일 저장은 물론, 화자별 대화 내용과 AI 요약까지 자동으로</div></div></button>
     </div>
     <button class="btn-go" id="proCta">Pro 구독 안내 받기</button>
     <div class="pro-key">
@@ -1414,14 +1418,12 @@ body.light .lar-res{color:#9a6a1e;}
 .fb-head:active{cursor:grabbing;}
 .fb-head button{border:none;background:transparent;color:#8a94a1;font-size:16px;cursor:pointer;}
 .fb-sub{font-size:11.5px;color:#9fb0bf;margin:8px 0 12px;line-height:1.5;}
-#fbMsg{width:100%;height:120px;resize:none;margin-bottom:9px;}
-#fbContact{width:100%;margin-bottom:12px;}
-.fb-btns{display:flex;gap:8px;justify-content:flex-end;}
-.fb-btns button{border:none;border-radius:9px;padding:9px 18px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;}
-#fbCancel{background:var(--dk2);color:#cdd8e2;}
-#fbSend{background:var(--or);color:#fff;}
-#fbSend:disabled{background:var(--dk3);color:#6b7884;cursor:default;}
-.fb-status{font-size:12px;margin-top:10px;text-align:center;min-height:16px;}
+.fb-contact{display:flex;flex-direction:column;gap:8px;}
+.fb-crow{display:flex;align-items:center;gap:9px;background:var(--dk2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+.fb-crow .fb-ic{font-size:16px;flex:none;}
+.fb-crow .fb-val{flex:1;font-size:13px;font-weight:700;color:#e7edf3;}
+.fb-copy{border:none;background:var(--or);color:#fff;border-radius:8px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer;flex:none;}
+.fb-copy:hover{background:var(--or2);}
 .fb-status.ok{color:#34c759;} .fb-status.err{color:#e05544;}
 /* 🎙️ 회의 녹음·화자분리·요약 */
 #meetingModal{position:fixed;z-index:120;display:none;left:0;top:0;}
@@ -1614,6 +1616,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="trans">🌏 다문화 번역</button>
   <button data-act="ai">🤖 AI 교수 보조</button>
   <button data-act="roster">📋 명단 저장·불러오기</button>
+  <button data-act="ocr">🔤 영역 글자 추출 (OCR)</button>
   <button data-act="meeting">🎙️ 회의 녹음·화자분리·요약</button>
 </div>
 <div id="rosterModal" class="iv">
@@ -1680,11 +1683,11 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <div id="feedbackModal" class="iv">
   <div class="fb-card">
     <div class="fb-head"><span>✉️ 의견 보내기</span><button id="fbClose">✕</button></div>
-    <div class="fb-sub">버그 신고·기능 제안 무엇이든 환영합니다. 개발팀에 바로 전달됩니다.</div>
-    <textarea id="fbMsg" placeholder="여기에 의견을 적어 주세요…" maxlength="2000"></textarea>
-    <input id="fbContact" type="text" placeholder="(선택) 회신받을 이메일·연락처" maxlength="120">
-    <div class="fb-btns"><button id="fbCancel">취소</button><button id="fbSend">보내기</button></div>
-    <div id="fbStatus" class="fb-status"></div>
+    <div class="fb-sub">버그 제보·기능 제안 등 무엇이든 아래로 편하게 연락 주세요. 아직 베타 운영 중이라 잘 부탁드립니다 🙏</div>
+    <div class="fb-contact">
+      <div class="fb-crow"><span class="fb-ic">📧</span><span class="fb-val">ksh0502@nepes.co.kr</span><button class="fb-copy" data-copy="ksh0502@nepes.co.kr">복사</button></div>
+      <div class="fb-crow"><span class="fb-ic">📞</span><span class="fb-val">02-3470-2790</span><button class="fb-copy" data-copy="02-3470-2790">복사</button></div>
+    </div>
   </div>
 </div>
 <div id="meetingModal" class="iv">

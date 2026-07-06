@@ -30,7 +30,6 @@ contextBridge.exposeInMainWorld('cm', {
   suDelete: (o) => ipcRenderer.invoke('su-delete', o),
   suAdminList: (o) => ipcRenderer.invoke('su-admin-list', o),
   suAdminDelete: (o) => ipcRenderer.invoke('su-admin-delete', o),
-  feedback: (p) => ipcRenderer.invoke('feedback', p),
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   setShortcuts: (obj) => ipcRenderer.send('set-shortcuts', obj),
   onHotkey: (h) => ['hk-ring','hk-spot','hk-lens','hk-lens-rect','hk-spotlens','hk-zoom','hk-draw','hk-snip','hk-dock','hk-escape']
