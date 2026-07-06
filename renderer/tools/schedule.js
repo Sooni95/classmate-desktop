@@ -28,6 +28,23 @@
   $('scheduleIn').value=scheduleToText(loadSchedule());
   $('scheduleShow').checked=showPref();
 
+  // 시작 시각·교시 수·수업/쉬는 시간만 넣으면 교시 목록을 자동으로 만들어줌 (직접 타이핑 안 해도 되게)
+  $('schQGen').addEventListener('click',()=>{
+    const sm=($('schQStart').value||'').trim().match(/^(\d{1,2}):(\d{2})$/);
+    if(!sm){$('scheduleMsg').textContent='시작 시각을 09:00 형식으로 입력해 주세요';return;}
+    let cur=(+sm[1])*60+(+sm[2]);
+    const cnt=Math.max(1,Math.min(12,parseInt($('schQCount').value)||1));
+    const len=Math.max(5,Math.min(120,parseInt($('schQLen').value)||40));
+    const brk=Math.max(0,Math.min(60,parseInt($('schQBreak').value)||0));
+    const periods=[];
+    for(let i=0;i<cnt;i++){
+      periods.push({start:cur,end:cur+len});
+      cur+=len+brk;
+    }
+    $('scheduleIn').value=scheduleToText(periods);
+    $('scheduleMsg').textContent=cnt+'교시 자동 생성 — 확인 후 "저장"을 눌러주세요';
+  });
+
   $('scheduleSave').addEventListener('click',()=>{
     const periods=parseSchedule($('scheduleIn').value);
     saveSchedule(periods);

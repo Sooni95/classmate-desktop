@@ -25,6 +25,13 @@ function setPanel(id){
   openPanel=id; placePanels();
 }
 document.querySelectorAll('.tool[data-p]').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.p)));
+// 모든 패널 헤더에 닫기(✕) 버튼 추가 — ESC나 같은 아이콘 재클릭 말고도 바로 닫을 수 있게
+document.querySelectorAll('.panel .ph').forEach(ph=>{
+  const x=document.createElement('button');
+  x.className='ph-x';x.textContent='✕';x.title='닫기';
+  x.addEventListener('click',e=>{e.stopPropagation();setPanel(null);});
+  ph.appendChild(x);
+});
 
 document.querySelectorAll('.tabs').forEach(tb=>{
   const panel=tb.closest('.panel');

@@ -60,6 +60,7 @@ $('proMenu').querySelectorAll('button').forEach(b=>b.addEventListener('click',()
   if(act==='trans')setPanel('p-trans');
   else if(act==='ai')setPanel('p-ai');
   else if(act==='roster')openRosterModal();
+  else if(act==='meeting')$('meetingBtn').click();
 }));
 // 메뉴 바깥 클릭 시 닫기
 document.addEventListener('click',e=>{

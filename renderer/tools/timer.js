@@ -61,10 +61,7 @@ $('tfReset').addEventListener('click',e=>{
   if(floatSrc==='sw')$('swReset').click();else $('tReset').click();
   $('tfPause').textContent='▶';
 });
-let tfSize=34;
-function setTfSize(d){tfSize=Math.min(72,Math.max(22,tfSize+d));$('tfTime').style.fontSize=tfSize+'px';}
-$('tfSm').addEventListener('click',e=>{e.stopPropagation();setTfSize(-8);});
-$('tfLg').addEventListener('click',e=>{e.stopPropagation();setTfSize(8);});
+if($('tfGrip'))makeScaleHandle($('tfGrip'),$('tFloat'),{min:0.7,max:2.5,key:'cm_tf_scale'});
 makeDrag($('tFloat'),(e,s)=>{
   if(!s){const r=$('tFloat').getBoundingClientRect();$('tFloat').style.right='auto';return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   $('tFloat').style.left=(e.clientX-s.dx)+'px';$('tFloat').style.top=(e.clientY-s.dy)+'px';

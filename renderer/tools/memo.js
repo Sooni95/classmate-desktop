@@ -19,7 +19,10 @@ function foldMemo(m,edge,ed){
   m.style.width='36px';m.style.height=MFOLD_H+'px';
   m.style.left=(edge==='l'?d.x+8:d.x+d.w-36-8)+'px';
   const tab=m.querySelector('.mfoldtab');
-  if(tab){const t=(ed&&ed.innerText.trim())||'메모';tab.textContent=(t.length>10?t.slice(0,10)+'…':t);}
+  if(tab){
+    const t=m.dataset.foldTitle||(ed&&ed.innerText.trim())||'메모';
+    tab.textContent=(t.length>10?t.slice(0,10)+'…':t);
+  }
   memoFoldStacks[edge].push(m);
   restackFold(edge);
 }
@@ -95,16 +98,29 @@ $('memoBtn').addEventListener('click',()=>{
       <button class="fbtn" id="mMic" title="음성 녹음">🎤</button>
       <input type="range" min="35" max="100" value="100" title="투명도">
     </span>
-    <span><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
-    <span class="mfoldtab">📝</span>
+    <span class="mbar-btns"><button class="mbtn2">─</button><button class="mbtn2">×</button></span>
+    <span class="mfoldtab" title="더블클릭: 책갈피 제목 바꾸기">📝</span>
   </div><div class="mtext" contenteditable="true" data-ph="메모… (단어 드래그 후 A+/A-)" style="background:${c}"></div><div class="rn"></div><div class="rs"></div><div class="re"></div><div class="rw"></div><div class="rs2"></div>`;
   document.body.appendChild(m);
   const ed=m.querySelector('.mtext');
   const [minB,xB]=m.querySelectorAll('.mbtn2');
   xB.addEventListener('click',()=>{unfoldMemo(m);m.remove();});
   minB.addEventListener('click',()=>{m.classList.toggle('min');minB.textContent=m.classList.contains('min')?'▢':'─';});
-  // 접힌 상태에서 바를 클릭하면 다시 펼침
-  m.querySelector('.mbar').addEventListener('click',()=>{ if(m.classList.contains('folded'))unfoldMemo(m); });
+  // 접힌 상태에서 바를 클릭하면 다시 펼침 (더블클릭은 책갈피 제목 바꾸기 — 살짝 지연시켜 더블클릭과 구분)
+  let foldClickTimer=null;
+  m.querySelector('.mbar').addEventListener('click',()=>{
+    if(!m.classList.contains('folded'))return;
+    clearTimeout(foldClickTimer);
+    foldClickTimer=setTimeout(()=>unfoldMemo(m),220);
+  });
+  const foldTab=m.querySelector('.mfoldtab');
+  foldTab.addEventListener('dblclick',e=>{
+    e.stopPropagation();clearTimeout(foldClickTimer);
+    const t=prompt('책갈피 제목',m.dataset.foldTitle||foldTab.textContent||'');
+    if(t===null)return;
+    m.dataset.foldTitle=t.trim();
+    foldTab.textContent=(t.trim().length>10?t.trim().slice(0,10)+'…':t.trim())||'📝';
+  });
   // 복사 / txt 저장
   m.querySelector('#mCopy').addEventListener('mousedown',e=>e.preventDefault());
   m.querySelector('#mCopy').addEventListener('click',()=>{

@@ -38,9 +38,11 @@ body{pointer-events:none;}
 #quitBtn:hover{background:var(--red);color:#fff;}
 
 /* ===== panels ===== */
-.panel{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:65;width:330px;background:var(--dk);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);color:#e7edf3;padding:18px;display:none;}
+.panel{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:65;width:330px;background:var(--dk);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);color:#e7edf3;padding:18px;display:none;word-break:keep-all;overflow-wrap:break-word;}
 .panel.on{display:block;}
 .ph{font-size:13px;font-weight:600;color:#9fb0bf;margin-bottom:13px;}
+.ph-x{float:right;border:none;background:var(--dk2);color:#9fb0bf;border-radius:6px;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1;margin-left:6px;}
+.ph-x:hover{background:var(--red);color:#fff;}
 .ph::before{content:'';display:inline-block;width:15px;height:15px;border-radius:4px;background:url('../assets/logo.png') center/cover;margin-right:8px;vertical-align:-3px;}
 .panel::before,#tFloat::before,#nBomb::before,#noiseGuide::before,#camWrap::before{content:'';position:absolute;left:14px;right:14px;top:0;height:3px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,var(--or),var(--or2));}
 .tabs{display:flex;gap:4px;margin-bottom:13px;background:var(--dk2);border-radius:10px;padding:4px;}
@@ -362,7 +364,7 @@ body.ptr-over-ui #halo{display:none!important;}
 /* memo & pin */
 .memo{position:fixed;z-index:48;width:324px;border-radius:5px 5px 9px 9px;box-shadow:0 12px 32px -8px rgba(120,80,0,.45);overflow:hidden;}
 .memo .mbar>span:first-child{min-width:0;flex:1 1 auto;overflow:hidden;}
-.memo .mbar>span:last-child{flex:0 0 auto;display:flex;gap:4px;}
+.memo .mbar .mbar-btns{flex:0 0 auto;display:flex;gap:4px;}
 .memo .mbar{height:34px;cursor:grab;display:flex;align-items:center;justify-content:space-between;padding:0 8px;gap:6px;}
 .memo .mbtn2{border:none;background:rgba(0,0,0,.12);border-radius:6px;width:24px;height:24px;font-size:15px;font-weight:800;cursor:pointer;color:rgba(60,40,0,.85);display:inline-flex;align-items:center;justify-content:center;line-height:1;}
 .memo .mbtn2:hover{background:var(--red);color:#fff;}
@@ -440,6 +442,9 @@ body.ptr-over-ui #halo{display:none!important;}
 #zoomHint{position:absolute;transform:translateX(-50%);padding:7px 14px;background:rgba(22,28,36,.92);border:1px solid var(--line);border-radius:10px;font-size:11.5px;color:#cdd8e2;white-space:nowrap;z-index:2;}
 .sch-help{font-size:11px;color:#9fb0bf;margin-bottom:8px;line-height:1.6;}
 .sch-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:#cdd8e2;margin:4px 0 10px;cursor:pointer;}
+.sch-quick{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px;}
+.sch-quick label{font-size:10.5px;color:#9fb0bf;display:flex;flex-direction:column;gap:3px;}
+.sch-quick input{background:var(--dk2);border:1px solid var(--line);color:#e7edf3;border-radius:7px;padding:6px 8px;font-family:inherit;font-size:12px;}
 .sch-msg{font-size:11px;color:#6b7884;margin-top:8px;min-height:14px;}
 #scheduleFloat{position:fixed;left:30px;top:26px;z-index:60;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:14px;padding:9px 16px;box-shadow:var(--shadow);display:none;align-items:center;gap:10px;cursor:grab;}
 #scheduleFloat.on{display:flex;}
@@ -493,7 +498,7 @@ body.ptr-over-ui #halo{display:none!important;}
 .gcard.on{border-color:var(--or);background:linear-gradient(160deg,rgba(246,140,31,.18),rgba(246,140,31,.08));}
 .gcard .gi{font-size:25px;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.05);margin-bottom:2px;}
 .gcard:hover .gi{background:rgba(246,140,31,.16);}
-.gcard .gl{font-size:11.5px;font-weight:700;color:#dbe3ec;margin-top:8px;letter-spacing:-.2px;}
+.gcard .gl{font-size:11.5px;font-weight:700;color:#dbe3ec;margin-top:8px;letter-spacing:-.2px;word-break:keep-all;}
 .gcfg{display:none;margin-top:11px;}
 .gcfg.on{display:block;}
 
@@ -1150,8 +1155,16 @@ body.light .lar-res{color:#9a6a1e;}
 <div id="scheduleW" class="fw iv" style="width:270px;">
   <div class="fwh"><span class="ic">🕐</span><span class="tt">시간표</span><button class="x">✕</button></div>
   <div style="padding:0 14px 14px;">
-    <div class="sch-help">한 줄에 한 교시씩, <b style="color:var(--or)">09:00-09:40</b> 형식으로 입력하세요. 줄 순서가 교시 순서예요.</div>
-    <textarea class="names" id="scheduleIn" style="height:130px" placeholder="09:00-09:40&#10;09:50-10:30&#10;10:40-11:20"></textarea>
+    <div class="sch-help">시작 시각·교시 수·수업/쉬는 시간만 입력하면 자동으로 채워져요. 필요하면 아래에서 직접 고쳐도 돼요.</div>
+    <div class="sch-quick">
+      <label>시작<input type="text" id="schQStart" value="09:00" maxlength="5"></label>
+      <label>교시<input type="number" id="schQCount" value="6" min="1" max="12"></label>
+      <label>수업(분)<input type="number" id="schQLen" value="40" min="5" max="120"></label>
+      <label>쉬는(분)<input type="number" id="schQBreak" value="10" min="0" max="60"></label>
+    </div>
+    <button class="btn-go" id="schQGen" style="margin-bottom:9px">⚡ 자동 채우기</button>
+    <div class="sch-help" style="margin-top:0">직접 입력하려면: 한 줄에 한 교시씩 <b style="color:var(--or)">09:00-09:40</b> 형식.</div>
+    <textarea class="names" id="scheduleIn" style="height:110px" placeholder="09:00-09:40&#10;09:50-10:30&#10;10:40-11:20"></textarea>
     <label class="sch-chk"><input type="checkbox" id="scheduleShow" checked>화면에 항상 표시</label>
     <button class="btn-go" id="scheduleSave">저장</button>
     <div id="scheduleMsg" class="sch-msg"></div>
@@ -1537,14 +1550,14 @@ body.light .presets button:hover,body.light .tr-langs button:hover,
 body.light .su-ttl button:hover,body.light .pkr-all:hover,
 body.light .ai-quick button:hover,body.light .rm-tmpl:hover{background:#e0d7c4;color:#1a1d21;}
 /* 🫧 투명도 — 다크·라이트 어느 테마든 적용 (슬라이더는 항상 표시) */
-body.translucent #dock{background:rgba(22,28,36,max(.18,var(--glass-alpha)));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);}
+body.translucent #dock{background:rgba(22,28,36,max(.32,var(--glass-alpha)));backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);}
 body.translucent .panel,body.translucent #setMenu,body.translucent #dockDrawer,body.translucent .fw,
 body.translucent #boardTb,body.translucent #toast,body.translucent .gcard{
-  background:rgba(22,28,36,max(.5,var(--glass-alpha)))!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  background:rgba(22,28,36,max(.62,var(--glass-alpha)))!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
 }
-/* 투명 시 글자 가독성: 그림자로 어떤 배경 위에서도 또렷하게 */
-body.translucent .panel,body.translucent #setMenu,body.translucent .fw,body.translucent .gcard{text-shadow:0 1px 3px rgba(0,0,0,.65);}
-body.translucent .tool,body.translucent .brand .nm{text-shadow:0 1px 3px rgba(0,0,0,.7);}
+/* 투명 시 글자 가독성: 그림자로 어떤 배경 위에서도 또렷하게 (배경이 밝아도 글자가 묻히지 않도록 강하게) */
+body.translucent .panel,body.translucent #setMenu,body.translucent .fw,body.translucent .gcard{text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.85);}
+body.translucent .tool,body.translucent .brand .nm{text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.9);}
 /* 라이트 테마에서의 투명: 밝은 반투명 배경 + 밝은 글자그림자 (fw·칠판툴바는 어두운 채 유지) */
 body.light.translucent #dock{background:rgba(255,255,255,max(.2,var(--glass-alpha)))!important;}
 body.light.translucent .panel,body.light.translucent #setMenu,body.light.translucent #dockDrawer,
@@ -1558,7 +1571,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 #glassRow input[type=range]{flex:1;accent-color:var(--or);}
 </style>
 <div id="dock" class="iv">
-  <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">코코아팹</b> 강사 위젯</small></div></div>
+  <div class="brand" id="brand"><div class="lo iv" id="eggLogo" style="cursor:pointer"><img src="../assets/logo.png" draggable="false"></div><div class="nm">ClassMate <span id="dockVer" class="vchip"></span><small><b style="color:var(--or);font-weight:800">네패스 코코아팹</b> 올인원 강사툴 위젯</small></div></div>
   <button class="tool" data-id="timer" data-p="p-timer"><span class="ti">⏱</span>타이머</button>
   <button class="tool" data-id="game" data-p="p-game"><span class="ti">🎲</span>뽑기·게임</button>
   <button class="tool" data-id="draw" id="drawBtn" title="F9"><span class="ti">✏️</span>펜</button>
@@ -1579,17 +1592,12 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 <button id="pill" class="iv"><img src="../assets/logo.png" draggable="false"><span class="pl"><b>ClassMate</b><small>네패스 <em>코코아팹</em> <span id="pillVer"></span></small></span></button>
 <div id="tFloat" class="iv">
   <span class="tf" id="tfTime">05:00</span>
-  <span style="display:flex;flex-direction:column;gap:3px">
-    <span style="display:flex;gap:4px">
-      <button class="tx" id="tfPause" title="일시정지/재개">⏸</button>
-      <button class="tx" id="tfReset" title="초기화">↺</button>
-      <button class="tx" id="tfClose">✕</button>
-    </span>
-    <span style="display:flex;gap:4px">
-      <button class="tx" id="tfSm" title="작게" style="font-size:11px">A-</button>
-      <button class="tx" id="tfLg" title="크게" style="font-size:13px">A+</button>
-    </span>
+  <span style="display:flex;gap:4px">
+    <button class="tx" id="tfPause" title="일시정지/재개">⏸</button>
+    <button class="tx" id="tfReset" title="초기화">↺</button>
+    <button class="tx" id="tfClose">✕</button>
   </span>
+  <div class="sz-grip" id="tfGrip" title="끌어서 크기 조절"></div>
 </div>
 <div id="eggCredit" class="iv">
   <div class="egg-card">
@@ -1606,6 +1614,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="trans">🌏 다문화 번역</button>
   <button data-act="ai">🤖 AI 교수 보조</button>
   <button data-act="roster">📋 명단 저장·불러오기</button>
+  <button data-act="meeting">🎙️ 회의 녹음·화자분리·요약</button>
 </div>
 <div id="rosterModal" class="iv">
   <div class="rm-card">
