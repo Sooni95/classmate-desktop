@@ -54,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build DMG (universal: Intel + Apple Silicon)
+      - name: Build DMG (universal - Intel + Apple Silicon)
         run: npm run dist:mac -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
