@@ -145,6 +145,18 @@
     font-size: 13px;
     color: var(--gray-600);
   }
+  .version-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--gray-200);
+    color: var(--gray-600);
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+  }
   .download-count {
     margin-top: 10px;
     font-size: 14px;
@@ -227,6 +239,51 @@
     line-height: 1.55;
   }
 
+  /* ---------- Pro 기능 ---------- */
+  .pro-section {
+    padding: 76px 0 84px;
+    background: var(--navy);
+    color: var(--white);
+  }
+  .pro-section .section-heading p { color: #C7CDD6; }
+  .pro-eyebrow {
+    display: inline-block;
+    background: rgba(246, 140, 31, 0.16);
+    color: #FFC98A;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .pro-section .section-heading h2 { color: var(--white); }
+  .pro-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 40px;
+  }
+  .pro-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius);
+    padding: 24px 22px;
+  }
+  .pro-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .pro-card p { font-size: 13.5px; color: #C7CDD6; line-height: 1.6; }
+  .pro-card p b { color: #FFC98A; }
+  .pro-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .pro-cta span { font-size: 14.5px; color: #C7CDD6; }
+
   /* ---------- Bottom CTA ---------- */
   .cta {
     background: var(--navy);
@@ -285,6 +342,23 @@
     text-align: left;
   }
   .smartscreen-note b { color: var(--orange-dark); }
+  .install-guide-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 480px;
+    margin: 10px auto 0;
+    padding: 11px 20px;
+    background: var(--navy);
+    color: var(--white);
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 999px;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .install-guide-cta:hover { background: #34404F; transform: translateY(-1px); }
+  .install-guide-cta .arrow { transition: transform 0.15s ease; }
+  .install-guide-cta:hover .arrow { transform: translateX(3px); }
 
   .about-section {
     padding: 60px 0;
@@ -331,10 +405,12 @@
 
   @media (max-width: 760px) {
     .feature-grid { grid-template-columns: 1fr 1fr; }
+    .pro-grid { grid-template-columns: 1fr 1fr; }
     .hero { padding: 96px 0 48px; }
   }
   @media (max-width: 520px) {
     .feature-grid { grid-template-columns: 1fr; }
+    .pro-grid { grid-template-columns: 1fr; }
     .hero-cta-row { flex-direction: column; width: 100%; }
     .hero-cta-row .btn { width: 100%; }
     .stickybar-brand { font-size: 15px; }
@@ -407,13 +483,15 @@
     <div class="wrap">
       <span class="hero-eyebrow">교사를 위한 무료 수업 보조 툴</span>
       <h1>수업 흐름을 끊지 않는<br><span class="accent">교사용 올인원 툴</span></h1>
-      <p class="lead">타이머부터 필기, 발표자 뽑기, AI 보조까지 — 코코메이트 하나면 충분합니다.</p>
+      <p class="lead">타이머부터 필기, 발표자 뽑기, AI 보조까지 <br> 코코메이트 하나면 충분합니다.</p>
       <div class="hero-cta">
         <div class="hero-cta-row">
           <a class="btn btn-primary btn-lg" id="dl-hero-win" href="#" data-os="win">⬇ Windows용 다운로드</a>
           <a class="btn btn-ghost btn-md" id="dl-hero-mac" href="#" data-os="mac">Mac용 다운로드</a>
         </div>
         <span class="hero-note">무료 · 설치 없이 바로 실행</span>
+        <!-- 버전 표시: 새 버전을 낼 때마다 아래 v1.0.0 텍스트만 고치면 됩니다 -->
+        <span class="version-badge">v1.0.0</span>
         <div class="download-count" id="download-count-hero" hidden>
           누적 다운로드 <strong id="download-count-hero-num">0</strong>회
         </div>
@@ -426,8 +504,8 @@
           ⚠️ 설치 시 <b>"Windows에서 PC를 보호했습니다"</b>(Windows) 또는
           <b>"확인되지 않은 개발자"</b>(Mac) 경고가 뜰 수 있어요. 아직 정식 서명 인증서 발급 전이라
           나오는 안내일 뿐, 악성코드가 아닙니다.
-          <a href="install-guide.html" style="color:var(--orange-dark); font-weight:700;">그림으로 보는 설치 안내 →</a>
         </div>
+        <a href="install-guide.html" class="install-guide-cta">📖 그림으로 보는 설치 안내 <span class="arrow">→</span></a>
       </div>
     </div>
   </section>
@@ -504,6 +582,65 @@
           <p>영역 글자 추출(OCR), 다문화 번역, 회의 녹음 요약까지. AI가 수업 준비와 진행을 함께 도와요.</p>
         </div>
 
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path><path d="M9 11h2"></path></svg>
+          </div>
+          <h3>PDF 편집</h3>
+          <p>수업 자료 PDF를 바로 열어 표시·편집해요. 브라우저에서 실행되어 별도 설치가 필요 없습니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"></rect><rect x="14" y="4" width="7" height="7" rx="1"></rect><rect x="3" y="15" width="7" height="7" rx="1"></rect><rect x="14" y="15" width="7" height="7" rx="1"></rect></svg>
+          </div>
+          <h3>자리 배치</h3>
+          <p>학생 좌석 배치를 화면에서 손쉽게 구성하고 바로 확인해요. 모둠 구성 바꿀 때 특히 편합니다.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Pro 기능 바로알기 -->
+  <section class="pro-section">
+    <div class="wrap">
+      <div class="section-heading">
+        <span class="pro-eyebrow">🧡 Pro 기능 바로알기</span>
+        <h2>더 깊은 수업 준비가 필요하다면</h2>
+        <p>무료 기능만으로도 충분하지만, 아래 기능들은 Pro 구독 시 함께 제공됩니다.</p>
+      </div>
+      <div class="pro-grid">
+
+        <div class="pro-card">
+          <h3>🌏 다문화 번역</h3>
+          <p>텍스트 번역은 물론, <b>음성 인식 + AI 실시간 번역(자막)</b>까지. 한국어 → 8개 언어로 다문화 학생을 바로 안내할 수 있어요.</p>
+        </div>
+
+        <div class="pro-card">
+          <h3>🤖 AI 교수 보조</h3>
+          <p>AI로 자료 검색, 발문 생성, 활동 아이디어, 즉석 퀴즈까지. 수업 준비 시간을 줄여줘요.</p>
+        </div>
+
+        <div class="pro-card">
+          <h3>📋 명단 저장·불러오기</h3>
+          <p>반별 명단을 저장해두고 발표자 뽑기·게임 등 모든 기능에서 바로 불러와 재사용해요.</p>
+        </div>
+
+        <div class="pro-card">
+          <h3>🔤 영역 글자 추출 (OCR)</h3>
+          <p>화면 일부를 드래그하면 그 안의 글자를 AI가 읽어서 클립보드·메모에 바로 담아줘요.</p>
+        </div>
+
+        <div class="pro-card">
+          <h3>🎙️ 회의 녹음·화자분리·요약</h3>
+          <p>회의를 녹음하면 파일 저장은 물론, <b>화자별 대화 내용</b>과 <b>AI 요약</b>까지 자동으로 정리해요.</p>
+        </div>
+
+      </div>
+      <div class="pro-cta">
+        <span>학교·교육청 단위 도입을 검토 중이신가요?</span>
+        <a href="tel:02-3470-2839" class="btn btn-primary btn-md">📞 도입 문의 02-3470-2839</a>
       </div>
     </div>
   </section>
