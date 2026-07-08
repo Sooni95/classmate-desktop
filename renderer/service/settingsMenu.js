@@ -193,7 +193,7 @@
       const json=JSON.stringify(out,null,2);
       const bytes=Array.from(new TextEncoder().encode(json));
       const now=new Date();
-      const fn='ClassMate_백업_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.json';
+      const fn='코코메이트_백업_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.json';
       const r=await ipc.saveBinary({bytes,filename:fn,ext:'json'});
       if(r&&r.ok)bkSay('내보내기 완료 — 안전한 곳에 보관하세요.',true);
       else if(r&&r.canceled)bkSay('');
@@ -205,7 +205,7 @@
       if(f.error){bkSay('파일 선택 창을 열지 못했어요: '+f.error,false);return;}
       let obj=null;
       try{obj=JSON.parse(f.text.replace(/^\uFEFF/,''));}catch(e){bkSay('백업 파일을 읽을 수 없어요(형식 오류).',false);return;}
-      if(!obj||obj.app!=='ClassMate'||!obj.data){bkSay('ClassMate 백업 파일이 아니에요.',false);return;}
+      if(!obj||obj.app!=='ClassMate'||!obj.data){bkSay('코코메이트 백업 파일이 아니에요.',false);return;}
       let n=0;
       BK_KEYS.forEach(k=>{if(typeof obj.data[k]==='string'){localStorage.setItem(k,obj.data[k]);n++;}});
       try{applyTheme(localStorage.getItem('cm_theme')||'dark');}catch(e){} // 테마 즉시 반영

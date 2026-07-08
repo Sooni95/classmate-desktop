@@ -1,5 +1,5 @@
 /* ============================================================
-   ClassMate — 사다리타기 모듈 (ladder.js)
+   코코메이트 — 사다리타기 모듈 (ladder.js)
    - app.js 이후에 로드됩니다 (전역 헬퍼에만 의존).
    - 의존 전역: makeDrag, centerOnDockDisplay, setIgnore, splitNames, beep, setPanel, window.cm
      (모두 typeof 가드 → 없으면 조용히 생략, 앱 중단 없음)

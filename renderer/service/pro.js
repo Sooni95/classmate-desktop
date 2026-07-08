@@ -26,7 +26,7 @@ $('proKeyGo').addEventListener('click',async()=>{
     localStorage.setItem('cm_pro_key',key);
     msg.className='pro-key-msg ok';msg.textContent='✅ 인증 완료! Pro 기능이 열렸어요';
     setProUI();
-    setTimeout(()=>{proWrap.classList.remove('on');toast('🧡 ClassMate Pro 활성화됨');},1200);
+    setTimeout(()=>{proWrap.classList.remove('on');toast('🧡 코코메이트 Pro 활성화됨');},1200);
   }else if(r.status===404||r.valid===false){
     msg.className='pro-key-msg err';msg.textContent='유효하지 않은 키예요';
   }else if(r.status===410){

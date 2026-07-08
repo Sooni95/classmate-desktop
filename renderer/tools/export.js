@@ -85,7 +85,7 @@ async function renderClassCanvas(title){
   c.fillText(title||'수업 기록',M,y);y+=42;
   c.fillStyle='#888';c.font='14px "Malgun Gothic"';
   const now=new Date();
-  c.fillText('ClassMate · 네패스 코코아팹 · '+now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),M,y);
+  c.fillText('코코메이트 · 네패스 코코아팹 · '+now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),M,y);
   y+=40;
   const wrapText=(text,x,yy,maxW,lh)=>{
     const words=text.split('');let line='';

@@ -1,4 +1,4 @@
-// ClassMate Desktop — main process (Electron)
+// 코코메이트(KocoMate) Desktop — main process (Electron)
 const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, screen, Tray, Menu, clipboard, nativeImage, dialog, shell, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -451,7 +451,7 @@ function createOverlay() {
     try {
       const src = require('path').join(__dirname, 'assets', 'roster_template.xlsx');
       const r = await withDialog(() => dialog.showSaveDialog({
-        defaultPath: 'ClassMate_명단양식.xlsx',
+        defaultPath: '코코메이트_명단양식.xlsx',
         filters: [{ name: 'Excel', extensions: ['xlsx'] }],
       }));
       if (r.canceled || !r.filePath) return { ok: false };
@@ -499,8 +499,8 @@ function createOverlay() {
   ipcMain.handle('pick-backup', async () => {
     try {
       const r = await withDialog(() => dialog.showOpenDialog({
-        title: 'ClassMate 백업 파일 선택',
-        filters: [{ name: 'ClassMate 백업 (JSON)', extensions: ['json'] }],
+        title: '코코메이트 백업 파일 선택',
+        filters: [{ name: '코코메이트 백업 (JSON)', extensions: ['json'] }],
         properties: ['openFile'],
       }));
       if (r.canceled || !r.filePaths[0]) return null;
@@ -539,10 +539,10 @@ else {
     registerShortcuts();
     try {
       tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
-      tray.setToolTip('ClassMate');
+      tray.setToolTip('코코메이트');
       const showWin = () => { if (win) { win.show(); win.webContents.send('bounds-changed'); } };
       tray.setContextMenu(Menu.buildFromTemplate([
-        { label: 'ClassMate 열기', click: showWin },
+        { label: '코코메이트 열기', click: showWin },
         { label: '툴바 보이기/숨기기 (Ctrl+Alt+`)', click: () => { showWin(); win.webContents.send('hk-dock'); } },
         { label: '모두 끄기 (Ctrl+Alt+0)', click: () => win.webContents.send('hk-escape') },
         { type: 'separator' },

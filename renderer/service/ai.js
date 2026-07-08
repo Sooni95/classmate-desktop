@@ -136,7 +136,7 @@ $('aiSave').addEventListener('click',async()=>{
   const q=$('aiIn').value.trim();
   const a=$('aiOut').textContent;
   if(!a){toast('저장할 답변이 없어요');return;}
-  const content='[질문]\n'+q+'\n\n[AI 답변]\n'+a+'\n\n— ClassMate AI 교수보조';
+  const content='[질문]\n'+q+'\n\n[AI 답변]\n'+a+'\n\n— 코코메이트 AI 교수보조';
   const now=new Date();
   const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
   const r=await ipc.saveText({text:content,filename:'AI보조_'+stamp+'.txt'});

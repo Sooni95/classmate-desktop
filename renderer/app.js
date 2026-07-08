@@ -1,4 +1,4 @@
-/* ClassMate Desktop renderer — 버전은 package.json(version) 단일 출처로 관리.
+/* 코코메이트(KocoMate) Desktop renderer — 버전은 package.json(version) 단일 출처로 관리.
    독 버전칩/필 표시는 main.js의 app.getVersion()을 그대로 읽음. */
 const $ = id => document.getElementById(id);
 
@@ -107,7 +107,7 @@ initDockPos();
     const info=await ipc.getAppInfo();
     const ver='v'+info.version;
     $('dockVer').textContent=ver;
-    $('dockVer').title='ClassMate '+ver+(info.buildDate&&info.buildDate!=='개발 빌드'?(' (빌드: '+info.buildDate+')'):'');
+    $('dockVer').title='코코메이트 '+ver+(info.buildDate&&info.buildDate!=='개발 빌드'?(' (빌드: '+info.buildDate+')'):'');
     $('pillVer').textContent=ver;
     checkForUpdate(info.buildDate);
   }catch(e){}
@@ -151,7 +151,7 @@ async function checkForUpdate(buildDate){
 })();
 // 🦋 이스터에그 2: 콘솔 크레딧 (F12로 발견)
 try{
-  console.log('%c🦋 ClassMate','color:#F68C1F;font-size:26px;font-weight:800;');
+  console.log('%c🦋 코코메이트','color:#F68C1F;font-size:26px;font-weight:800;');
   console.log('%c네패스 코코아팹 — 교사를 위한 올인원 수업 보조 도구','color:#9fb0bf;font-size:12px;');
   console.log('%c기획·개발  김수훈 · 김수관','color:#F68C1F;font-size:13px;font-weight:700;');
   console.log('%c   ∧,,,∧\n  (  ̳• · • ̳)\n  /    づ♥  함께 만들어요','color:#D9760F;font-size:12px;');
