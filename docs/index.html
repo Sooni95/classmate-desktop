@@ -366,6 +366,14 @@
     text-align: left;
   }
   .smartscreen-note b { color: var(--orange-dark); }
+  .compat-note {
+    max-width: 480px;
+    margin: 10px auto 0;
+    font-size: 12px;
+    color: var(--gray-600);
+    text-align: center;
+    line-height: 1.6;
+  }
   .install-guide-cta {
     display: inline-flex;
     align-items: center;
@@ -527,6 +535,8 @@
     overflow: hidden;
   }
   .demo-media img { width: 100%; height: 100%; object-fit: cover; }
+  .demo-media.has-scene { background: #1B222C; border-style: solid; border-color: #1B222C; }
+  .demo-media.has-scene svg { width: 100%; height: 100%; }
   .demo-media .demo-ph-icon { font-size: 34px; }
   .demo-media .demo-ph-label { font-size: 13px; font-weight: 700; color: var(--orange-dark); }
   .demo-media .demo-ph-note { font-size: 12px; color: var(--gray-600); max-width: 320px; padding: 0 20px; }
@@ -565,7 +575,9 @@
           <span class="trust-chip">🏢 네패스 코코아팹 정식 배포</span>
           <span class="trust-chip">🆓 무료</span>
           <span class="trust-chip">🔒 학생 정보 기기 내 저장</span>
+          <span class="trust-chip">🖥️ Win10+ · macOS12+ (64bit)</span>
         </div>
+        <p class="compat-note">Windows 10 이상(64비트) · macOS 12 Monterey 이상에서 사용할 수 있어요. 오래된 버전(Windows 7/8, macOS 11 이하)에서는 설치되지 않을 수 있습니다.</p>
         <div class="smartscreen-note">
           ⚠️ 설치 시 <b>"Windows에서 PC를 보호했습니다"</b>(Windows) 또는
           <b>"확인되지 않은 개발자"</b>(Mac) 경고가 뜰 수 있어요. 아직 정식 서명 인증서 발급 전이라
@@ -930,18 +942,170 @@
     var demoTitle = document.getElementById('demoTitle');
     var demoDesc = document.getElementById('demoDesc');
 
+    // 실제 스크린샷 대신, 각 기능을 표현하는 가상 일러스트(SVG)를 만들어 보여준다.
+    // 실제 구동 화면이 아니라는 점을 우측 상단 "예시" 배지로 항상 표시한다.
+    function sceneFrame(body) {
+      return '<svg viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect width="400" height="250" fill="#1B222C"/>' +
+        '<rect width="400" height="24" fill="#242E3A"/>' +
+        '<circle cx="13" cy="12" r="4" fill="#E5605A"/><circle cx="27" cy="12" r="4" fill="#E8B84B"/><circle cx="41" cy="12" r="4" fill="#5FBE72"/>' +
+        body +
+        '<rect x="326" y="34" width="46" height="20" rx="10" fill="rgba(255,255,255,.14)"/>' +
+        '<text x="349" y="48" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" fill="#C7CDD6">예시</text>' +
+        '<rect x="150" y="234" width="100" height="8" rx="4" fill="rgba(255,255,255,.12)"/>' +
+        '</svg>';
+    }
+
+    var DEMO_SCENES = {
+      '타이머': sceneFrame(
+        '<circle cx="200" cy="118" r="58" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>' +
+        '<circle cx="200" cy="118" r="58" fill="none" stroke="#F68C1F" stroke-width="10" stroke-dasharray="273 91" stroke-linecap="round" transform="rotate(-90 200 118)"/>' +
+        '<text x="200" y="129" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="34" font-weight="800" fill="#fff">05:00</text>' +
+        '<rect x="148" y="196" width="104" height="24" rx="12" fill="rgba(246,140,31,.18)"/>' +
+        '<text x="200" y="212" text-anchor="middle" font-size="11" font-weight="700" fill="#FFC98A">일시정지 · 재시작</text>'
+      ),
+      '필기 · 포인터': sceneFrame(
+        '<rect x="40" y="46" width="320" height="150" rx="10" fill="rgba(255,255,255,.05)"/>' +
+        '<path d="M70 158 Q120 78 170 138 T260 98 T330 148" fill="none" stroke="#F68C1F" stroke-width="5" stroke-linecap="round"/>' +
+        '<circle cx="330" cy="148" r="11" fill="#F68C1F" opacity=".45"/><circle cx="330" cy="148" r="5" fill="#F68C1F"/>' +
+        '<rect x="150" y="206" width="100" height="20" rx="10" fill="rgba(255,255,255,.1)"/>' +
+        '<circle cx="167" cy="216" r="5.5" fill="#F68C1F"/><circle cx="187" cy="216" r="5.5" fill="#5FBE72"/><circle cx="207" cy="216" r="5.5" fill="#4A90D9"/><circle cx="227" cy="216" r="5.5" fill="#E8B84B"/>'
+      ),
+      '발표자 뽑기 · 게임': sceneFrame(
+        '<path d="M200 122 L270 122 A70 70 0 0 1 235 183 Z" fill="#F68C1F"/>' +
+        '<path d="M200 122 L235 183 A70 70 0 0 1 165 183 Z" fill="#5FBE72"/>' +
+        '<path d="M200 122 L165 183 A70 70 0 0 1 130 122 Z" fill="#4A90D9"/>' +
+        '<path d="M200 122 L130 122 A70 70 0 0 1 165 61 Z" fill="#E8B84B"/>' +
+        '<path d="M200 122 L165 61 A70 70 0 0 1 235 61 Z" fill="#E5605A"/>' +
+        '<path d="M200 122 L235 61 A70 70 0 0 1 270 122 Z" fill="#9B7FE0"/>' +
+        '<circle cx="200" cy="122" r="12" fill="#1B222C" stroke="#fff" stroke-width="2"/>' +
+        '<path d="M200 44 l-9 16 h18 z" fill="#fff"/>'
+      ),
+      'QR · 단축URL': sceneFrame(
+        '<rect x="150" y="50" width="100" height="100" rx="6" fill="#fff"/>' +
+        '<g fill="#1B222C">' +
+        '<rect x="160" y="60" width="24" height="24"/><rect x="216" y="60" width="24" height="24"/><rect x="160" y="116" width="24" height="24"/>' +
+        '<rect x="168" y="68" width="8" height="8" fill="#fff"/><rect x="224" y="68" width="8" height="8" fill="#fff"/><rect x="168" y="124" width="8" height="8" fill="#fff"/>' +
+        '<rect x="192" y="60" width="8" height="8"/><rect x="204" y="72" width="8" height="8"/><rect x="192" y="84" width="8" height="8"/><rect x="216" y="92" width="8" height="8"/>' +
+        '<rect x="192" y="104" width="8" height="8"/><rect x="204" y="116" width="8" height="8"/><rect x="216" y="128" width="8" height="8"/><rect x="228" y="104" width="8" height="8"/>' +
+        '</g>' +
+        '<rect x="130" y="168" width="140" height="26" rx="13" fill="rgba(255,255,255,.1)"/>' +
+        '<text x="200" y="185" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#FFC98A">coko.me/abc123</text>'
+      ),
+      '소음 측정': sceneFrame(
+        '<line x1="60" y1="90" x2="340" y2="90" stroke="#E5605A" stroke-width="2" stroke-dasharray="6 5"/>' +
+        '<text x="345" y="94" font-size="10" fill="#E5605A" font-weight="700">기준선</text>' +
+        [40,80,60,110,150,95,130,70,100,60].map(function (h, i) {
+          var x = 60 + i * 28, y = 200 - h, color = h > 100 ? '#E5605A' : '#F68C1F';
+          return '<rect x="' + x + '" y="' + y + '" width="18" height="' + h + '" rx="4" fill="' + color + '"/>';
+        }).join('') +
+        '<circle cx="200" cy="225" r="0" />'
+      ),
+      'AI 보조': sceneFrame(
+        '<rect x="90" y="60" width="220" height="86" rx="16" fill="rgba(255,255,255,.08)"/>' +
+        '<path d="M150 146 l-16 22 l30-14 z" fill="rgba(255,255,255,.08)"/>' +
+        '<circle cx="140" cy="103" r="6" fill="#F68C1F"/><circle cx="170" cy="103" r="6" fill="#F68C1F" opacity=".6"/><circle cx="200" cy="103" r="6" fill="#F68C1F" opacity=".3"/>' +
+        '<path d="M300 70 l4 10 10 4 -10 4 -4 10 -4-10-10-4 10-4z" fill="#FFC98A"/>' +
+        '<rect x="150" y="176" width="100" height="24" rx="12" fill="rgba(246,140,31,.18)"/>' +
+        '<text x="200" y="192" text-anchor="middle" font-size="11" font-weight="700" fill="#FFC98A">AI가 답변 작성 중</text>'
+      ),
+      'PDF 편집': sceneFrame(
+        '<path d="M140 42 h84 l30 30 v128 h-114 z" fill="#fff"/><path d="M224 42 l30 30 h-30 z" fill="#E7E9EC"/>' +
+        '<rect x="156" y="100" width="82" height="8" rx="4" fill="rgba(246,140,31,.5)"/>' +
+        '<rect x="156" y="118" width="82" height="8" rx="4" fill="#E7E9EC"/>' +
+        '<rect x="156" y="136" width="60" height="8" rx="4" fill="#E7E9EC"/>' +
+        '<path d="M244 150 l14-14 10 10-14 14-12 2z" fill="#F68C1F"/>'
+      ),
+      '자리 배치': sceneFrame(
+        [0,1,2,3].map(function (r) {
+          return [0,1,2].map(function (c) {
+            var x = 92 + c * 76, y = 52 + r * 44;
+            return '<rect x="' + x + '" y="' + y + '" width="56" height="30" rx="6" fill="rgba(255,255,255,.08)"/>' +
+              '<circle cx="' + (x + 28) + '" cy="' + (y + 15) + '" r="8" fill="#F68C1F" opacity=".7"/>';
+          }).join('');
+        }).join('')
+      ),
+      '화면 캡처·녹화': sceneFrame(
+        '<rect x="60" y="50" width="280" height="140" rx="8" fill="rgba(255,255,255,.05)"/>' +
+        '<rect x="95" y="72" width="180" height="100" rx="6" fill="none" stroke="#F68C1F" stroke-width="3" stroke-dasharray="8 6"/>' +
+        '<circle cx="90" cy="60" r="6" fill="#E5605A"/>' +
+        '<text x="102" y="64" font-size="12" font-weight="800" fill="#E5605A">REC 00:12</text>'
+      ),
+      '🌏 다문화 번역': sceneFrame(
+        '<rect x="46" y="70" width="140" height="60" rx="14" fill="rgba(255,255,255,.09)"/>' +
+        '<text x="116" y="106" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">안녕하세요 🇰🇷</text>' +
+        '<path d="M195 100 l24 0 m-8-8 l8 8 -8 8" fill="none" stroke="#F68C1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="214" y="90" width="140" height="60" rx="14" fill="rgba(246,140,31,.18)"/>' +
+        '<text x="284" y="126" text-anchor="middle" font-size="14" font-weight="700" fill="#FFC98A">Hello 🇺🇸</text>'
+      ),
+      '👂 실시간 음성 자막': sceneFrame(
+        [30,55,40,70,50,80,45,60,35,50].map(function (h, i) {
+          var x = 80 + i * 24, y = 100 - h / 2;
+          return '<rect x="' + x + '" y="' + y + '" width="12" height="' + h + '" rx="6" fill="rgba(255,255,255,.18)"/>';
+        }).join('') +
+        '<rect x="70" y="176" width="260" height="34" rx="8" fill="rgba(246,140,31,.18)"/>' +
+        '<text x="200" y="197" text-anchor="middle" font-size="12" font-weight="700" fill="#FFC98A">선생님 말씀이 여기에 자막으로 표시돼요</text>'
+      ),
+      '🤖 AI 교수 보조': sceneFrame(
+        '<path d="M300 66 l4 10 10 4 -10 4 -4 10 -4-10-10-4 10-4z" fill="#FFC98A"/>' +
+        '<circle cx="150" cy="110" r="34" fill="rgba(246,140,31,.16)"/>' +
+        '<circle cx="210" cy="90" r="24" fill="rgba(255,255,255,.08)"/>' +
+        '<circle cx="215" cy="140" r="28" fill="rgba(255,255,255,.08)"/>' +
+        '<text x="150" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="#FFC98A">발문</text>' +
+        '<text x="210" y="94" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">퀴즈</text>' +
+        '<text x="215" y="144" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">활동</text>'
+      ),
+      '📋 명단 저장·불러오기': sceneFrame(
+        '<path d="M60 55 h60 l14 16 h206 v120 h-280 z" fill="rgba(255,255,255,.08)"/>' +
+        [0,1,2,3].map(function (i) {
+          var y = 100 + i * 24;
+          return '<rect x="86" y="' + y + '" width="14" height="14" rx="4" fill="none" stroke="#F68C1F" stroke-width="2"/>' +
+            '<rect x="112" y="' + (y + 3) + '" width="180" height="8" rx="4" fill="rgba(255,255,255,.16)"/>';
+        }).join('')
+      ),
+      '🔤 영역 글자 추출 (OCR)': sceneFrame(
+        [0,1,2,3].map(function (i) {
+          return '<rect x="70" y="' + (60 + i * 22) + '" width="' + (170 - i * 12) + '" height="9" rx="4" fill="rgba(255,255,255,.14)"/>';
+        }).join('') +
+        '<rect x="60" y="54" width="200" height="70" rx="6" fill="none" stroke="#F68C1F" stroke-width="3" stroke-dasharray="7 5"/>' +
+        '<path d="M262 88 h30 m-10-10 l10 10 -10 10" fill="none" stroke="#F68C1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="300" y="66" width="46" height="46" rx="8" fill="rgba(255,255,255,.1)"/>' +
+        '<rect x="310" y="76" width="26" height="6" rx="3" fill="#FFC98A"/><rect x="310" y="88" width="26" height="6" rx="3" fill="#FFC98A"/><rect x="310" y="100" width="18" height="6" rx="3" fill="#FFC98A"/>'
+      ),
+      '🎙️ 회의 녹음·화자분리·요약': sceneFrame(
+        [24,44,30,58,38,50,28,46].map(function (h, i) {
+          var x = 60 + i * 20, y = 92 - h / 2;
+          return '<rect x="' + x + '" y="' + y + '" width="10" height="' + h + '" rx="5" fill="rgba(255,255,255,.16)"/>';
+        }).join('') +
+        '<rect x="230" y="60" width="34" height="20" rx="10" fill="#F68C1F"/><text x="247" y="74" text-anchor="middle" font-size="11" font-weight="800" fill="#1B222C">A</text>' +
+        '<rect x="270" y="86" width="34" height="20" rx="10" fill="#4A90D9"/><text x="287" y="100" text-anchor="middle" font-size="11" font-weight="800" fill="#1B222C">B</text>' +
+        '<rect x="70" y="150" width="260" height="8" rx="4" fill="rgba(255,255,255,.14)"/>' +
+        '<rect x="70" y="166" width="200" height="8" rx="4" fill="rgba(255,255,255,.14)"/>' +
+        '<rect x="70" y="182" width="230" height="8" rx="4" fill="rgba(255,255,255,.14)"/>'
+      )
+    };
+
     function openDemo(card) {
       var title = card.querySelector('h3') ? card.querySelector('h3').textContent : '';
       var desc = card.querySelector('p') ? card.querySelector('p').textContent : '';
       var imgSrc = card.getAttribute('data-demo-img');
+      var scene = DEMO_SCENES[title];
 
       demoTitle.textContent = title;
       demoDesc.textContent = desc;
-      demoMedia.innerHTML = imgSrc
-        ? '<img src="' + imgSrc + '" alt="' + title + ' 구동 화면">'
-        : '<span class="demo-ph-icon">🎬</span>' +
+
+      if (imgSrc) {
+        demoMedia.className = 'demo-media';
+        demoMedia.innerHTML = '<img src="' + imgSrc + '" alt="' + title + ' 구동 화면">';
+      } else if (scene) {
+        demoMedia.className = 'demo-media has-scene';
+        demoMedia.innerHTML = scene;
+      } else {
+        demoMedia.className = 'demo-media';
+        demoMedia.innerHTML = '<span class="demo-ph-icon">🎬</span>' +
           '<span class="demo-ph-label">실제 구동 화면 예시 (준비 중)</span>' +
           '<span class="demo-ph-note">곧 실제 사용 화면으로 채워질 자리예요.</span>';
+      }
 
       demoOverlay.hidden = false;
     }
