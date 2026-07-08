@@ -38,6 +38,26 @@
     border: 1.5px solid var(--gray-200); background: #fff; cursor: pointer; color: var(--navy);
   }
   .refresh:hover { border-color: var(--orange); color: var(--orange-dark); }
+  .toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .toolbar-actions input[type="text"] {
+    font-size: 13px; padding: 7px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+    font-family: inherit; width: 180px;
+  }
+  .toolbar-actions input[type="text"]:focus { outline: none; border-color: var(--orange); }
+  .toolbar-actions select {
+    font-size: 13px; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+    font-family: inherit; background: #fff; color: var(--navy); cursor: pointer;
+  }
+  .bulk-del-btn {
+    font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 8px;
+    border: 1.5px solid #C0392B; background: #fff; color: #C0392B; cursor: pointer;
+  }
+  .bulk-del-btn:hover:not(:disabled) { background: #FDECEA; }
+  .bulk-del-btn:disabled { opacity: .4; cursor: default; }
+  .level-tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: var(--gray-200); color: var(--navy); margin-left: 6px; white-space: nowrap;
+  }
 
   table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(31,39,51,.06); }
   th, td { padding: 11px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
@@ -71,12 +91,24 @@
     <p class="sub">코코메이트 다운로드 페이지에서 수집된 정보입니다.</p>
     <div class="toolbar">
       <div class="count">총 <strong id="totalCount">0</strong>명 · 마케팅 동의 <strong id="marketingCount">0</strong>명</div>
-      <button class="refresh" id="refreshBtn">↻ 새로고침</button>
+      <div class="toolbar-actions">
+        <input type="text" id="searchInput" placeholder="이름 · 소속 검색">
+        <select id="levelFilter">
+          <option value="">전체 학교급</option>
+          <option value="초등">초등</option>
+          <option value="중등">중등</option>
+          <option value="고등">고등</option>
+          <option value="기타">기타</option>
+        </select>
+        <button class="bulk-del-btn" id="bulkDeleteBtn" disabled>선택 삭제 (<span id="selCount">0</span>)</button>
+        <button class="refresh" id="refreshBtn">↻ 새로고침</button>
+      </div>
     </div>
     <div class="table-scroll">
       <table id="leadTable" hidden>
         <thead>
           <tr>
+            <th><input type="checkbox" id="selectAllChk"></th>
             <th>신청일시</th><th>소속</th><th>성명</th><th>직급</th><th>전화번호</th><th>이메일</th><th>마케팅동의</th><th>OS</th><th></th>
           </tr>
         </thead>
@@ -105,6 +137,18 @@
     } catch (e) { return iso || ''; }
   }
 
+  // 별도 "학교급" 항목이 없어서, 소속(org) 텍스트에서 초등/중등/고등 키워드를 찾아 추정한다.
+  function detectLevel(org) {
+    org = org || '';
+    if (/초등/.test(org)) return '초등';
+    if (/중등|중학교/.test(org)) return '중등';
+    if (/고등|고교/.test(org)) return '고등';
+    return '기타';
+  }
+
+  var allLeads = [];
+  var selectedKeys = new Set();
+
   function loadLeads() {
     gateError.textContent = '';
     return fetch(WORKER_BASE + '/api/admin/leads', { headers: { 'x-admin': token } })
@@ -118,35 +162,72 @@
         content.hidden = false;
         sessionStorage.setItem('cm_admin_token', token);
 
-        var body = document.getElementById('leadBody');
-        var table = document.getElementById('leadTable');
-        var empty = document.getElementById('emptyMsg');
-        body.innerHTML = '';
-
-        if (!list.length) {
-          table.hidden = true;
-          empty.hidden = false;
-        } else {
-          table.hidden = false;
-          empty.hidden = true;
-          list.forEach(function (r) {
-            var tr = document.createElement('tr');
-            tr.innerHTML =
-              '<td>' + fmtDate(r.date) + '</td>' +
-              '<td>' + escapeHtml(r.org) + '</td>' +
-              '<td>' + escapeHtml(r.name) + '</td>' +
-              '<td>' + escapeHtml(r.position) + '</td>' +
-              '<td>' + escapeHtml(r.phone) + '</td>' +
-              '<td>' + escapeHtml(r.email) + '</td>' +
-              '<td class="' + (r.marketing ? 'yes' : 'no') + '">' + (r.marketing ? '동의' : '미동의') + '</td>' +
-              '<td>' + escapeHtml(r.os || '') + '</td>' +
-              '<td><button class="del-btn" data-key="' + escapeHtml(r.key) + '">삭제</button></td>';
-            body.appendChild(tr);
-          });
-        }
-        document.getElementById('totalCount').textContent = list.length.toLocaleString('ko-KR');
-        document.getElementById('marketingCount').textContent = list.filter(function (r) { return r.marketing; }).length.toLocaleString('ko-KR');
+        allLeads = list;
+        selectedKeys.clear();
+        renderLeads();
       });
+  }
+
+  function getFilteredLeads() {
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    var level = document.getElementById('levelFilter').value;
+    return allLeads.filter(function (r) {
+      if (level && detectLevel(r.org) !== level) return false;
+      if (q && (r.name || '').toLowerCase().indexOf(q) === -1 && (r.org || '').toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function updateBulkDeleteBtn() {
+    var btn = document.getElementById('bulkDeleteBtn');
+    document.getElementById('selCount').textContent = selectedKeys.size;
+    btn.disabled = selectedKeys.size === 0;
+  }
+
+  function renderLeads() {
+    var list = getFilteredLeads();
+    var body = document.getElementById('leadBody');
+    var table = document.getElementById('leadTable');
+    var empty = document.getElementById('emptyMsg');
+    body.innerHTML = '';
+
+    if (!list.length) {
+      table.hidden = true;
+      empty.hidden = false;
+    } else {
+      table.hidden = false;
+      empty.hidden = true;
+      list.forEach(function (r) {
+        var tr = document.createElement('tr');
+        var checked = selectedKeys.has(r.key) ? 'checked' : '';
+        tr.innerHTML =
+          '<td><input type="checkbox" class="rowChk" data-key="' + escapeHtml(r.key) + '" ' + checked + '></td>' +
+          '<td>' + fmtDate(r.date) + '</td>' +
+          '<td>' + escapeHtml(r.org) + '<span class="level-tag">' + detectLevel(r.org) + '</span></td>' +
+          '<td>' + escapeHtml(r.name) + '</td>' +
+          '<td>' + escapeHtml(r.position) + '</td>' +
+          '<td>' + escapeHtml(r.phone) + '</td>' +
+          '<td>' + escapeHtml(r.email) + '</td>' +
+          '<td class="' + (r.marketing ? 'yes' : 'no') + '">' + (r.marketing ? '동의' : '미동의') + '</td>' +
+          '<td>' + escapeHtml(r.os || '') + '</td>' +
+          '<td><button class="del-btn" data-key="' + escapeHtml(r.key) + '">삭제</button></td>';
+        body.appendChild(tr);
+      });
+    }
+    document.getElementById('totalCount').textContent = allLeads.length.toLocaleString('ko-KR');
+    document.getElementById('marketingCount').textContent = allLeads.filter(function (r) { return r.marketing; }).length.toLocaleString('ko-KR');
+    document.getElementById('selectAllChk').checked = list.length > 0 && list.every(function (r) { return selectedKeys.has(r.key); });
+    updateBulkDeleteBtn();
+  }
+
+  function deleteByKeys(keys) {
+    return Promise.all(keys.map(function (key) {
+      return fetch(WORKER_BASE + '/api/admin/leads/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin': token },
+        body: JSON.stringify({ key: key }),
+      });
+    }));
   }
 
   function escapeHtml(s) {
@@ -156,19 +237,46 @@
   }
 
   document.getElementById('leadBody').addEventListener('click', function (e) {
-    var btn = e.target.closest('.del-btn');
-    if (!btn) return;
-    if (!confirm('이 신청자 정보를 삭제할까요? 되돌릴 수 없어요.')) return;
-    btn.disabled = true;
-    fetch(WORKER_BASE + '/api/admin/leads/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin': token },
-      body: JSON.stringify({ key: btn.dataset.key }),
-    })
-      .then(function (res) { if (!res.ok) throw new Error('삭제에 실패했어요 (HTTP ' + res.status + ')'); })
-      .then(function () { loadLeads(); })
-      .catch(function (err) { alert(err.message); btn.disabled = false; });
+    var delBtn = e.target.closest('.del-btn');
+    if (delBtn) {
+      if (!confirm('이 신청자 정보를 삭제할까요? 되돌릴 수 없어요.')) return;
+      delBtn.disabled = true;
+      deleteByKeys([delBtn.dataset.key])
+        .then(function () { loadLeads(); })
+        .catch(function (err) { alert(err.message); delBtn.disabled = false; });
+    }
   });
+
+  document.getElementById('leadBody').addEventListener('change', function (e) {
+    var chk = e.target.closest('.rowChk');
+    if (!chk) return;
+    if (chk.checked) selectedKeys.add(chk.dataset.key);
+    else selectedKeys.delete(chk.dataset.key);
+    document.getElementById('selectAllChk').checked =
+      getFilteredLeads().length > 0 && getFilteredLeads().every(function (r) { return selectedKeys.has(r.key); });
+    updateBulkDeleteBtn();
+  });
+
+  document.getElementById('selectAllChk').addEventListener('change', function (e) {
+    var list = getFilteredLeads();
+    if (e.target.checked) list.forEach(function (r) { selectedKeys.add(r.key); });
+    else list.forEach(function (r) { selectedKeys.delete(r.key); });
+    renderLeads();
+  });
+
+  document.getElementById('bulkDeleteBtn').addEventListener('click', function () {
+    var keys = Array.from(selectedKeys);
+    if (!keys.length) return;
+    if (!confirm(keys.length + '명의 신청자 정보를 삭제할까요? 되돌릴 수 없어요.')) return;
+    this.disabled = true;
+    deleteByKeys(keys)
+      .then(function () { loadLeads(); })
+      .catch(function (err) { alert(err.message); })
+      .finally(function () { updateBulkDeleteBtn(); });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', renderLeads);
+  document.getElementById('levelFilter').addEventListener('change', renderLeads);
 
   document.getElementById('gateBtn').addEventListener('click', function () {
     token = document.getElementById('tokenInput').value.trim();
