@@ -174,8 +174,8 @@ KV 네임스페이스는 기존 `LINKS`를 그대로 재사용하고, 카운터�
 
 ```js
 const RELEASE_URLS = {
-  win: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/ClassMate-portable.exe',
-  mac: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/ClassMate-Setup-mac.dmg',
+  win: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/KocoMate-portable.exe',
+  mac: 'https://github.com/Sooni95/classmate-desktop/releases/latest/download/KocoMate-Setup-mac.dmg',
 };
 
 // === /download : 다운로드 집계 후 GitHub Release 파일로 리다이렉트 ===
@@ -209,10 +209,61 @@ if (url.pathname === '/api/download-count') {
 }
 ```
 
-> ⚠️ `RELEASE_URLS`는 현재 자동 빌드(`build.yml`)가 배포하는 `latest` 릴리즈의 실제 파일명
-> (`ClassMate-portable.exe`)을 기준으로 했습니다. **Mac 빌드는 아직 CI로 자동 배포되지 않으므로**,
-> `ClassMate-Setup-mac.dmg`를 `latest` 릴리즈에 수동으로(`npm run dist:mac` 후 업로드) 올리기 전까지는
-> Mac 다운로드 버튼이 404로 연결됩니다. Mac 빌드를 자동화하려면 `build.yml`에 macOS 러너 job을 추가하세요.
+> `RELEASE_URLS`는 `latest` 릴리즈의 실제 파일명(`KocoMate-portable.exe`, `KocoMate-Setup-mac.dmg`)
+> 기준입니다. 2026-07-09 "코코메이트" 리브랜딩 이후 파일명이 `ClassMate-*` → `KocoMate-*`로
+> 바뀌었으니, 이 상수를 반드시 최신 파일명으로 갱신하세요 — 안 그러면 다운로드 버튼이 404로 깨집니다.
+> Windows·macOS 빌드는 `build.yml`의 `build-win`/`build-mac` job이 push마다 자동으로 같은
+> `latest` 릴리즈에 두 파일을 함께 올립니다.
+
+## 배포
+
+---
+
+# 다운로드 신청자 정보 수집 — /api/lead, /api/admin/leads 엔드포인트 추가 안내
+
+다운로드 버튼을 누르면 소속·성명·직급·전화번호·이메일과 개인정보 수집·이용 동의(필수)·
+마케팅 활용 동의(선택)를 입력받는 폼이 먼저 뜹니다(`docs/index.html`의 `#leadOverlay`).
+제출 성공 시에만 실제 다운로드(`/download?os=...`)로 넘어갑니다. 수집한 정보는
+`docs/admin-leads.html`에서 `ADMIN_TOKEN`으로 확인할 수 있습니다(별도 배포 불필요, KV만 재사용).
+
+```js
+// === /api/lead : 다운로드 신청자 정보 저장 ===
+if (url.pathname === '/api/lead' && request.method === 'POST') {
+  let body;
+  try { body = await request.json(); } catch { return Response.json({ ok: false, message: '형식 오류' }, { status: 400 }); }
+  const org = String(body.org || '').trim().slice(0, 100);
+  const name = String(body.name || '').trim().slice(0, 50);
+  const position = String(body.position || '').trim().slice(0, 50);
+  const phone = String(body.phone || '').trim().slice(0, 30);
+  const email = String(body.email || '').trim().slice(0, 100);
+  const consent = body.consent === true;
+  const marketing = body.marketing === true;
+  const os = (body.os === 'mac') ? 'mac' : 'win';
+  if (!org || !name || !position || !phone || !email)
+    return Response.json({ ok: false, message: '필수 항목을 모두 입력해 주세요' }, { status: 400 });
+  if (!consent)
+    return Response.json({ ok: false, message: '개인정보 수집·이용에 동의해야 다운로드할 수 있어요' }, { status: 400 });
+  const id = 'lead:' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  await env.LINKS.put(id, JSON.stringify({ org, name, position, phone, email, consent, marketing, os, date: new Date().toISOString() }));
+  return Response.json({ ok: true });
+}
+
+// === /api/admin/leads : 관리자 전용 — 다운로드 신청자 목록 (최신순) ===
+if (url.pathname === '/api/admin/leads' && request.method === 'GET') {
+  if (request.headers.get('x-admin') !== env.ADMIN_TOKEN) return new Response('unauthorized', { status: 401 });
+  const list = await env.LINKS.list({ prefix: 'lead:' });
+  const out = [];
+  for (const k of list.keys) {
+    const raw = await env.LINKS.get(k.name);
+    if (raw) out.push(JSON.parse(raw));
+  }
+  out.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return Response.json(out);
+}
+```
+
+> `ADMIN_TOKEN` 시크릿은 앞서 단축URL 관리 기능을 위해 이미 등록했다면 그대로 재사용합니다
+> (새로 만들 필요 없음). `docs/admin-leads.html`을 열어 같은 토큰을 입력하면 목록이 보입니다.
 
 ## 배포
 
@@ -222,3 +273,43 @@ npx wrangler deploy
 
 배포 후 `docs/index.html`의 다운로드 버튼(Windows/Mac)을 각각 눌러 리다이렉트가 되는지,
 `/api/download-count`가 `{ win, mac, total }`을 반환하는지 확인하세요.
+
+## 기존 도메인(kocoafab.cc)의 서브도메인으로 전환하기 (신뢰도 개선)
+
+지금은 다운로드 버튼이 `classmate-links.suhun099.workers.dev`(개인 계정명이 노출되는 기본 workers.dev 주소)를
+거칩니다. 동작에는 문제없지만 낯선 주소로 잠깐 이동하므로 다소 수상해 보일 수 있어, 새 도메인을 사는 대신
+**이미 쓰고 있는 `kocoafab.cc`의 서브도메인**을 쓰기로 했습니다. `kocoafab.cc` 루트는 이미 코코아팹 공식
+쇼핑몰/홈페이지가 운영 중이라 겹치지 않게 서브도메인 `classmate.kocoafab.cc`를 사용합니다. 이렇게 하면
+다운로드 버튼이 `/download?os=win`처럼 **상대경로**가 되어 주소창에 외부 도메인이 전혀 보이지 않습니다.
+
+> 서브도메인 이름을 다르게 하고 싶다면(예: `download.kocoafab.cc`), 아래 절차의 `classmate.kocoafab.cc`를
+> 원하는 이름으로 바꾸고 `docs/index.html`의 `WORKER_BASE` 분기 조건도 같이 바꾸세요.
+
+### 1) kocoafab.cc가 Cloudflare에 있는지 확인
+
+`kocoafab.cc`의 DNS/Worker가 이미 Cloudflare 계정에서 관리되고 있다면(기존 `classmate-links` Worker와 같은
+계정일 가능성이 높음) 별도 이전 없이 바로 아래 단계로 진행할 수 있습니다. 다른 곳(가비아 등)에서 관리 중이라면
+해당 등록기관에서 네임서버를 Cloudflare로 변경해야 합니다.
+
+### 2) 랜딩페이지를 Cloudflare Pages로 배포
+
+이 저장소(`classmate-desktop`)의 `docs/` 폴더를 그대로 소스로 씁니다. GitHub Pages 대신(또는 함께) 사용:
+
+1. Cloudflare 대시보드 → **Workers & Pages → Create → Pages → Connect to Git**
+2. 저장소 `Sooni95/classmate-desktop` 선택, **Build output directory**를 `docs`로 지정 (빌드 명령 없음, 정적 파일 그대로 배포)
+3. 배포된 Pages 프로젝트 → **Custom domains → Set up a custom domain** → `classmate.kocoafab.cc` 연결
+
+### 3) 다운로드 Worker를 같은 서브도메인의 경로로 라우팅
+
+1. 기존 Worker(`classmate-links`) → **Settings → Domains & Routes → Add Route**
+2. Route에 `classmate.kocoafab.cc/download*`와 `classmate.kocoafab.cc/api/download-count*` 두 개 추가 (Zone: kocoafab.cc)
+3. 이제 `https://classmate.kocoafab.cc/download?os=win`, `https://classmate.kocoafab.cc/api/download-count`가 같은 도메인에서 동작
+
+### 4) 코드에서 확인할 것
+
+`docs/index.html`은 이미 준비되어 있습니다 — `location.hostname`이 `classmate.kocoafab.cc`이면 자동으로
+상대경로를 쓰도록 분기해뒀으므로, 위 1~3단계만 끝내면 **코드를 더 손댈 필요 없이** 그대로 동작합니다.
+
+```js
+var WORKER_BASE = (location.hostname === "classmate.kocoafab.cc") ? "" : "https://classmate-links.suhun099.workers.dev";
+```

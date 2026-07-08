@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassMate — 수업 흐름을 끊지 않는 교사용 올인원 툴</title>
+<meta name="description" content="타이머, 필기·포인터, 발표자 뽑기, QR·단축URL, 소음 측정, AI 보조까지. 교사를 위한 올인원 수업 도구 ClassMate를 무료로 다운로드하세요.">
+<style>
+  :root {
+    --orange: #F68C1F;
+    --orange-dark: #D9760F;
+    --orange-light: #FFF3E4;
+    --navy: #1F2733;
+    --gray-600: #5B6472;
+    --gray-200: #E7E9EC;
+    --white: #FFFFFF;
+    --radius: 14px;
+    --max-width: 1080px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    color: var(--navy);
+    background: var(--white);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  img, svg { display: block; max-width: 100%; }
+
+  a { color: inherit; text-decoration: none; }
+
+  .wrap {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- Sticky top bar ---------- */
+  .stickybar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    transform: translateY(-100%);
+    transition: transform 0.25s ease;
+  }
+  .stickybar.visible { transform: translateY(0); }
+  .stickybar-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .stickybar-brand {
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--navy);
+    white-space: nowrap;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--orange);
+    color: var(--white);
+    box-shadow: 0 8px 20px rgba(246, 140, 31, 0.35);
+  }
+  .btn-primary:hover { background: var(--orange-dark); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-lg { padding: 18px 40px; font-size: 19px; }
+  .btn-md { padding: 12px 26px; font-size: 15px; }
+  .btn-sm { padding: 9px 18px; font-size: 14px; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--navy);
+    border: 1.5px solid var(--gray-200);
+  }
+  .btn-ghost:hover { border-color: var(--orange); color: var(--orange-dark); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 110px 0 64px;
+    text-align: center;
+    background:
+      radial-gradient(60% 55% at 50% 0%, var(--orange-light) 0%, rgba(255,255,255,0) 70%);
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    background: var(--orange-light);
+    color: var(--orange-dark);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(30px, 5vw, 48px);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  .hero h1 .accent { color: var(--orange); }
+  .hero p.lead {
+    font-size: clamp(16px, 2.4vw, 19px);
+    color: var(--gray-600);
+    max-width: 560px;
+    margin: 0 auto 36px;
+  }
+  .hero-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .hero-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  .hero-note {
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .download-count {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--gray-600);
+    font-weight: 600;
+  }
+  .download-count strong { color: var(--orange-dark); }
+
+  /* ---------- Video ---------- */
+  .video-section { padding: 40px 0 80px; }
+  .video-frame {
+    position: relative;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(31, 39, 51, 0.15);
+    background: #000;
+  }
+  .video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  /* ---------- Features ---------- */
+  .features { padding: 20px 0 90px; }
+  .section-heading {
+    text-align: center;
+    margin-bottom: 44px;
+  }
+  .section-heading h2 {
+    font-size: clamp(24px, 3.6vw, 32px);
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .section-heading p {
+    color: var(--gray-600);
+    font-size: 16px;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 26px 22px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .feature-card:hover {
+    box-shadow: 0 12px 28px rgba(31, 39, 51, 0.08);
+    transform: translateY(-2px);
+  }
+  .feature-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: var(--orange-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .feature-icon svg { width: 24px; height: 24px; }
+  .feature-card h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .feature-card p {
+    font-size: 14px;
+    color: var(--gray-600);
+    line-height: 1.55;
+  }
+
+  /* ---------- Bottom CTA ---------- */
+  .cta {
+    background: var(--navy);
+    color: var(--white);
+    padding: 72px 0;
+    text-align: center;
+  }
+  .cta h2 {
+    font-size: clamp(24px, 3.6vw, 32px);
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .cta p {
+    color: #C7CDD6;
+    margin-bottom: 32px;
+    font-size: 16px;
+  }
+  .cta .download-count { color: #C7CDD6; }
+  .cta .download-count strong { color: #FFC98A; }
+  .cta .btn-ghost {
+    border-color: rgba(255,255,255,0.3);
+    color: var(--white);
+  }
+  .cta .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* ---------- Trust signals ---------- */
+  .trust-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .trust-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .smartscreen-note {
+    max-width: 480px;
+    margin: 18px auto 0;
+    background: var(--orange-light);
+    border: 1px solid rgba(246, 140, 31, 0.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #7A4A0E;
+    text-align: left;
+  }
+  .smartscreen-note b { color: var(--orange-dark); }
+
+  .about-section {
+    padding: 60px 0;
+    background: #FAFBFC;
+    border-top: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .about-grid h2 { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+  .about-grid p { font-size: 14.5px; color: var(--gray-600); line-height: 1.7; }
+  .about-list { list-style: none; }
+  .about-list li {
+    display: flex; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 14px; color: var(--navy);
+  }
+  .about-list li:last-child { border-bottom: none; }
+  .about-list b { color: var(--orange-dark); min-width: 96px; flex: none; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    padding: 36px 0;
+    text-align: center;
+    color: var(--gray-600);
+    font-size: 13px;
+  }
+  footer .footer-brand {
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+  footer a { color: var(--orange-dark); font-weight: 600; }
+  footer .footer-links { margin-top: 8px; }
+  footer .footer-links a { margin: 0 8px; }
+
+  @media (max-width: 760px) {
+    .about-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 760px) {
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .hero { padding: 96px 0 48px; }
+  }
+  @media (max-width: 520px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .hero-cta-row { flex-direction: column; width: 100%; }
+    .hero-cta-row .btn { width: 100%; }
+    .stickybar-brand { font-size: 15px; }
+  }
+
+  /* ---------- Lead capture modal ---------- */
+  .lead-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(31, 39, 51, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .lead-overlay[hidden] { display: none; }
+  .lead-modal {
+    background: var(--white);
+    border-radius: 18px;
+    width: 100%; max-width: 420px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 30px 28px 26px;
+    box-shadow: 0 30px 70px rgba(31, 39, 51, 0.35);
+    position: relative;
+  }
+  .lead-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 30px; height: 30px; border: none; background: transparent;
+    color: var(--gray-600); font-size: 18px; cursor: pointer; border-radius: 8px;
+  }
+  .lead-close:hover { background: var(--gray-200); color: var(--navy); }
+  .lead-modal h3 { font-size: 19px; font-weight: 800; margin-bottom: 6px; padding-right: 20px; }
+  .lead-sub { font-size: 13.5px; color: var(--gray-600); margin-bottom: 20px; }
+  .lead-field { margin-bottom: 13px; }
+  .lead-field label {
+    display: block; font-size: 12.5px; font-weight: 700; color: var(--navy); margin-bottom: 5px;
+  }
+  .lead-field input {
+    width: 100%; font-size: 14.5px; padding: 10px 12px;
+    border: 1.5px solid var(--gray-200); border-radius: 9px; font-family: inherit;
+    color: var(--navy); background: #fff;
+  }
+  .lead-field input:focus { outline: none; border-color: var(--orange); }
+  .lead-consents { margin: 18px 0 6px; display: flex; flex-direction: column; gap: 10px; }
+  .lead-consent {
+    display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; color: var(--gray-600);
+    cursor: pointer; line-height: 1.5;
+  }
+  .lead-consent input { margin-top: 2px; flex: none; }
+  .lead-consent b { color: var(--navy); }
+  .lead-consent a { text-decoration: underline; }
+  .lead-error {
+    font-size: 12.5px; color: #C0392B; background: #FDECEA; border-radius: 8px;
+    padding: 9px 12px; margin-bottom: 12px;
+  }
+  .lead-error[hidden] { display: none; }
+  .lead-submit { width: 100%; margin-top: 6px; }
+  .lead-submit:disabled { opacity: .6; cursor: default; transform: none; }
+</style>
+</head>
+<body>
+
+  <!-- Sticky top bar (appears after scrolling past hero) -->
+  <div class="stickybar" id="stickybar">
+    <div class="stickybar-inner">
+      <span class="stickybar-brand">ClassMate</span>
+      <a class="btn btn-primary btn-sm" id="dl-sticky-win" href="#" data-os="win">Windows 다운로드</a>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="hero-eyebrow">교사를 위한 무료 수업 보조 툴</span>
+      <h1>수업 흐름을 끊지 않는<br><span class="accent">교사용 올인원 툴</span></h1>
+      <p class="lead">타이머부터 필기, 발표자 뽑기, AI 보조까지 — ClassMate 하나면 충분합니다.</p>
+      <div class="hero-cta">
+        <div class="hero-cta-row">
+          <a class="btn btn-primary btn-lg" id="dl-hero-win" href="#" data-os="win">⬇ Windows용 다운로드</a>
+          <a class="btn btn-ghost btn-md" id="dl-hero-mac" href="#" data-os="mac">Mac용 다운로드</a>
+        </div>
+        <span class="hero-note">무료 · 설치 없이 바로 실행</span>
+        <div class="download-count" id="download-count-hero" hidden>
+          누적 다운로드 <strong id="download-count-hero-num">0</strong>회
+        </div>
+        <div class="trust-chips">
+          <span class="trust-chip">🏢 네패스 코코아팹 정식 배포</span>
+          <span class="trust-chip">🆓 무료</span>
+          <span class="trust-chip">🔒 학생 정보 기기 내 저장</span>
+        </div>
+        <div class="smartscreen-note">
+          ⚠️ 설치 시 <b>"Windows에서 PC를 보호했습니다"</b>(Windows) 또는
+          <b>"확인되지 않은 개발자"</b>(Mac) 경고가 뜰 수 있어요. 아직 정식 서명 인증서 발급 전이라
+          나오는 안내일 뿐, 악성코드가 아닙니다.
+          <a href="install-guide.html" style="color:var(--orange-dark); font-weight:700;">그림으로 보는 설치 안내 →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo video -->
+  <section class="video-section">
+    <div class="wrap">
+      <div class="video-frame">
+        <iframe
+          src="https://www.youtube.com/embed/PLACEHOLDER_VIDEO_ID"
+          title="ClassMate 시연 영상"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="wrap">
+      <div class="section-heading">
+        <h2>수업에 필요한 모든 것, 한 화면에</h2>
+        <p>창을 옮겨 다니지 않아도, ClassMate 하나로 수업을 진행하세요.</p>
+      </div>
+      <div class="feature-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l3 2"></path><path d="M9 2h6"></path></svg>
+          </div>
+          <h3>타이머</h3>
+          <p>활동 시간을 큼직하게 표시. 남은 시간을 학생들과 함께 확인하며 수업 리듬을 지켜요.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+          </div>
+          <h3>필기 · 포인터</h3>
+          <p>화면 위에 바로 필기하고 강조 포인터로 시선을 모아요. 자료 위 어디서든 사용 가능합니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"></circle><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"></path><path d="M17 3.5a4 4 0 0 1 0 7"></path></svg>
+          </div>
+          <h3>발표자 뽑기 · 게임</h3>
+          <p>학생 명단으로 랜덤 발표자를 뽑고, 돌림판·주사위 같은 간단한 게임으로 수업에 활기를 더해요.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3z"></path><path d="M20 14h1v1h-1z"></path><path d="M14 20h1v1h-1z"></path><path d="M17 17h1v1h-1z"></path><path d="M20 20h1v1h-1z"></path></svg>
+          </div>
+          <h3>QR · 단축URL</h3>
+          <p>수업 자료나 설문 링크를 QR코드와 짧은 URL로 즉시 공유해요. 학생들이 바로 접속합니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
+          </div>
+          <h3>소음 측정</h3>
+          <p>교실 소음 수준을 실시간 시각화. 학생들이 스스로 소리 크기를 조절하도록 돕습니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 4.6L18 8l-4.2 1.4L12 14l-1.8-4.6L6 8l4.2-1.4L12 2z"></path><path d="M5 17l.9 2.1L8 20l-2.1.9L5 23l-.9-2.1L2 20l2.1-.9L5 17z"></path><path d="M19 15l.7 1.6L21 17l-1.3.7L19 19l-.7-1.3L17 17l1.3-.7L19 15z"></path></svg>
+          </div>
+          <h3>AI 보조</h3>
+          <p>영역 글자 추출(OCR), 다문화 번역, 회의 녹음 요약까지. AI가 수업 준비와 진행을 함께 도와요.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- About / Trust -->
+  <section class="about-section">
+    <div class="wrap about-grid">
+      <div>
+        <h2>누가 만들었나요?</h2>
+        <p>
+          ClassMate는 네패스 코코아팹이 초등 교사들을 직접 만나며 얻은 현장 의견을 바탕으로 만든
+          수업 보조 도구입니다. 별도 회원가입이 없고, 광고나 사용자 추적 도구를 넣지 않았습니다.
+          다운로드 파일은 GitHub 공식 저장소에서 자동 빌드되어 배포됩니다.
+        </p>
+      </div>
+      <ul class="about-list">
+        <li><b>제작</b> 네패스 코코아팹 (NEPES Kocoafab)</li>
+        <li><b>배포처</b> GitHub 공식 저장소 (자동 빌드)</li>
+        <li><b>개인정보</b> 학생 명단 등은 기기에만 저장 — <a href="privacy.html">개인정보처리방침 보기</a></li>
+        <li><b>문의</b> <a href="mailto:ksh0502@nepes.co.kr">ksh0502@nepes.co.kr</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <section class="cta">
+    <div class="wrap">
+      <h2>지금 바로 ClassMate를 시작하세요</h2>
+      <p>설치는 1분, 수업은 훨씬 편해집니다.</p>
+      <div class="hero-cta-row" style="justify-content:center;">
+        <a class="btn btn-primary btn-lg" id="dl-bottom-win" href="#" data-os="win">⬇ Windows용 다운로드</a>
+        <a class="btn btn-ghost btn-md" id="dl-bottom-mac" href="#" data-os="mac">Mac용 다운로드</a>
+      </div>
+      <div class="download-count" id="download-count-bottom" hidden style="margin-top:24px;">
+        누적 다운로드 <strong id="download-count-bottom-num">0</strong>회
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="wrap">
+      <div class="footer-brand">NEPES Kocoafab</div>
+      <div>문의: <a href="mailto:ksh0502@nepes.co.kr">ksh0502@nepes.co.kr</a></div>
+      <div class="footer-links">
+        <a href="install-guide.html">설치 안내</a>
+        <a href="privacy.html">개인정보처리방침</a>
+        <a href="https://github.com/Sooni95/classmate-desktop" target="_blank" rel="noopener">GitHub 공식 저장소</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Lead capture modal — 다운로드 전 최소 정보 수집 -->
+  <div class="lead-overlay" id="leadOverlay" hidden>
+    <div class="lead-modal">
+      <button class="lead-close" id="leadClose" aria-label="닫기">✕</button>
+      <h3>다운로드 전 알려주세요</h3>
+      <p class="lead-sub">더 나은 서비스 제공을 위해 최소한의 정보만 수집합니다. 1분이면 충분해요.</p>
+      <div class="lead-error" id="leadError" hidden></div>
+      <form id="leadForm">
+        <div class="lead-field"><label for="leadOrg">소속</label><input type="text" id="leadOrg" name="org" required autocomplete="organization"></div>
+        <div class="lead-field"><label for="leadName">성명</label><input type="text" id="leadName" name="name" required autocomplete="name"></div>
+        <div class="lead-field"><label for="leadPosition">직급</label><input type="text" id="leadPosition" name="position" required autocomplete="organization-title"></div>
+        <div class="lead-field"><label for="leadPhone">전화번호</label><input type="tel" id="leadPhone" name="phone" required autocomplete="tel" placeholder="010-0000-0000"></div>
+        <div class="lead-field"><label for="leadEmail">이메일</label><input type="email" id="leadEmail" name="email" required autocomplete="email"></div>
+        <div class="lead-consents">
+          <label class="lead-consent">
+            <input type="checkbox" id="leadConsent" required>
+            <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. <a href="privacy.html" target="_blank" rel="noopener">자세히 보기</a></span>
+          </label>
+          <label class="lead-consent">
+            <input type="checkbox" id="leadMarketing">
+            <span><b>[선택]</b> 신규 기능·업데이트 소식 등 마케팅 정보 수신에 동의합니다.</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-md lead-submit" id="leadSubmit">동의하고 다운로드</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // classmate.kocoafab.cc 서브도메인(Cloudflare Pages + 같은 zone의 Worker Route)에서 열리면
+    // 상대경로(같은 도메인)로 요청하고, 그 외(로컬 테스트·GitHub Pages 등)에서는
+    // 기존 workers.dev 주소로 요청한다. 서브도메인 연결 후에는 이 줄을 손댈 필요가 없다.
+    var WORKER_BASE = (location.hostname === "classmate.kocoafab.cc")
+      ? ""
+      : "https://classmate-links.suhun099.workers.dev";
+
+    // 모든 다운로드 버튼: 실제 다운로드 링크를 data 속성에 담아두고,
+    // 클릭하면 바로 이동하지 않고 정보 수집 폼을 먼저 띄운다.
+    var leadOverlay = document.getElementById('leadOverlay');
+    var leadForm = document.getElementById('leadForm');
+    var leadError = document.getElementById('leadError');
+    var leadSubmit = document.getElementById('leadSubmit');
+    var pendingDownloadUrl = null;
+
+    document.querySelectorAll('[data-os]').forEach(function (el) {
+      var os = el.getAttribute('data-os');
+      el.setAttribute('href', WORKER_BASE + '/download?os=' + os);
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        pendingDownloadUrl = WORKER_BASE + '/download?os=' + os;
+        leadError.hidden = true;
+        leadOverlay.hidden = false;
+      });
+    });
+
+    function closeLeadModal() { leadOverlay.hidden = true; pendingDownloadUrl = null; }
+    document.getElementById('leadClose').addEventListener('click', closeLeadModal);
+    leadOverlay.addEventListener('click', function (e) { if (e.target === leadOverlay) closeLeadModal(); });
+
+    leadForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!pendingDownloadUrl) return;
+      leadError.hidden = true;
+      leadSubmit.disabled = true;
+      leadSubmit.textContent = '처리 중…';
+
+      var payload = {
+        org: document.getElementById('leadOrg').value.trim(),
+        name: document.getElementById('leadName').value.trim(),
+        position: document.getElementById('leadPosition').value.trim(),
+        phone: document.getElementById('leadPhone').value.trim(),
+        email: document.getElementById('leadEmail').value.trim(),
+        consent: document.getElementById('leadConsent').checked,
+        marketing: document.getElementById('leadMarketing').checked,
+        os: (pendingDownloadUrl.indexOf('os=mac') > -1) ? 'mac' : 'win',
+      };
+
+      fetch(WORKER_BASE + '/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.ok) {
+            throw new Error((result.data && result.data.message) || '전송에 실패했어요.');
+          }
+          var url = pendingDownloadUrl;
+          pendingDownloadUrl = null;
+          location.href = url;
+          setTimeout(closeLeadModal, 300);
+        })
+        .catch(function (err) {
+          leadError.textContent = '정보 저장에 실패했어요: ' + (err && err.message ? err.message : '네트워크를 확인해 주세요.');
+          leadError.hidden = false;
+        })
+        .finally(function () {
+          leadSubmit.disabled = false;
+          leadSubmit.textContent = '동의하고 다운로드';
+        });
+    });
+
+    // 누적 다운로드 수 표시 (실패 시 숫자 영역만 숨김, 에러 노출 금지)
+    fetch(WORKER_BASE + '/api/download-count')
+      .then(function (res) {
+        if (!res.ok) throw new Error('bad response');
+        return res.json();
+      })
+      .then(function (data) {
+        var total = data && typeof data.total === 'number' ? data.total : null;
+        if (total === null) return;
+        ['hero', 'bottom'].forEach(function (loc) {
+          var wrap = document.getElementById('download-count-' + loc);
+          var num = document.getElementById('download-count-' + loc + '-num');
+          if (wrap && num) {
+            num.textContent = total.toLocaleString('ko-KR');
+            wrap.hidden = false;
+          }
+        });
+      })
+      .catch(function () {
+        // 조용히 무시 — 숫자 영역은 기본적으로 숨김 상태 유지
+      });
+
+    // 스크롤 시 상단 고정 바 노출 (히어로 영역을 지나면 표시)
+    var stickybar = document.getElementById('stickybar');
+    var hero = document.querySelector('.hero');
+    if (stickybar && hero) {
+      var threshold = hero.offsetHeight - 80;
+      window.addEventListener('scroll', function () {
+        if (window.scrollY > threshold) {
+          stickybar.classList.add('visible');
+        } else {
+          stickybar.classList.remove('visible');
+        }
+      }, { passive: true });
+    }
+  </script>
+</body>
+</html>

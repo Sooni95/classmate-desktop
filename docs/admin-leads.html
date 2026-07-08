@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>코코메이트 다운로드 신청자 목록 (관리자)</title>
+<style>
+  :root {
+    --orange: #F68C1F; --orange-dark: #D9760F; --navy: #1F2733;
+    --gray-600: #5B6472; --gray-200: #E7E9EC;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--navy); background: #FAFBFC; line-height: 1.5; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .sub { font-size: 13.5px; color: var(--gray-600); margin-bottom: 24px; }
+
+  .gate { max-width: 380px; margin: 80px auto; text-align: center; }
+  .gate input {
+    width: 100%; font-size: 14.5px; padding: 11px 13px; margin: 16px 0 10px;
+    border: 1.5px solid var(--gray-200); border-radius: 9px; font-family: inherit;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; border-radius: 999px; border: none; cursor: pointer;
+    background: var(--orange); color: #fff; padding: 11px 26px; font-size: 14.5px; width: 100%;
+  }
+  .btn:hover { background: var(--orange-dark); }
+  .gate-error { color: #C0392B; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .count { font-size: 13.5px; color: var(--gray-600); }
+  .count strong { color: var(--orange-dark); }
+  .refresh {
+    font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 8px;
+    border: 1.5px solid var(--gray-200); background: #fff; cursor: pointer; color: var(--navy);
+  }
+  .refresh:hover { border-color: var(--orange); color: var(--orange-dark); }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(31,39,51,.06); }
+  th, td { padding: 11px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+  th { background: #F3F4F6; font-weight: 700; color: var(--navy); position: sticky; top: 0; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #FFF8EF; }
+  .yes { color: #1B8A5A; font-weight: 700; }
+  .no { color: var(--gray-600); }
+  .table-scroll { overflow-x: auto; border-radius: 12px; }
+  .empty { text-align: center; color: var(--gray-600); font-size: 14px; padding: 60px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="gate" id="gate">
+    <h1>🔒 관리자 인증</h1>
+    <p class="sub">다운로드 신청자 목록을 보려면 관리자 토큰을 입력하세요.</p>
+    <input type="password" id="tokenInput" placeholder="ADMIN_TOKEN" autocomplete="off">
+    <button class="btn" id="gateBtn">확인</button>
+    <div class="gate-error" id="gateError"></div>
+  </div>
+
+  <div id="content" hidden>
+    <h1>📋 다운로드 신청자 목록</h1>
+    <p class="sub">코코메이트 다운로드 페이지에서 수집된 정보입니다.</p>
+    <div class="toolbar">
+      <div class="count">총 <strong id="totalCount">0</strong>명 · 마케팅 동의 <strong id="marketingCount">0</strong>명</div>
+      <button class="refresh" id="refreshBtn">↻ 새로고침</button>
+    </div>
+    <div class="table-scroll">
+      <table id="leadTable" hidden>
+        <thead>
+          <tr>
+            <th>신청일시</th><th>소속</th><th>성명</th><th>직급</th><th>전화번호</th><th>이메일</th><th>마케팅동의</th><th>OS</th>
+          </tr>
+        </thead>
+        <tbody id="leadBody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" hidden>아직 신청자가 없어요.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var WORKER_BASE = (location.hostname === "classmate.kocoafab.cc")
+    ? ""
+    : "https://classmate-links.suhun099.workers.dev";
+
+  var gate = document.getElementById('gate');
+  var content = document.getElementById('content');
+  var gateError = document.getElementById('gateError');
+  var token = sessionStorage.getItem('cm_admin_token') || '';
+
+  function fmtDate(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return iso || ''; }
+  }
+
+  function loadLeads() {
+    gateError.textContent = '';
+    return fetch(WORKER_BASE + '/api/admin/leads', { headers: { 'x-admin': token } })
+      .then(function (res) {
+        if (res.status === 401) throw new Error('토큰이 올바르지 않아요.');
+        if (!res.ok) throw new Error('불러오기에 실패했어요 (HTTP ' + res.status + ')');
+        return res.json();
+      })
+      .then(function (list) {
+        gate.hidden = true;
+        content.hidden = false;
+        sessionStorage.setItem('cm_admin_token', token);
+
+        var body = document.getElementById('leadBody');
+        var table = document.getElementById('leadTable');
+        var empty = document.getElementById('emptyMsg');
+        body.innerHTML = '';
+
+        if (!list.length) {
+          table.hidden = true;
+          empty.hidden = false;
+        } else {
+          table.hidden = false;
+          empty.hidden = true;
+          list.forEach(function (r) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+              '<td>' + fmtDate(r.date) + '</td>' +
+              '<td>' + escapeHtml(r.org) + '</td>' +
+              '<td>' + escapeHtml(r.name) + '</td>' +
+              '<td>' + escapeHtml(r.position) + '</td>' +
+              '<td>' + escapeHtml(r.phone) + '</td>' +
+              '<td>' + escapeHtml(r.email) + '</td>' +
+              '<td class="' + (r.marketing ? 'yes' : 'no') + '">' + (r.marketing ? '동의' : '미동의') + '</td>' +
+              '<td>' + escapeHtml(r.os || '') + '</td>';
+            body.appendChild(tr);
+          });
+        }
+        document.getElementById('totalCount').textContent = list.length.toLocaleString('ko-KR');
+        document.getElementById('marketingCount').textContent = list.filter(function (r) { return r.marketing; }).length.toLocaleString('ko-KR');
+      });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  document.getElementById('gateBtn').addEventListener('click', function () {
+    token = document.getElementById('tokenInput').value.trim();
+    if (!token) { gateError.textContent = '토큰을 입력해 주세요.'; return; }
+    loadLeads().catch(function (err) { gateError.textContent = err.message; });
+  });
+  document.getElementById('tokenInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('gateBtn').click();
+  });
+  document.getElementById('refreshBtn').addEventListener('click', function () {
+    loadLeads().catch(function (err) { alert(err.message); });
+  });
+
+  if (token) {
+    document.getElementById('tokenInput').value = token;
+    loadLeads().catch(function () { sessionStorage.removeItem('cm_admin_token'); token = ''; });
+  }
+</script>
+</body>
+</html>

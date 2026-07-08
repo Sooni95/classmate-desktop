@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassMate 개인정보처리방침</title>
+<style>
+  :root {
+    --orange: #F68C1F;
+    --orange-dark: #D9760F;
+    --navy: #1F2733;
+    --gray-600: #5B6472;
+    --gray-200: #E7E9EC;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--navy);
+    line-height: 1.7;
+    background: #fff;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 24px 80px; }
+  a { color: var(--orange-dark); }
+  .back { display: inline-block; margin-bottom: 24px; font-size: 14px; font-weight: 600; }
+  h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .updated { color: var(--gray-600); font-size: 13px; margin-bottom: 32px; }
+  h2 { font-size: 18px; font-weight: 800; margin: 36px 0 12px; }
+  p { font-size: 15px; color: #33404F; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13.5px; }
+  th, td { border: 1px solid var(--gray-200); padding: 10px 12px; text-align: left; vertical-align: top; }
+  th { background: #FAFBFC; font-weight: 700; }
+  ul { padding-left: 20px; }
+  li { font-size: 15px; color: #33404F; margin-bottom: 6px; }
+  .note { margin-top: 40px; padding: 16px 18px; background: #FAFBFC; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 13px; color: var(--gray-600); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← 다운로드 페이지로 돌아가기</a>
+  <h1>ClassMate 개인정보처리방침</h1>
+  <div class="updated">최종 수정일: 2026.06.24</div>
+
+  <p>
+    네패스 Kokoafab(이하 "회사")이 제공하는 데스크탑 수업 보조 도구 <b>ClassMate</b>(이하 "앱")의 개인정보 처리 방침입니다.
+    ClassMate는 별도 회원가입·로그인이 없으며, 광고를 게재하지 않고, 사용 행태를 추적하는 분석 도구를 탑재하지 않습니다.
+  </p>
+
+  <h2>1. 다운로드 시 수집하는 정보</h2>
+  <p>웹사이트에서 앱을 다운로드하실 때, 아래 정보를 입력받아 회사 서버(Cloudflare)에 저장합니다.</p>
+  <table>
+    <tr><th>수집 항목</th><th>소속, 성명, 직급, 전화번호, 이메일</th></tr>
+    <tr><th>수집 목적</th><td>다운로드 이용자 확인, 문의 응대, 서비스 개선을 위한 이용 현황 파악</td></tr>
+    <tr><th>보유 기간</th><td>수집일로부터 3년 또는 동의 철회 시까지</td></tr>
+  </table>
+  <p>위 정보 제공은 다운로드를 위해 <b>필수</b>이며, 동의하지 않으실 경우 다운로드가 제한됩니다. 마케팅 정보(신규 기능·업데이트 소식 등) 수신 동의는 <b>선택</b> 사항으로, 동의하지 않아도 다운로드에는 영향이 없습니다. 동의 철회 및 정보 삭제는 7항 문의처로 요청하실 수 있습니다.</p>
+
+  <h2>2. 기기 안에만 저장되는 정보</h2>
+  <p>다음 정보는 외부로 전송되지 않고 사용자 PC(앱 데이터 폴더)에만 저장됩니다.</p>
+  <ul>
+    <li>저장한 학생 명단, 모둠·점수 등 수업 데이터</li>
+    <li>앱 설정(테마, 독 구성, 소음 기준값 등)</li>
+    <li>사용자가 입력한 AI API 키(직접 키 사용 시)</li>
+  </ul>
+  <p>이 정보는 앱을 삭제하면 함께 사라집니다.</p>
+
+  <h2>3. 기능 사용 시 외부로 전송되는 정보</h2>
+  <p>특정 기능을 사용할 때에 한해 아래와 같이 데이터가 처리됩니다. 사용하지 않으면 전송되지 않습니다.</p>
+  <table>
+    <tr><th>기능</th><th>전송되는 내용</th><th>처리 주체</th><th>목적</th></tr>
+    <tr><td>AI 교수 보조</td><td>사용자가 입력한 질문 텍스트</td><td>Anthropic(Claude API)</td><td>답변 생성</td></tr>
+    <tr><td>다문화 번역</td><td>번역할 텍스트</td><td>Anthropic(Claude API)</td><td>번역</td></tr>
+    <tr><td>실시간 자막(Pro)</td><td>마이크 음성(짧은 구간)</td><td>회사 서버(Cloudflare) 경유 → OpenAI(Whisper)</td><td>음성→텍스트 변환</td></tr>
+    <tr><td>단축URL 생성</td><td>원본 URL과 단축 이름</td><td>회사 서버(Cloudflare Workers/KV)</td><td>단축주소 발급·연결</td></tr>
+    <tr><td>의견 보내기</td><td>작성한 의견, (선택)회신 연락처</td><td>회사 서버 → 담당자 메일</td><td>문의·개선</td></tr>
+    <tr><td>업데이트 확인</td><td>없음(버전 정보만 조회)</td><td>GitHub</td><td>최신 버전 안내</td></tr>
+  </table>
+  <p>전송된 데이터는 위 목적에 한해 사용되며, 회사는 이를 광고·프로파일링·제3자 판매에 이용하지 않습니다. 외부 처리 주체(Anthropic, OpenAI, Cloudflare, GitHub)는 각 사의 정책에 따라 데이터를 처리합니다.</p>
+
+  <h2>4. 마이크·화면 권한</h2>
+  <p><b>마이크</b>: 소음 측정과 실시간 자막에만 사용됩니다. 소음 측정의 음량 계산은 기기 안에서만 이루어지며 녹음·전송되지 않습니다.</p>
+  <p><b>화면 캡처</b>: 핀·칠판 기능에서 사용자가 선택한 영역을 캡처하며, 결과는 사용자 기기 안(클립보드·저장 파일)에 머뭅니다. 회사 서버로 전송되지 않습니다.</p>
+
+  <h2>5. 아동 및 학생 정보</h2>
+  <p>ClassMate는 교사용 도구로, 학생 개인정보 입력을 요구하지 않습니다. 명단 등 교사가 입력하는 정보는 기기 안에만 저장됩니다(2항). 교사는 실명 대신 번호·별칭 사용을 선택할 수 있습니다. 회사는 학생 개인정보를 수집·보관하지 않습니다.</p>
+
+  <h2>6. 보관 및 파기</h2>
+  <ul>
+    <li>다운로드 시 수집한 정보: 1항에 명시된 보유 기간 경과 또는 동의 철회 시 파기됩니다.</li>
+    <li>기기 내 정보: 사용자가 삭제하거나 앱을 제거할 때까지 보관됩니다.</li>
+    <li>단축URL: 사용자가 설정한 만료 기한이 지나면 서버에서 자동 삭제됩니다.</li>
+    <li>의견 보내기: 문의 처리 목적 달성 후 합리적 기간 내 파기합니다.</li>
+  </ul>
+
+  <h2>7. 문의</h2>
+  <p>개인정보 관련 문의: <a href="mailto:ksh0502@nepes.co.kr">ksh0502@nepes.co.kr</a> (네패스 Kokoafab)</p>
+
+  <div class="note">본 방침은 앱 기능 변경에 따라 개정될 수 있으며, 개정 시 본 문서의 최종 수정일을 갱신합니다.</div>
+</div>
+</body>
+</html>

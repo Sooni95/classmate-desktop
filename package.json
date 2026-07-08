@@ -56,11 +56,11 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "artifactName": "ClassMate-Setup.exe"
+      "artifactName": "KocoMate-Setup.exe"
     },
     "portable": {
-      "artifactName": "ClassMate-portable.exe",
-      "unpackDirName": "ClassMateApp"
+      "artifactName": "KocoMate-portable.exe",
+      "unpackDirName": "KocoMateApp"
     },
     "mac": {
       "icon": "build/icon.png",
@@ -69,12 +69,12 @@
         { "target": "zip", "arch": ["universal"] }
       ],
       "category": "public.app-category.education",
-      "artifactName": "ClassMate-Setup-mac.${ext}",
+      "artifactName": "KocoMate-Setup-mac.${ext}",
       "hardenedRuntime": false,
       "identity": null
     },
     "dmg": {
-      "artifactName": "ClassMate-Setup-mac.dmg"
+      "artifactName": "KocoMate-Setup-mac.dmg"
     },
     "compression": "normal"
   },

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>코코메이트 설치 안내</title>
+<style>
+  :root{
+    --bg:#FAF7F2; --panel:#FFFFFF; --ink:#241E17; --sub:#6B6053;
+    --line:#E7DFD2; --or:#F68C1F; --or2:#D9760F; --or-tint:#FDF0E1;
+    --win-blue:#2B6CD4; --mac-grey:#48484A;
+    --shadow:0 1px 2px rgba(36,30,23,.06), 0 8px 24px -12px rgba(36,30,23,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);}
+  body{
+    font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",sans-serif;
+    color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:56px 28px 100px;}
+
+  /* ===== 헤더 ===== */
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
+    letter-spacing:.06em;color:var(--or2);text-transform:uppercase;margin-bottom:14px;
+  }
+  .kicker::before{content:'';width:18px;height:2px;background:var(--or);border-radius:2px;}
+  h1{font-size:32px;font-weight:800;letter-spacing:-.01em;text-wrap:balance;margin-bottom:10px;}
+  .lead{font-size:15.5px;color:var(--sub);max-width:56ch;}
+
+  /* ===== OS 섹션 ===== */
+  .os-section{margin-top:52px;}
+  .os-head{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .os-ic{
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:19px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);flex:none;
+  }
+  .os-head h2{font-size:21px;font-weight:800;}
+  .os-sub{font-size:13.5px;color:var(--sub);margin:0 0 28px 50px;}
+
+  /* ===== 단계 ===== */
+  .step{display:grid;grid-template-columns:40px 1fr;gap:18px;position:relative;padding-bottom:36px;}
+  .step:not(:last-child)::before{
+    content:'';position:absolute;left:19px;top:40px;bottom:0;width:2px;background:var(--line);
+  }
+  .step-n{
+    width:40px;height:40px;border-radius:50%;background:var(--panel);border:2px solid var(--or);
+    color:var(--or2);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;
+    flex:none;font-variant-numeric:tabular-nums;position:relative;z-index:1;
+  }
+  .step-body{padding-top:6px;}
+  .step-t{font-size:16px;font-weight:700;margin-bottom:6px;}
+  .step-d{font-size:14px;color:var(--sub);max-width:52ch;}
+  .step-d b{color:var(--ink);font-weight:700;}
+  .step-d code{
+    background:var(--or-tint);color:var(--or2);padding:1px 6px;border-radius:5px;
+    font-size:12.5px;font-weight:700;font-family:inherit;
+  }
+
+  /* ===== 목업 카드 공통 ===== */
+  .mock{
+    margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);overflow:hidden;max-width:440px;
+  }
+  .mock-chrome{
+    height:26px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#EDE9E1;
+    border-bottom:1px solid var(--line);
+  }
+  .mock-dot{width:9px;height:9px;border-radius:50%;background:#D8D1C4;}
+
+  /* Windows SmartScreen 목업 */
+  .win-mock .mock-body{padding:0;}
+  .win-titlebar{
+    background:var(--win-blue);color:#fff;padding:14px 18px 12px;display:flex;gap:12px;align-items:flex-start;
+  }
+  .win-shield{font-size:22px;flex:none;line-height:1;margin-top:2px;}
+  .win-titlebar b{font-size:14.5px;font-weight:700;display:block;margin-bottom:3px;}
+  .win-titlebar span{font-size:12px;opacity:.92;line-height:1.5;display:block;}
+  .win-body{padding:16px 18px;}
+  .win-row{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;color:var(--sub);}
+  .win-row b{color:var(--ink);font-weight:600;}
+  .win-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+  .win-btn{
+    font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:5px;border:1px solid #C7C2B8;
+    background:#F2EFE9;color:var(--ink);
+  }
+  .win-btn.primary{background:var(--win-blue);border-color:var(--win-blue);color:#fff;position:relative;}
+  .win-btn.primary::after{
+    content:'';position:absolute;inset:-4px;border:2px solid var(--or);border-radius:8px;
+  }
+  .win-link{font-size:12px;color:var(--win-blue);text-decoration:underline;cursor:pointer;}
+
+  /* macOS Gatekeeper 목업 */
+  .mac-mock .mock-chrome{background:#F0EFEC;}
+  .mac-dialog{padding:26px 22px 20px;text-align:center;}
+  .mac-icon{
+    width:56px;height:56px;border-radius:13px;background:linear-gradient(160deg,var(--or),var(--or2));
+    display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;color:#fff;
+  }
+  .mac-dialog b{font-size:14px;font-weight:700;display:block;margin-bottom:6px;}
+  .mac-dialog p{font-size:12px;color:var(--sub);max-width:280px;margin:0 auto;line-height:1.6;}
+  .mac-actions{display:flex;justify-content:center;gap:8px;margin-top:18px;}
+  .mac-btn{
+    font-size:12.5px;font-weight:600;padding:6px 20px;border-radius:6px;background:#E9E7E3;color:var(--ink);
+  }
+  .mac-btn.primary{background:var(--mac-grey);color:#fff;position:relative;}
+  .mac-btn.primary::after{content:'';position:absolute;inset:-4px;border:2px solid var(--or);border-radius:9px;}
+
+  .mac-menu{padding:10px;}
+  .mac-menu-item{
+    font-size:12.5px;padding:7px 10px;border-radius:5px;color:var(--ink);display:flex;justify-content:space-between;
+  }
+  .mac-menu-item.hi{background:var(--mac-grey);color:#fff;font-weight:600;position:relative;}
+  .mac-menu-item.hi::after{content:'';position:absolute;inset:-3px;border:2px solid var(--or);border-radius:8px;}
+  .mac-menu-item span{opacity:.55;font-size:11px;}
+
+  .callout{
+    display:inline-flex;align-items:flex-start;gap:8px;margin-top:12px;padding:9px 13px;
+    background:var(--or-tint);border-radius:9px;font-size:12.5px;color:#8A5216;max-width:400px;
+  }
+  .callout::before{content:'💡';flex:none;}
+
+  .path{
+    font-size:12.5px;color:var(--sub);margin-top:14px;padding:10px 14px;background:var(--panel);
+    border:1px solid var(--line);border-radius:9px;display:flex;align-items:center;gap:8px;max-width:440px;
+  }
+  .path b{color:var(--ink);}
+
+  footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);font-size:12.5px;color:var(--sub);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">코코메이트 설치 안내</div>
+  <h1>처음 실행할 때 뜨는<br>보안 경고, 이렇게 넘기세요</h1>
+  <p class="lead">아직 정식 서명 인증서가 없는 베타 버전이라, Windows·macOS 모두 "출처를 확인할 수 없다"는
+  경고가 한 번 뜹니다. 악성코드가 아니라 인증서 비용 문제라, 아래 순서대로 한 번만 눌러주시면 됩니다.</p>
+
+  <!-- ===================== Windows ===================== -->
+  <section class="os-section">
+    <div class="os-head"><div class="os-ic">🪟</div><h2>Windows</h2></div>
+    <p class="os-sub">"Windows에서 PC를 보호했습니다" 화면이 뜨는 경우</p>
+
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <div class="step-t">다운로드한 <code>ClassMate-portable.exe</code>를 더블클릭</div>
+        <div class="step-d">아래와 같은 파란 화면이 뜨면 정상입니다 — 삭제하지 마세요.</div>
+        <div class="mock win-mock">
+          <div class="mock-chrome"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span></div>
+          <div class="mock-body">
+            <div class="win-titlebar">
+              <span class="win-shield">🛡️</span>
+              <div>
+                <b>Windows에서 PC를 보호했습니다</b>
+                <span>Microsoft Defender SmartScreen에서 인식할 수 없는 앱의 시작을 차단했습니다. 이 앱을 실행하면 PC가 위험할 수 있습니다.</span>
+              </div>
+            </div>
+            <div class="win-body">
+              <div class="win-row"><span>앱:</span><b>ClassMate-portable.exe</b></div>
+              <div class="win-row"><span>게시자:</span><b>알 수 없음</b></div>
+              <div class="win-actions">
+                <span class="win-link">추가 정보</span>
+                <span class="win-btn">실행 안 함</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <div class="step-t"><b>"추가 정보"</b>를 클릭</div>
+        <div class="step-d">숨어있던 실행 버튼이 나타납니다.</div>
+        <div class="mock win-mock">
+          <div class="mock-chrome"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span></div>
+          <div class="mock-body">
+            <div class="win-titlebar">
+              <span class="win-shield">🛡️</span>
+              <div>
+                <b>Windows에서 PC를 보호했습니다</b>
+                <span>Microsoft Defender SmartScreen에서 인식할 수 없는 앱의 시작을 차단했습니다. 이 앱을 실행하면 PC가 위험할 수 있습니다.</span>
+              </div>
+            </div>
+            <div class="win-body">
+              <div class="win-row"><span>앱:</span><b>ClassMate-portable.exe</b></div>
+              <div class="win-row"><span>게시자:</span><b>알 수 없음</b></div>
+              <div class="win-actions">
+                <span class="win-btn primary">실행</span>
+                <span class="win-btn">실행 안 함</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <div class="step-t">주황 테두리로 표시된 <b>"실행"</b> 버튼 클릭</div>
+        <div class="step-d">이후부터는 이 경고 없이 바로 실행됩니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== macOS ===================== -->
+  <section class="os-section">
+    <div class="os-head"><div class="os-ic">🍎</div><h2>macOS</h2></div>
+    <p class="os-sub">"확인할 수 없는 개발자" 또는 "손상되었다"는 창이 뜨는 경우</p>
+
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <div class="step-t">dmg 파일을 열어 <b>코코메이트</b>를 Applications 폴더로 드래그</div>
+        <div class="step-d">일반적인 Mac 앱 설치와 동일합니다.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <div class="step-t">Applications에서 아이콘을 <b>일반 더블클릭 대신 우클릭</b></div>
+        <div class="step-d">트랙패드는 두 손가락 클릭, 키보드는 <code>control</code> 키를 누른 채 클릭하세요.</div>
+        <div class="mock mac-mock" style="max-width:200px;">
+          <div class="mock-chrome"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span></div>
+          <div class="mac-menu">
+            <div class="mac-menu-item hi">열기</div>
+            <div class="mac-menu-item">정보 가져오기</div>
+            <div class="mac-menu-item">복제 <span>⌘D</span></div>
+            <div class="mac-menu-item">휴지통으로 이동</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <div class="step-t">뜨는 창에서 <b>"열기"</b> 클릭</div>
+        <div class="step-d">우클릭으로 열면 일반 더블클릭과 달리 "열기" 버튼이 바로 보입니다.</div>
+        <div class="mock mac-mock">
+          <div class="mock-chrome"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span></div>
+          <div class="mac-dialog">
+            <div class="mac-icon">🦋</div>
+            <b>확인되지 않은 개발자가 배포한 앱입니다.<br>정말 열겠습니까?</b>
+            <p>Apple은 이 앱에서 악성 소프트웨어가 있는지 확인할 수 없습니다. 신뢰할 수 있는 앱인지 확인 후 여세요.</p>
+            <div class="mac-actions">
+              <span class="mac-btn">Finder로 이동</span>
+              <span class="mac-btn">취소</span>
+              <span class="mac-btn primary">열기</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout">이 확인은 <b>처음 한 번만</b> 필요합니다. 다음부터는 바로 열려요.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <div class="step-t">그래도 안 열리면 시스템 설정에서 직접 허용</div>
+        <div class="step-d">간혹 위 방법으로도 막히면, 아래 경로에서 "확인 없이 열기" 버튼을 눌러주세요.</div>
+        <div class="path">📍 <b>시스템 설정</b> → <b>개인정보 보호 및 보안</b> → 맨 아래 "코코메이트"가 차단됨 안내 옆 <b>확인 없이 열기</b></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>네패스 코코아팹 · 코코메이트 — 서명 인증서 적용 전까지는 이 절차가 필요합니다. 문의: ksh0502@nepes.co.kr</footer>
+</div>
+</body>
+</html>
