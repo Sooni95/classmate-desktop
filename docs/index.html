@@ -211,12 +211,29 @@
     border: 1px solid var(--gray-200);
     border-radius: var(--radius);
     padding: 26px 22px;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
   }
   .feature-card:hover {
     box-shadow: 0 12px 28px rgba(31, 39, 51, 0.08);
     transform: translateY(-2px);
+    border-color: var(--orange);
   }
+  .demo-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--orange-dark);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .feature-card:hover .demo-hint,
+  .pro-card:hover .demo-hint { opacity: 1; transform: translateX(0); }
+  .pro-card .demo-hint { color: #FFC98A; }
   .feature-icon {
     width: 46px;
     height: 46px;
@@ -268,6 +285,13 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius);
     padding: 24px 22px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+  .pro-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(246, 140, 31, 0.5);
+    transform: translateY(-2px);
   }
   .pro-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
   .pro-card p { font-size: 13.5px; color: #C7CDD6; line-height: 1.6; }
@@ -466,6 +490,48 @@
   .lead-error[hidden] { display: none; }
   .lead-submit { width: 100%; margin-top: 6px; }
   .lead-submit:disabled { opacity: .6; cursor: default; transform: none; }
+
+  /* ---------- 기능 미리보기(데모) 모달 ---------- */
+  .demo-overlay {
+    position: fixed; inset: 0; z-index: 210;
+    background: rgba(31, 39, 51, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .demo-overlay[hidden] { display: none; }
+  .demo-modal {
+    background: var(--white);
+    border-radius: 18px;
+    width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 22px 26px 28px;
+    box-shadow: 0 30px 70px rgba(31, 39, 51, 0.35);
+    position: relative;
+  }
+  .demo-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 30px; height: 30px; border: none; background: transparent;
+    color: var(--gray-600); font-size: 18px; cursor: pointer; border-radius: 8px;
+    z-index: 1;
+  }
+  .demo-close:hover { background: var(--gray-200); color: var(--navy); }
+  .demo-media {
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    background: linear-gradient(160deg, var(--orange-light), #FFF9F0);
+    border: 1px dashed rgba(246, 140, 31, 0.4);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .demo-media img { width: 100%; height: 100%; object-fit: cover; }
+  .demo-media .demo-ph-icon { font-size: 34px; }
+  .demo-media .demo-ph-label { font-size: 13px; font-weight: 700; color: var(--orange-dark); }
+  .demo-media .demo-ph-note { font-size: 12px; color: var(--gray-600); max-width: 320px; padding: 0 20px; }
+  .demo-modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; padding-right: 24px; }
+  .demo-modal p { font-size: 14px; color: var(--gray-600); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -598,6 +664,14 @@
           <p>학생 좌석 배치를 화면에서 손쉽게 구성하고 바로 확인해요. 모둠 구성 바꿀 때 특히 편합니다.</p>
         </div>
 
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D9760F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
+          </div>
+          <h3>화면 캡처·녹화</h3>
+          <p>화면 원하는 부분을 캡처해 바로 위에 붙여두거나, 판서 과정을 그대로 영상으로 녹화해요. 자료 준비·복습 영상 제작에 좋아요.</p>
+        </div>
+
       </div>
     </div>
   </section>
@@ -615,6 +689,11 @@
         <div class="pro-card">
           <h3>🌏 다문화 번역</h3>
           <p>텍스트 번역은 물론, <b>음성 인식 + AI 실시간 번역(자막)</b>까지. 한국어 → 8개 언어로 다문화 학생을 바로 안내할 수 있어요.</p>
+        </div>
+
+        <div class="pro-card">
+          <h3>👂 실시간 음성 자막</h3>
+          <p>선생님 말씀을 <b>실시간으로 화면에 자막</b>으로 띄워줘요. 청각장애 학생도 수업 내용을 놓치지 않고 함께할 수 있어요.</p>
         </div>
 
         <div class="pro-card">
@@ -718,6 +797,19 @@
         </div>
         <button type="submit" class="btn btn-primary btn-md lead-submit" id="leadSubmit">동의하고 다운로드</button>
       </form>
+    </div>
+  </div>
+
+  <!-- 기능 카드 클릭 시 뜨는 미리보기(데모) 모달.
+       카드에 data-demo-img="이미지경로" 속성을 추가하면 그 이미지를 보여주고,
+       없으면 아이콘+설명 placeholder를 보여줍니다. 실제 스크린샷/GIF가 준비되면
+       각 카드에 이 속성만 추가하세요 (JS는 그대로 두면 됩니다). -->
+  <div class="demo-overlay" id="demoOverlay" hidden>
+    <div class="demo-modal">
+      <button class="demo-close" id="demoClose" aria-label="닫기">✕</button>
+      <div class="demo-media" id="demoMedia"></div>
+      <h3 id="demoTitle"></h3>
+      <p id="demoDesc"></p>
     </div>
   </div>
 
@@ -830,6 +922,42 @@
         }
       }, { passive: true });
     }
+
+    // ---------- 기능 카드 클릭 → 구동 화면 미리보기 모달 ----------
+    // data-demo-img="이미지경로"를 카드에 추가하면 실제 이미지를, 없으면 준비중 placeholder를 보여줌.
+    var demoOverlay = document.getElementById('demoOverlay');
+    var demoMedia = document.getElementById('demoMedia');
+    var demoTitle = document.getElementById('demoTitle');
+    var demoDesc = document.getElementById('demoDesc');
+
+    function openDemo(card) {
+      var title = card.querySelector('h3') ? card.querySelector('h3').textContent : '';
+      var desc = card.querySelector('p') ? card.querySelector('p').textContent : '';
+      var imgSrc = card.getAttribute('data-demo-img');
+
+      demoTitle.textContent = title;
+      demoDesc.textContent = desc;
+      demoMedia.innerHTML = imgSrc
+        ? '<img src="' + imgSrc + '" alt="' + title + ' 구동 화면">'
+        : '<span class="demo-ph-icon">🎬</span>' +
+          '<span class="demo-ph-label">실제 구동 화면 예시 (준비 중)</span>' +
+          '<span class="demo-ph-note">곧 실제 사용 화면으로 채워질 자리예요.</span>';
+
+      demoOverlay.hidden = false;
+    }
+    function closeDemo() { demoOverlay.hidden = true; }
+
+    document.querySelectorAll('.feature-card, .pro-card').forEach(function (card) {
+      var hint = document.createElement('span');
+      hint.className = 'demo-hint';
+      hint.textContent = '🔍 클릭해서 미리보기';
+      card.appendChild(hint);
+      card.addEventListener('click', function () { openDemo(card); });
+    });
+
+    document.getElementById('demoClose').addEventListener('click', closeDemo);
+    demoOverlay.addEventListener('click', function (e) { if (e.target === demoOverlay) closeDemo(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !demoOverlay.hidden) closeDemo(); });
   </script>
 </body>
 </html>
