@@ -7,7 +7,7 @@ function addPin(src,label,x,y,w,isVideo){
     ? `<video src="${src}" loop autoplay muted draggable="false" style="width:100%;display:block;border-radius:0 0 2px 2px;cursor:pointer;"></video>`
     : `<img src="${src}" draggable="false">`;
   const vidCtrls=isVideo
-    ? `<button class="vplay" title="재생/일시정지">⏸</button><button class="vloop on" title="무한반복">🔁</button>`
+    ? `<button class="vplay" title="재생/일시정지">⏸</button><button class="vloop on" title="무한반복">🔁</button><button class="vgif" title="GIF로 저장">GIF</button>`
     : '';
   p.innerHTML=`<div class="pb"><span class="lbl">📌 ${label||'핀'}</span><span style="display:flex;align-items:center;gap:5px">${vidCtrls}<button class="cap" title="핀 메모">✎</button><button class="psave" title="저장">💾</button><input type="range" min="25" max="100" value="100" title="투명도"><button class="x">×</button></span></div><div class="pmedia">${media}</div><div class="pcap" contenteditable="true"></div><div class="rs-e" title="가로 조절"></div><div class="rs-s" title="세로 조절"></div><div class="rs" title="가로·세로 자유 조절"></div>`;
   document.body.appendChild(p);
@@ -30,6 +30,20 @@ function addPin(src,label,x,y,w,isVideo){
       if(vid.loop&&vid.paused)vid.play();
     });
     vid.addEventListener('ended',()=>{if(!vid.loop)sync();});
+    // GIF 저장 (recordRegion에서 녹화와 동시에 GIF도 만들어 p._gifBlob에 채워둠)
+    const gifBtn=p.querySelector('.vgif');
+    gifBtn.addEventListener('click',async()=>{
+      if(p._gifBlob){
+        const buf=await p._gifBlob.arrayBuffer();
+        const now=new Date();
+        const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+        const r=await ipc.saveBinary({bytes:Array.from(new Uint8Array(buf)),filename:'영상_'+stamp+'.gif'});
+        if(r&&r.ok)toast('💾 GIF 저장 완료');
+        return;
+      }
+      if(p._gifPending){toast('⏳ GIF 만드는 중이에요, 잠시 후 다시 눌러주세요');return;}
+      toast('이 영상은 GIF로 저장할 수 없어요');
+    });
   }
   const capBtn=p.querySelector('.cap'),capEl=p.querySelector('.pcap');
   capBtn.addEventListener('click',()=>{
@@ -60,6 +74,7 @@ function addPin(src,label,x,y,w,isVideo){
     p.style.width=Math.max(120,s.sw+(e.clientX-s.sx))+'px';
     pmedia.style.height=Math.max(70,s.sh+(e.clientY-s.sy))+'px';
   });
+  return p;
 }
 // 핀 저장: 이미지는 캡션 메모를 아래 붙여 PNG 합성, 영상은 webm 저장
 async function savePin(p,isVideo,capEl){
@@ -273,17 +288,36 @@ async function recordRegion(x,y,w,h){
     requestAnimationFrame(drawFrame);
   };
   drawFrame();
+  // 녹화(webm)와 동시에 GIF도 저해상도 프레임으로 함께 만들어둠 (최대 15초라 GIF에 적합)
+  const GIF_FRAME_MS=120; // 초당 약 8프레임 — 용량과 부드러움의 절충
+  let gif=null,gifTimer=null;
+  if(typeof GIF!=='undefined'){
+    try{
+      gif=new GIF({workerScript:'../assets/gif.worker.js',workers:2,quality:10,width:cv.width,height:cv.height});
+      gifTimer=setInterval(()=>{ if(drawing)gif.addFrame(cv,{copy:true,delay:GIF_FRAME_MS}); },GIF_FRAME_MS);
+    }catch(e){gif=null;} // GIF 라이브러리 문제가 있어도 webm 녹화 자체는 계속되게
+  }
   const cvStream=cv.captureStream(30);
   let rec;
   try{rec=new MediaRecorder(cvStream,{mimeType:'video/webm'});}
-  catch(e){try{rec=new MediaRecorder(cvStream);}catch(e2){toast('녹화 미지원 환경');drawing=false;stream.getTracks().forEach(t=>t.stop());return;}}
+  catch(e){try{rec=new MediaRecorder(cvStream);}catch(e2){toast('녹화 미지원 환경');drawing=false;if(gifTimer)clearInterval(gifTimer);stream.getTracks().forEach(t=>t.stop());return;}}
   const chunks=[];rec.ondataavailable=ev=>{if(ev.data.size)chunks.push(ev.data);};
   rec.onstop=()=>{
     drawing=false;stream.getTracks().forEach(t=>t.stop());
     const blob=new Blob(chunks,{type:'video/webm'});
-    addPin(URL.createObjectURL(blob),'영역녹화',x,y,Math.max(160,w),true);
+    const pinEl=addPin(URL.createObjectURL(blob),'영역녹화',x,y,Math.max(160,w),true);
     toast('📌 영역 녹화가 핀으로 고정됨 — ▶ 재생 / 💾 저장');
     $('recStop').classList.remove('on');
+    if(gif&&pinEl){
+      clearInterval(gifTimer);
+      pinEl._gifPending=true;
+      gif.on('finished',b=>{
+        pinEl._gifBlob=b; pinEl._gifPending=false;
+        const btn=pinEl.querySelector('.vgif'); if(btn){btn.classList.add('ready');btn.title='GIF로 저장 (준비됨)';}
+        toast('🖼️ GIF 준비 완료 — GIF 버튼으로 저장하세요');
+      });
+      gif.render();
+    }
   };
   rec.start();
   // 정지 버튼 표시

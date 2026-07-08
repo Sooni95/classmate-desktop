@@ -5,6 +5,7 @@
 <script src="../assets/qrcode.min.js"></script>
 <script src="../assets/jspdf.min.js"></script>
 <script src="../assets/xlsx.mini.min.js"></script>
+<script src="../assets/gif.js"></script>
 <style>
 :root{
   /* 코코아팹 브랜드 오렌지 #F68C1F */
@@ -396,9 +397,11 @@ body.ptr-over-ui #halo{display:none!important;}
 .pin .pb{height:28px;background:var(--dk);display:flex;align-items:center;justify-content:space-between;padding:0 6px 0 9px;cursor:grab;}
 .pin .pb .lbl{font-size:10.5px;color:#9fb0bf;max-width:86px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .pin .pb .x,.pin .pb .cap{border:none;background:none;color:#7c8894;font-size:13px;cursor:pointer;}
-.pin .pb .vplay,.pin .pb .vloop,.pin .pb .psave{border:none;background:none;color:#7c8894;font-size:12px;cursor:pointer;}
-.pin .pb .vplay:hover,.pin .pb .psave:hover{color:var(--or);}
+.pin .pb .vplay,.pin .pb .vloop,.pin .pb .psave,.pin .pb .vgif{border:none;background:none;color:#7c8894;font-size:12px;cursor:pointer;}
+.pin .pb .vplay:hover,.pin .pb .psave:hover,.pin .pb .vgif:hover{color:var(--or);}
 .pin .pb .vloop{opacity:.4;}.pin .pb .vloop.on{opacity:1;}
+.pin .pb .vgif{font-weight:800;font-size:10px;border:1px solid #7c8894;border-radius:4px;padding:1px 4px;}
+.pin .pb .vgif.ready{border-color:var(--or);color:var(--or);}
 .pin .pb .x:hover{color:var(--red);}
 .pin .pb .cap:hover,.pin .pb .cap.on{color:var(--or);}
 .pin .pmedia{position:relative;width:100%;overflow:hidden;}
