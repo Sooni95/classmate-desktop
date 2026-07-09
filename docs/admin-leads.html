@@ -101,6 +101,7 @@
           <option value="기타">기타</option>
         </select>
         <button class="bulk-del-btn" id="bulkDeleteBtn" disabled>선택 삭제 (<span id="selCount">0</span>)</button>
+        <button class="refresh" id="exportBtn">⬇ 엑셀 다운로드</button>
         <button class="refresh" id="refreshBtn">↻ 새로고침</button>
       </div>
     </div>
@@ -277,6 +278,34 @@
 
   document.getElementById('searchInput').addEventListener('input', renderLeads);
   document.getElementById('levelFilter').addEventListener('change', renderLeads);
+
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', function () {
+    var list = getFilteredLeads();
+    if (!list.length) { alert('내보낼 데이터가 없어요.'); return; }
+    var header = ['신청일시', '소속', '학교급', '성명', '직급', '전화번호', '이메일', '마케팅동의', 'OS'];
+    var rows = list.map(function (r) {
+      return [
+        fmtDate(r.date), r.org, detectLevel(r.org), r.name, r.position,
+        r.phone, r.email, (r.marketing ? '동의' : '미동의'), (r.os || ''),
+      ].map(csvCell).join(',');
+    });
+    var csv = '﻿' + header.join(',') + '\n' + rows.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = '코코메이트_다운로드신청자_' + stamp + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 
   document.getElementById('gateBtn').addEventListener('click', function () {
     token = document.getElementById('tokenInput').value.trim();
