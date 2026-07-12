@@ -40,6 +40,24 @@
     applyAlpha(a);
   });
 
+  /* --- ↕️ 독 방향 (가로/세로) --- */
+  function applyOrientation(v){
+    dockEl.classList.toggle('vertical',v);
+    requestAnimationFrame(()=>{ // 방향 전환으로 바뀐 크기 확정 후 화면 밖으로 나가지 않게 재클램프
+      const r=dockEl.getBoundingClientRect();
+      const p=clampDock(r.left,r.top,r.width,r.height);
+      dockEl.style.left=p.x+'px';dockEl.style.top=p.y+'px';
+      if(typeof placePanels==='function')placePanels();
+    });
+  }
+  applyOrientation(localStorage.getItem('cm_dock_vertical')==='1');
+  function toggleOrientation(){
+    const next=!dockEl.classList.contains('vertical');
+    localStorage.setItem('cm_dock_vertical',next?'1':'0');
+    applyOrientation(next);
+    toast(next?'↕️ 세로 모드로 바꿨어요':'↔️ 가로 모드로 바꿨어요');
+  }
+
   /* --- ✉️ 의견 보내기 (MVP: 서버 접수 대신 연락처 안내 + 복사) --- */
   const fbModal=$('feedbackModal');
   const fbCard=fbModal.querySelector('.fb-card');
@@ -125,19 +143,27 @@
   },true);
   // 드래그로 순서 변경 — document 리스너 + FLIP (캡처/커서-지오메트리 의존 제거)
   let dragEl=null,dragMove=null,dragUp=null;
-  function reorderAt(clientX){
+  function reorderAt(clientX,clientY){
     if(!dragEl)return;
+    const vert=dockEl.classList.contains('vertical');
+    const pos=vert?clientY:clientX;
     const sibs=[...dockEl.querySelectorAll('.tool[data-id]')].filter(b=>b!==dragEl&&b.style.display!=='none');
     let target=setBtn;
-    for(const b of sibs){const r=b.getBoundingClientRect();if(clientX<r.left+r.width/2){target=b;break;}}
+    for(const b of sibs){
+      const r=b.getBoundingClientRect();
+      const mid=vert?r.top+r.height/2:r.left+r.width/2;
+      if(pos<mid){target=b;break;}
+    }
     if(dragEl.nextElementSibling===target)return; // 위치 변화 없음 (요소 기준 — 공백 텍스트노드 무시)
     // FLIP: 이동하는 형제들을 부드럽게 슬라이드
     const others=[...dockEl.querySelectorAll('.tool[data-id]')].filter(b=>b!==dragEl);
-    const firsts=new Map(others.map(b=>[b,b.getBoundingClientRect().left]));
+    const firsts=new Map(others.map(b=>[b,vert?b.getBoundingClientRect().top:b.getBoundingClientRect().left]));
     dockEl.insertBefore(dragEl,target);
     others.forEach(b=>{
-      const dx=firsts.get(b)-b.getBoundingClientRect().left;
-      if(dx){b.style.transition='none';b.style.transform='translateX('+dx+'px)';
+      const before=firsts.get(b);
+      const after=vert?b.getBoundingClientRect().top:b.getBoundingClientRect().left;
+      const d=before-after;
+      if(d){b.style.transition='none';b.style.transform='translate'+(vert?'Y':'X')+'('+d+'px)';
         requestAnimationFrame(()=>{b.style.transition='transform .22s cubic-bezier(.2,.8,.2,1)';b.style.transform='';});}
     });
   }
@@ -155,7 +181,7 @@
     dragMove=ev=>{
       const over=overDrawer(ev.clientX,ev.clientY);
       drawer.classList.toggle('drop-target',over);
-      if(!over)reorderAt(ev.clientX); // 서랍 위에 있는 동안은 독 재배치 로직을 건드리지 않음
+      if(!over)reorderAt(ev.clientX,ev.clientY); // 서랍 위에 있는 동안은 독 재배치 로직을 건드리지 않음
     };
     dragUp=ev=>{
       document.removeEventListener('pointermove',dragMove);
@@ -282,6 +308,7 @@
     closeSet();
     if(b.dataset.act==='theme')toggleTheme();
     else if(b.dataset.act==='dockedit')enterEdit();
+    else if(b.dataset.act==='orientation')toggleOrientation();
     else if(b.dataset.act==='shortcuts')openShortcuts();
     else if(b.dataset.act==='backup')openBackup();
     else if(b.dataset.act==='guide'){if(typeof openOnboarding==='function')openOnboarding();}

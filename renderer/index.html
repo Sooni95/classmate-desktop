@@ -24,6 +24,9 @@ body{pointer-events:none;}
 #dock{position:fixed;left:0;top:0;z-index:70;display:flex;align-items:center;gap:5px;background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:var(--shadow);visibility:hidden;}
 #dock.ready{visibility:visible;}
 #dock.hide{display:none;}
+#dock.vertical{flex-direction:column;}
+#dock.vertical .brand{border-right:none;border-bottom:1px solid var(--line);height:auto;width:100%;margin-right:0;margin-bottom:3px;padding:8px 0;justify-content:center;}
+#dock.vertical .brand .nm{display:none;}
 .brand{display:flex;align-items:center;gap:10px;padding:0 11px 0 5px;margin-right:3px;border-right:1px solid var(--line);height:40px;cursor:grab;}
 .brand:active{cursor:grabbing;}
 .brand .lo{width:30px;height:30px;border-radius:9px;overflow:hidden;background:var(--or);}
@@ -1652,6 +1655,7 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
   <button data-act="theme">🌗 테마 전환 (다크·라이트)</button>
   <div id="glassRow"><span>투명도</span><input type="range" id="glassRange" min="5" max="100" value="100"></div>
   <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
+  <button data-act="orientation">↕️ 세로·가로 모드 전환</button>
   <button data-act="shortcuts">⌨️ 단축키 설정</button>
   <button data-act="backup">💾 설정·명단 백업</button>
   <button data-act="guide">👋 처음 사용 가이드 다시보기</button>
