@@ -282,7 +282,10 @@
       let k=e.key;
       if(k===' ')k='Space';else if(/^[a-z]$/i.test(k))k=k.toUpperCase();else if(k.startsWith('Arrow'))k=k.replace('Arrow','');
       const isF=/^F\d{1,2}$/.test(k);
-      if(!isF&&mods.length===0){keyEl.textContent='보조키 필요(Ctrl/Alt…)';return;}
+      const hasRealMod=mods.includes('Control')||mods.includes('Alt')||mods.includes('Super');
+      // Shift만 누른 조합(예: Shift+D)은 전역 단축키로 등록되면 다른 프로그램에서
+      // 대문자·특수문자 입력을 가로채버리므로, F키가 아닌 이상 Ctrl/Alt/Win 중 하나는 반드시 있어야 함
+      if(!isF&&!hasRealMod){keyEl.textContent='Ctrl 또는 Alt를 함께 눌러주세요';return;}
       const acc=[...mods,k].join('+');
       scCustom[ch]=acc;localStorage.setItem('cm_shortcuts',JSON.stringify(scCustom));scApply();
       done();scRender();toast('⌨️ 저장됨: '+scPretty(acc));
