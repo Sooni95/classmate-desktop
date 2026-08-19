@@ -15,6 +15,16 @@ const path = require('path');
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return;
 
+  // universal 빌드(Intel+Apple Silicon)는 x64/arm64를 각각 임시 폴더(...-temp)에 패키징한 뒤
+  // @electron/universal이 두 산출물을 하나로 병합하는데, 이때 비-바이너리 파일들이 완전히
+  // 동일한 SHA여야 한다. 병합 전에 각각 서명해버리면 서명 과정에서 리소스 해시가 달라져
+  // "Expected all non-binary files to have identical SHAs" 에러로 병합이 실패한다.
+  // 그래서 임시 산출물은 건너뛰고, 병합이 끝난 최종 universal 산출물에만 서명한다.
+  if (context.appOutDir.endsWith('-temp')) {
+    console.log(`[afterPackSign] 중간 산출물(${context.appOutDir})은 건너뜀 — universal 병합 후에만 서명`);
+    return;
+  }
+
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);
 
