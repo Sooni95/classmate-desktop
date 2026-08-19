@@ -310,13 +310,21 @@
   document.getElementById('gateBtn').addEventListener('click', function () {
     token = document.getElementById('tokenInput').value.trim();
     if (!token) { gateError.textContent = '토큰을 입력해 주세요.'; return; }
-    loadLeads().catch(function (err) { gateError.textContent = err.message; });
+    var btn = this;
+    btn.disabled = true; btn.textContent = '확인 중… (신청자 수에 따라 몇 초 걸릴 수 있어요)';
+    loadLeads()
+      .catch(function (err) { gateError.textContent = err.message; })
+      .finally(function () { btn.disabled = false; btn.textContent = '확인'; });
   });
   document.getElementById('tokenInput').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') document.getElementById('gateBtn').click();
   });
   document.getElementById('refreshBtn').addEventListener('click', function () {
-    loadLeads().catch(function (err) { alert(err.message); });
+    var btn = this;
+    btn.disabled = true; btn.textContent = '⏳ 불러오는 중…';
+    loadLeads()
+      .catch(function (err) { alert(err.message); })
+      .finally(function () { btn.disabled = false; btn.textContent = '↻ 새로고침'; });
   });
 
   if (token) {
