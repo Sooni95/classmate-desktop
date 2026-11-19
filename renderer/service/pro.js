@@ -114,6 +114,7 @@ function renderRosterList(){
       if($('wheelNames'))$('wheelNames').value=names.join('\n');
       if($('pkNames'))$('pkNames').value=names.join('\n');
       if($('tNames'))$('tNames').value=names.join('\n');
+      if(typeof syncRoster==='function')syncRoster('nameList');
       activeRoster=nm;
       $('rosterModal').classList.remove('on');toast('📂 "'+nm+'" 불러옴 (모든 게임에 반영)');
     });
@@ -122,6 +123,7 @@ function renderRosterList(){
       // 게임에 불러와 있던 명단이면 게임 입력칸도 비움
       if(activeRoster===nm){
         ['nameList','wheelNames','pkNames','tNames'].forEach(id=>{if($(id))$(id).value='';});
+        if(typeof syncRoster==='function')syncRoster('nameList');
         loadN();activeRoster=null;
         renderRosterList();toast('🗑 "'+nm+'" 삭제 — 게임 명단에서도 제외됨');return;
       }
@@ -206,8 +208,8 @@ function parseRosterData(fname,u8){
         const pk=data.map(r=>{const w=parseInt(r[colW])||1;return w>1?String(r[ni]).trim()+'*'+Math.min(10,w):String(r[ni]).trim();});
         if($('pkNames'))$('pkNames').value=pk.join('\n');
       }else if($('pkNames'))$('pkNames').value=names.join('\n');
-      // 돌림판도 채우기
-      if($('wheelNames'))$('wheelNames').value=names.join('\n');
+      // 가중치(이름*N)가 있으면 그 표기를 공용 명단으로 — 발표자·모둠은 별표를 떼고 읽는다
+      if(typeof syncRoster==='function')syncRoster(colW>=0&&$('pkNames')?'pkNames':'nameList');
       // 모둠 정보가 있으면 안내
       let msg='📂 '+names.length+'명 불러옴';
       if(colTeam>=0)msg+=' (모둠 정보 포함)';

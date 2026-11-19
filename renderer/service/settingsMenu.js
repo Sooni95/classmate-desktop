@@ -34,6 +34,16 @@
     localStorage.setItem('cm_theme',next);applyTheme(next);
     toast(next==='light'?'🌞 라이트 모드':'🌙 다크 모드');
   }
+  /* --- 🔊 효과음 켜기/끄기 + 음량 --- */
+  (function(){
+    const row=$('soundRow'),tg=$('soundToggle'),rg=$('soundRange');
+    if(!row||!tg||!rg||typeof setSound!=='function')return;
+    const paint=()=>{row.classList.toggle('off',!cmSndOn||cmSndVol===0);tg.textContent=(!cmSndOn||cmSndVol===0)?'🔇':(cmSndVol<40?'🔈':'🔊');rg.value=cmSndVol;};
+    tg.addEventListener('click',()=>{setSound(!cmSndOn,cmSndVol||80);paint();if(cmSndOn)beep(1);});
+    rg.addEventListener('input',()=>{setSound(+rg.value>0,+rg.value);paint();});
+    rg.addEventListener('change',()=>beep(1)); // 손을 떼면 그 크기로 한 번 들려준다
+    paint();
+  })();
   if($('glassRange'))$('glassRange').addEventListener('input',e=>{
     const a=parseInt(e.target.value);
     localStorage.setItem('cm_glass_alpha',String(a));
@@ -202,7 +212,7 @@
   });
 
   /* --- 💾 설정·명단 백업 (내보내기/가져오기) --- */
-  const BK_KEYS=['cm_rosters','cm_dock_order','cm_dock_hidden','cm_theme','cm_glass_alpha','cm_shortcuts','su_keys','noise_guide_seen'];
+  const BK_KEYS=['cm_rosters','cm_dock_order','cm_dock_hidden','cm_theme','cm_glass_alpha','cm_shortcuts','cm_sound','cm_volume','cm_names','su_keys','noise_guide_seen'];
   const bkModal=$('backupModal'),bkCard=bkModal?bkModal.querySelector('.bk-card'):null;
   function bkSay(msg,good){const s=$('bkStatus');if(!s)return;s.textContent=msg||'';s.className='bk-status'+(good===true?' ok':good===false?' err':'');}
   function openBackup(){if(!bkModal)return;bkSay('');bkModal.classList.add('on');setIgnore(false);centerOnDockDisplay(bkCard);}

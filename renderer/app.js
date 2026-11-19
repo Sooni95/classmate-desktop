@@ -4,10 +4,12 @@ const $ = id => document.getElementById(id);
 
 /* ===== 공통 헬퍼 ===== */
 function rollPick(el, arr, fmt, onDone){
+  // 돌아가는 중에 또 누르면 추첨이 겹쳐 두 명이 동시에 빠지던 문제 방지 — 끝날 때까지 무시
+  if(el._rolling)return; el._rolling=true;
   let n=0; el.classList.add('spin');
   const iv=setInterval(()=>{
     el.textContent=arr[Math.random()*arr.length|0];
-    if(++n>=16){clearInterval(iv);el.classList.remove('spin');
+    if(++n>=16){clearInterval(iv);el.classList.remove('spin');el._rolling=false;
       const w=arr[Math.random()*arr.length|0];el.textContent=fmt(w);onDone&&onDone(w);}
   },45);
 }

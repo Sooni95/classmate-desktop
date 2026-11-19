@@ -50,6 +50,7 @@
   function openLadder() {
     try { if (typeof setPanel === 'function') setPanel(null); } catch (_) {}
     cancelAnim();
+    wrap.style.width = ''; wrap.classList.remove('ldense'); // 지난번에 넓혀둔 폭은 초기화
     wrap.classList.add('on');
     try { if (typeof setIgnore === 'function') setIgnore(false); } catch (_) {}
     lCount = 6;
@@ -82,14 +83,35 @@
       const ur = $('ladderUseRoster');
       if (ur && ur.checked && typeof splitNames === 'function') {
         const nl = $('nameList');
-        const r = splitNames((nl && nl.value) || '');
-        if (r && r.length) { names = r.slice(0, MAXN); lCount = clamp(names.length, MINN, MAXN); }
+        const r = (typeof plainNames === 'function') ? plainNames((nl && nl.value) || '') : splitNames((nl && nl.value) || '');
+        if (r && r.length) {
+          names = r.slice(0, MAXN); lCount = clamp(names.length, MINN, MAXN);
+          if (r.length > MAXN && typeof toast === 'function') toast('사다리는 ' + MAXN + '명까지예요 — 앞의 ' + MAXN + '명만 가져왔어요');
+        } else if (typeof toast === 'function') {
+          toast('발표자 뽑기의 이름 칸이 비어 있어요 — 인원 수로 시작해요');
+        }
       }
     } catch (_) {}
     build(lCount, names);
+    fitWidth();
     renderInputs();
     showStep(2);
   });
+
+  // 결과 한 번에 채우기: "당첨*2, 청소" → 당첨 2칸·청소 1칸, 나머지는 꽝 (위치는 무작위)
+  function fillResults() {
+    if (!S) return;
+    const inp = $('lFill'); if (!inp) return;
+    const items = (typeof parseCounted === 'function') ? parseCounted(inp.value, MAXN) : [];
+    if (!items.length) { if (typeof toast === 'function') toast('예) 당첨*2, 청소 처럼 적어주세요'); return; }
+    let list = []; items.forEach(it => { for (let i = 0; i < it.n; i++) list.push(it.nm.slice(0, 8)); });
+    if (list.length > S.n) { if (typeof toast === 'function') toast('결과가 인원(' + S.n + '명)보다 많아 앞의 ' + S.n + '개만 넣었어요'); list = list.slice(0, S.n); }
+    while (list.length < S.n) list.push('꽝');
+    S.results = (typeof shuffled === 'function') ? shuffled(list) : list;
+    renderInputs();
+  }
+  on('lFillBtn', 'click', fillResults);
+  on('lFill', 'keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); fillResults(); } });
 
   // ---------- Step 2: 이름·결과 입력 ----------
   on('lback2', 'click', () => { cancelAnim(); showStep(1); });
@@ -138,6 +160,14 @@
         }
       }
     }
+    // 이웃한 두 세로줄 사이에 가로줄이 하나도 없으면 그 경계로는 절대 넘어가지 못해 결과가 한쪽에 갇힌다 →
+    // 모든 경계에 최소 1개씩 보장 (빈 줄을 무작위 순서로 찾아 넣음)
+    for (let c = 0; c < n - 1; c++) {
+      if (rungs.some(g => g.col === c)) continue;
+      const order = Array.from({ length: rows }, (_, i) => i).sort(() => Math.random() - 0.5);
+      const r = order.find(r => !rungs.some(g => g.row === r && (g.col === c - 1 || g.col === c + 1)));
+      if (r !== undefined) rungs.push({ row: r, col: c });
+    }
     // 순전히 랜덤이라 가로줄이 한 개도 안 나오는 경우가 있음(특히 2명일 때 ~1.4% 확률) —
     // 그러면 사다리가 그냥 일직선이 돼버려 게임이 의미 없어지므로, 최소 1개는 보장
     if (rungs.length === 0 && n >= 2) {
@@ -182,14 +212,30 @@
   }
 
   // ---------- 캔버스 좌표 ----------
+  // 인원이 많으면 창을 넓혀 이름이 '학…'처럼 잘리지 않게 한다 (한 사람당 약 64px, 독이 있는 모니터 폭 안에서)
+  function fitWidth() {
+    if (!S) return;
+    let maxW = 1200;
+    try { if (typeof dockDisp === 'function') maxW = Math.floor(dockDisp().w * 0.94); } catch (_) {}
+    const w = clamp(S.n * 64 + 40, 720, Math.max(720, maxW));
+    wrap.style.width = w + 'px';
+    wrap.classList.toggle('ldense', (w - 40) / S.n < 46); // 그래도 좁으면 글자를 한 단계 줄임
+    try { if (typeof centerOnDockDisplay === 'function') centerOnDockDisplay(wrap); } catch (_) {}
+  }
+  // 캔버스: 좌표는 CSS 픽셀(LW×LH) 기준, 내부 해상도는 화면 배율(DPR)만큼 키워 선이 흐릿하지 않게
+  let LW = 600, LH = 260, LDPR = 1;
   function sizeCanvas() {
     if (!cv) return;
-    cv.width = Math.max(200, (wrap.clientWidth || 600) - 32);
-    cv.height = 260;
+    LW = Math.max(200, (wrap.clientWidth || 600) - 32);
+    LH = 260;
+    LDPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    cv.width = Math.round(LW * LDPR); cv.height = Math.round(LH * LDPR);
+    cv.style.height = LH + 'px';
+    ctx.setTransform(LDPR, 0, 0, LDPR, 0, 0);
   }
-  const colX = (c) => cv.width * (c + 0.5) / S.n;
+  const colX = (c) => LW * (c + 0.5) / S.n;
   const topY = () => LTOP;
-  const botY = () => cv.height - LTOP;
+  const botY = () => LH - LTOP;
   const rowY = (r) => topY() + (r + 1) * (botY() - topY()) / (S.rows + 1);
 
   // 시작 열 c → 최종 열, 경로 좌표들 (순수 함수: rungs만 참조 → 결과 항상 일관)
@@ -212,7 +258,7 @@
   function draw(extra) {
     if (!ctx || !cv || !S) return;
     try {
-      const W = cv.width, H = cv.height;
+      const W = LW, H = LH;
       const bg = ctx.createLinearGradient(0, 0, 0, H);
       bg.addColorStop(0, '#141b22'); bg.addColorStop(1, '#0e1318');
       ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
@@ -225,6 +271,8 @@
       }
       const paths = (S.traces || []).concat(extra ? [extra] : []);
       paths.forEach(h => {
+        // 완료된 경로는 매번 다시 계산 — 창 크기가 바뀌어도 예전 좌표에 선이 남지 않는다
+        if (h && h !== extra && h.startCol !== undefined) h = { col: h.col, pts: pathFor(h.startCol).pts };
         if (!h || !h.pts || !h.pts.length) return;
         ctx.save();
         ctx.strokeStyle = h.col; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -252,7 +300,9 @@
     };
     const frame = (now) => {
       try {
-        const dt = Math.min(0.05, (now - last) / 1000); last = now;
+        // rAF가 주는 now는 '프레임 시작 시각'이라 첫 프레임에선 last(performance.now())보다 과거일 수 있다 →
+        // dt가 음수가 되면 prog<0 → pts[-1] 접근으로 예외가 나 경로가 애니메이션 없이 즉시 끝나버렸다. 0 이상으로 고정.
+        const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
         prog += dt * 1.4;
         const upto = Math.min(segs, prog * segs);
         const seg = Math.floor(upto), frac = upto - seg;

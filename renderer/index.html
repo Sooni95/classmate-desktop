@@ -89,6 +89,12 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .hist{font-size:11px;color:var(--tx4);margin-top:7px;min-height:16px;}
 .nrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:12.5px;color:var(--tx3);}
 .nrow input{width:64px;text-align:center;}
+.nrow select{flex:1;min-width:0;background:var(--dk2);border:1px solid var(--line);color:var(--tx);border-radius:9px;padding:8px 6px;font-family:inherit;font-size:12.5px;outline:none;}
+.roster-note{font-size:10.5px;color:var(--tx4);margin:-3px 0 8px;line-height:1.5;}
+.lfill{display:flex;gap:6px;margin:12px 0 14px;}
+.lfill input{flex:1;min-width:0;}
+.lfill button{flex:none;padding:9px 16px;}
+.ticket .tk-lbl.long{font-size:10px;line-height:1.15;word-break:break-all;padding:0 3px;}
 .tres{font-size:12.5px;color:var(--tx2);line-height:1.9;margin:9px 0;}
 .gdesc{font-size:11.5px;color:var(--tx3);line-height:1.7;margin-bottom:11px;}
 
@@ -119,7 +125,11 @@ textarea.names{width:100%;height:80px;resize:none;line-height:1.6;margin-bottom:
 .pkl-h button{border:none;background:transparent;color:#fff;font-size:16px;cursor:pointer;}
 #pkLogBody{overflow-y:auto;padding:10px 16px;}
 #pkLogBody .pkr-i{font-size:13px;padding:4px 0;}
-#gameRes{flex:1;font-size:19px;font-weight:800;color:var(--or);min-height:24px;}
+/* 하단 바: 결과(왼쪽) + 옵션 + 실행 버튼(오른쪽). 이 규칙이 빠져 있어 결과와 버튼이 여백 없이 세로로 쌓였었다 */
+#gameFoot{display:flex;align-items:center;gap:12px;padding:11px 14px 12px 18px;border-top:1px solid var(--line);}
+#wheelExWrap{display:none;align-items:center;gap:5px;font-size:12px;color:var(--tx3);cursor:pointer;white-space:nowrap;}
+#gameWrap.wheel #wheelExWrap{display:flex;}
+#gameRes{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:19px;font-weight:800;color:var(--or);min-height:24px;}
 #gameGo{border:none;border-radius:10px;padding:10px 22px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;background:var(--or);color:#fff;}
 #gameGo:hover{background:var(--or2);}
 #gameGo:disabled{background:var(--dk3);color:var(--tx4);cursor:default;}
@@ -703,6 +713,7 @@ body.light .sym-b.on{background:var(--or);color:#fff;}
 .lstep-foot button{touch-action:manipulation;}
 .llab:hover{background:rgba(246,140,31,.16);}
 .llab.lbot{color:#ffd9a8;font-weight:700;}
+#ladderWrap.ldense .llab,#ladderWrap.ldense .lio input{font-size:10.5px;letter-spacing:-.3px;}
 #ladderCv{display:block;background:#0f1419;width:100%;border-radius:10px;}
 .lstep-hint{text-align:center;font-size:11.5px;color:var(--tx3);margin:9px 0 12px;}
 .lstep-foot{display:flex;gap:8px;}
@@ -888,18 +899,20 @@ button.pro-item:hover{background:rgba(246,140,31,.1);}
     <div class="pane on" id="pane-nm">
       <button class="roster-pro prolock" data-pro="roster" id="rosterBtn">📋 명단 저장·불러오기 <span class="pro-badge">🔒PRO</span></button>
       <textarea class="names" id="nameList" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)&#10;예) 김철수, 이영희, 박민준"></textarea>
+      <div class="roster-note">🔗 명단은 발표자·모둠·돌림판·핀볼·사다리가 함께 써요</div>
       <div class="popts"><input type="checkbox" id="noRep" checked><label for="noRep">뽑힌 사람 제외</label></div>
       <div class="pres" id="pres">— 준비 —</div><div class="hist" id="hist"></div>
       <div class="ctrl"><button class="btn-go" id="pickBtn">뽑기!</button><button class="btn-g" id="pickRst">복원</button></div>
     </div>
     <div class="pane" id="pane-no">
       <div class="nrow"><span>시작</span><input type="number" id="nFrom" value="1"><span>끝</span><input type="number" id="nTo" value="30"></div>
+      <div class="popts"><input type="checkbox" id="noRepN" checked><label for="noRepN">뽑힌 번호 제외</label></div>
       <div class="pres" id="presN">— 준비 —</div><div class="hist" id="histN"></div>
-      <button class="btn-go" id="pickN">번호 뽑기!</button>
+      <div class="ctrl"><button class="btn-go" id="pickN">번호 뽑기!</button><button class="btn-g" id="pickNRst">복원</button></div>
     </div>
     <div class="pane" id="pane-tm">
-      <textarea class="names" id="tNames" placeholder="이름 입력 (줄바꿈)"></textarea>
-      <div class="nrow"><span>모둠 수</span><input type="number" id="tN" value="4" min="2"></div>
+      <textarea class="names" id="tNames" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)"></textarea>
+      <div class="nrow"><span>모둠 수</span><input type="number" id="tN" value="4" min="2" max="20"></div>
       <div class="tres" id="tRes"></div>
       <button class="btn-go" id="tBtn">모둠 나누기!</button>
     </div>
@@ -909,17 +922,22 @@ button.pro-item:hover{background:rgba(246,140,31,.1);}
     <div class="gdesc">🎟️ 제비뽑기 — 번호가 적힌 제비를 펼쳐둡니다. 학생이 <b style="color:#F68C1F">번호를 부르면</b> 그 제비를 뒤집어 당첨/꽝을 확인해요.</div>
     <div class="nrow"><span>제비 개수</span><input type="number" id="drawCnt" value="30" min="2" max="60"></div>
     <div class="nrow"><span>당첨 수</span><input type="number" id="drawWin" value="1" min="1"><span style="font-size:11px;color:var(--tx4)">나머지는 꽝</span></div>
+    <input type="text" id="drawCustom" style="width:100%;margin-bottom:6px" placeholder="결과 직접 입력 (선택) — 예) 청소*2, 발표, 간식*3">
+    <div class="roster-note">적으면 당첨 대신 그 결과가 나와요. 남는 제비는 꽝 · 비워두면 당첨/꽝</div>
     <button class="btn-go" id="drawOpen">제비 펼치기</button>
   </div>
 
   <div class="gcfg" id="cfgWheel">
-    <textarea class="names" id="wheelNames" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)&#10;예) 김철수, 이영희, 박민준"></textarea>
+    <textarea class="names" id="wheelNames" placeholder="이름 입력 (줄바꿈 또는 콤마로 구분)&#10;예) 김철수, 이영희, 박민준&#10;김수훈*3 ← 별표로 칸 크기(확률) 3배"></textarea>
+    <div class="roster-note">🔗 명단은 발표자·모둠·돌림판·핀볼·사다리가 함께 써요</div>
     <div class="gdesc">🎡 위쪽 화살표에 멈추는 사람 당첨!</div>
     <button class="btn-go" id="wheelOpen">돌림판 열기</button>
   </div>
   <div class="gcfg" id="cfgPk">
     <textarea class="names" id="pkNames" placeholder="이름 입력 (줄바꿈/콤마 구분)&#10;김철수, 이영희&#10;김수훈*5 ← 별표로 구슬 개수"></textarea>
-    <div class="gdesc">🎢 구슬이 핀에 튕기고 회전 막대에 걸러진 뒤, <b style="color:#F68C1F">마지막에 골인하는 사람이 당첨!</b></div>
+    <div class="roster-note">🔗 명단은 발표자·모둠·돌림판·핀볼·사다리가 함께 써요</div>
+    <div class="nrow"><span>당첨</span><select id="pkRule"><option value="last">마지막에 골인한 사람</option><option value="first">첫 번째로 골인한 사람</option><option value="nth">N번째로 골인한 사람</option></select><input type="number" id="pkNth" value="3" min="1" max="40" style="display:none"><span id="pkNthU" style="display:none">번째</span></div>
+    <div class="gdesc">🎢 구슬이 긴 코스를 내려가며 핀·선반·풍차에 튕겨요. <b style="color:#F68C1F">누가 당첨될지는 위에서 고르세요.</b></div>
     <button class="btn-go" id="plinkoOpen">핀볼 열기</button>
   </div>
 </div>
@@ -945,7 +963,7 @@ button.pro-item:hover{background:rgba(246,140,31,.1);}
   <div id="lstep1" class="lstep on">
     <div class="lstep-q">참여 인원 수를 알려주세요 🙂<br><small>2명부터 24명까지 함께할 수 있어요.</small></div>
     <div class="lcount"><button id="lcMinus">－</button><span id="lcNum">6</span><button id="lcPlus">＋</button></div>
-    <label class="lchk"><input type="checkbox" id="ladderUseRoster"> 저장된 명단에서 이름 가져오기</label>
+    <label class="lchk"><input type="checkbox" id="ladderUseRoster"> 발표자 뽑기에 적어둔 이름 가져오기</label>
     <button class="btn-go" id="lstart1">시작 →</button>
   </div>
   <div id="lstep2" class="lstep">
@@ -953,6 +971,7 @@ button.pro-item:hover{background:rgba(246,140,31,.1);}
     <div id="lInTops" class="lio"></div>
     <div class="lio-mid">↕ 사다리로 연결돼요 ↕</div>
     <div id="lInBots" class="lio"></div>
+    <div class="lfill"><input type="text" id="lFill" placeholder="결과 한 번에 채우기 — 예) 당첨*2, 청소 (나머지는 꽝)"><button class="btn-g" id="lFillBtn">채우기</button></div>
     <div class="lstep-foot"><button class="btn-g" id="lback2">← 인원</button><button class="btn-go" id="lstart2">사다리 시작 🪜</button></div>
   </div>
   <div id="lstep3" class="lstep">
@@ -1361,7 +1380,7 @@ button.pro-item:hover{background:rgba(246,140,31,.1);}
       <button id="pkrAll" class="pkr-all">📋 전체 기록보기</button>
     </div>
   </div>
-  <div id="gameFoot"><div id="gameRes"></div><button id="gameGo">돌리기!</button></div>
+  <div id="gameFoot"><div id="gameRes"></div><label id="wheelExWrap" title="한 번 뽑힌 사람은 다음 회전에서 빼요"><input type="checkbox" id="wheelEx"> 당첨자 제외</label><button id="gameGo">돌리기!</button></div>
 </div>
 <div id="pkLog" class="iv">
   <div class="pkl-card">
@@ -1524,7 +1543,7 @@ body.light .panel,body.light #setMenu,body.light #dockDrawer,body.light #inputMo
 body.light .im-card,body.light #noiseGuide,body.light .fb-card,body.light .ob-card{background:#fffdf9;border-color:#e6ddcc;}
 body.light .panel{color:#33312c;}
 body.light .ph{color:#1a1d21;}
-body.light .panel .sub,body.light .gdesc,body.light .pres,body.light .hist{color:#7a7363;}
+body.light .panel .sub,body.light .gdesc,body.light .pres.spin,body.light .hist{color:#7a7363;}
 body.light .gdesc{background:#f6f1e7;border-color:#e6ddcc;}
 /* 입력 */
 body.light input,body.light textarea,body.light select,body.light .names,body.light .nrow input{
@@ -1591,6 +1610,10 @@ body.light.translucent .tool,body.light.translucent .brand .nm{text-shadow:0 1px
 /* 투명도 슬라이더 (설정 메뉴, 항상 표시) */
 #glassRow{display:flex;align-items:center;gap:9px;padding:9px 12px 4px;font-size:12px;color:var(--tx3);}
 #glassRow input[type=range]{flex:1;accent-color:var(--or);}
+#soundRow{display:flex;align-items:center;gap:7px;padding:2px 12px 6px 7px;font-size:12px;color:var(--tx3);}
+#soundRow input[type=range]{flex:1;}
+#setMenu #soundToggle{padding:4px 5px;font-size:15px;line-height:1;border-radius:7px;}
+#soundRow.off span,#soundRow.off input{opacity:.45;}
 
 /* ===== ✨ 마감 다듬기 (공통) — 개별 컴포넌트 규칙 뒤에 두어 일괄 적용 ===== */
 /* 글꼴: 영문·숫자는 Segoe UI Variable, 한글은 맑은 고딕(Pretendard가 깔려 있으면 우선) */
@@ -1719,6 +1742,7 @@ body.light :is(.rm-card,.im-card,.fb-card,.mt-card,.bk-card,.ob-card,.pkl-card),
 <div id="setMenu" class="iv">
   <button data-act="theme">🌗 테마 전환 (다크·라이트)</button>
   <div id="glassRow"><span>투명도</span><input type="range" id="glassRange" min="5" max="100" value="100"></div>
+  <div id="soundRow"><button id="soundToggle" title="효과음 켜기/끄기">🔊</button><span>효과음</span><input type="range" id="soundRange" min="0" max="100" value="80" title="효과음 크기 (타이머 종료음 포함)"></div>
   <button data-act="dockedit">🧩 독 편집 (도구 정리·순서)</button>
   <button data-act="orientation">↕️ 세로·가로 모드 전환</button>
   <button data-act="shortcuts">⌨️ 단축키 설정</button>

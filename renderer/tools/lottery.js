@@ -1,22 +1,36 @@
 /* --- 제비뽑기 (번호 표시) --- */
-const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0;
+const drawWrap=$('drawWrap');let drawData=[],drawWinLeft=0,drawCustomOn=false;
+const drawCountText=()=>'제비 '+drawData.length+'개 · '+(drawCustomOn?'남은 결과 ':'당첨 ')+drawWinLeft+'개'+(drawCustomOn?'':' 남음');
 makeDrag($('drawHead'),(e,s)=>{
   if(!s){const r=drawWrap.getBoundingClientRect();return{dx:e.clientX-r.left,dy:e.clientY-r.top};}
   drawWrap.style.left=(e.clientX-s.dx)+'px';drawWrap.style.top=(e.clientY-s.dy)+'px';
 },e=>e.target.id==='drawClose');
 $('drawClose').addEventListener('click',()=>drawWrap.classList.remove('on'));
 $('drawOpen').addEventListener('click',()=>{
-  const cnt=Math.min(60,Math.max(2,parseInt($('drawCnt').value)||30));
-  const winN=Math.min(cnt,Math.max(1,parseInt($('drawWin').value)||1));
-  // 당첨 위치 무작위 (번호는 1..cnt 고정 표시, 당첨 여부만 숨김)
-  const winIdx=new Set();while(winIdx.size<winN)winIdx.add(Math.floor(Math.random()*cnt));
-  drawData=Array.from({length:cnt},(_,i)=>({no:i+1,win:winIdx.has(i),open:false}));
-  drawWinLeft=winN;
+  let cnt=Math.min(60,Math.max(2,parseInt($('drawCnt').value)||30));
+  // 결과 직접 입력: "청소*2, 발표, 간식*3" → 그 결과들을 제비에 섞어 넣고 나머지는 꽝. 비우면 예전처럼 당첨/꽝
+  const custom=$('drawCustom')?parseCounted($('drawCustom').value,60):[];
+  let labels;
+  drawCustomOn=custom.length>0;
+  if(drawCustomOn){
+    const list=[];custom.forEach(c=>{for(let i=0;i<c.n;i++)list.push(c.nm);});
+    if(list.length>60){toast('결과는 모두 합쳐 60개까지예요 (지금 '+list.length+'개)');return;}
+    if(list.length>cnt){cnt=list.length;$('drawCnt').value=cnt;toast('결과가 '+list.length+'개라 제비도 '+cnt+'개로 늘렸어요');}
+    while(list.length<cnt)list.push(null); // null = 꽝
+    labels=shuffled(list);
+  }else{
+    const winN=Math.min(cnt,Math.max(1,parseInt($('drawWin').value)||1));
+    // 당첨 위치 무작위 (번호는 1..cnt 고정 표시, 당첨 여부만 숨김)
+    const winIdx=new Set();while(winIdx.size<winN)winIdx.add(Math.floor(Math.random()*cnt));
+    labels=Array.from({length:cnt},(_,i)=>winIdx.has(i)?'당첨':null);
+  }
+  drawData=labels.map((l,i)=>({no:i+1,win:l!==null,label:l,open:false}));
+  drawWinLeft=drawData.filter(d=>d.win).length;
   renderDraw();
   drawWrap.classList.add('on');centerOnDockDisplay(drawWrap);
 });
 function renderDraw(){
-  $('drawCount').textContent='제비 '+drawData.length+'개 · 당첨 '+drawWinLeft+'개 남음';
+  $('drawCount').textContent=drawCountText();
   $('drawResult').textContent='학생이 번호를 부르면 그 제비를 클릭하세요';
   const g=$('drawGrid');g.innerHTML='';
   drawData.forEach((d,i)=>{
@@ -33,15 +47,16 @@ function openTicket(i,el){
   const txt=el.querySelector('.tk-txt');
   if(drawData[i].win){
     el.classList.add('win');txt.classList.add('hit');
-    txt.innerHTML='<span class="tk-emo">🎉</span><span class="tk-lbl">당첨</span>';
+    const lab=drawData[i].label||'당첨';
+    txt.innerHTML='<span class="tk-emo">🎉</span><span class="tk-lbl'+(lab.length>4?' long':'')+'">'+escH(lab)+'</span>';
     if(drawWinLeft>0)drawWinLeft--;beep();
-    $('drawResult').innerHTML='🎉 <b style="color:#F68C1F">'+drawData[i].no+'번 당첨!</b>';
+    $('drawResult').innerHTML='🎉 <b style="color:#F68C1F">'+drawData[i].no+'번 '+(drawCustomOn?'— '+escH(lab):'당첨')+'!</b>'+(drawWinLeft===0?' <span style="color:var(--tx3);font-weight:600">— '+(drawCustomOn?'결과가':'당첨이')+' 모두 나왔어요</span>':'');
   }else{
     txt.classList.add('lose');
     txt.innerHTML='<span class="tk-emo">💧</span><span class="tk-lbl">꽝</span>';
-    $('drawResult').textContent=drawData[i].no+'번 — 꽝!';
+    $('drawResult').textContent=drawData[i].no+'번 — 꽝!'+(drawWinLeft===0?' ('+(drawCustomOn?'결과는':'당첨은')+' 이미 모두 나왔어요)':'');
   }
-  $('drawCount').textContent='제비 '+drawData.length+'개 · 당첨 '+drawWinLeft+'개 남음';
+  $('drawCount').textContent=drawCountText();
 }
 
 // 플로팅 위젯 공통: 표시 + 드래그 + 닫기
@@ -75,14 +90,16 @@ function saveScores(){
   localStorage.setItem('cm_score',JSON.stringify(rows));
 }
 function scoreAddRow(name,score){
-  scoreN++;const i=scoreN;
+  // 번호는 지금 있는 줄 수 기준 — 초기화하거나 지운 뒤에도 '모둠 1'부터 다시 매겨진다
+  scoreN=$('scoreRows').children.length+1;const i=scoreN;
   const row=document.createElement('div');row.className='srow2';
   row.dataset.score=score||0;
   row.innerHTML=`<span class="crown"></span>
     <span style="width:9px;height:9px;border-radius:50%;background:${SCORE_COL[(i-1)%6]}"></span>
-    <input class="nm2" value="${name||('모둠 '+i)}">
+    <input class="nm2" maxlength="12">
     <button class="mn">－</button><span class="sc">${score||0}</span><button class="pl2">＋</button>
     <button class="sdel" title="모둠 삭제">✕</button>`;
+  row.querySelector('.nm2').value=name||('모둠 '+i); // innerHTML에 넣으면 따옴표·< 가 든 이름에서 깨진다
   $('scoreRows').appendChild(row);
   const sc=row.querySelector('.sc');
   const upd=d=>{let v=+row.dataset.score+d;row.dataset.score=v;sc.textContent=v;sc.classList.remove('pop');void sc.offsetWidth;sc.classList.add('pop');scoreRank();saveScores();};
@@ -153,13 +170,18 @@ $('diceRoll').addEventListener('click',()=>{
 (function(){
   const cv=$('lottoCv'); if(!cv)return;
   const cx=cv.getContext('2d'),W=cv.width,H=cv.height,CX=W/2,CY=H/2,R=Math.min(W,H)/2-6;
+  // 화면 배율(DPR)에 맞춰 내부 해상도를 키워 공·숫자가 흐릿하지 않게
+  const LDPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
+  cv.style.width=W+'px';cv.style.height=H+'px';cv.width=Math.round(W*LDPR);cv.height=Math.round(H*LDPR);
+  cx.setTransform(LDPR,0,0,LDPR,0,0);
+  let lmn=1,lmx=45,drawing=false,drawSeq=0;
   const LC=['#F68C1F','#5b8def','#37c871','#e84d3d','#a78bfa','#ffc02e','#4dd0e1','#ff8a65','#ba68c8','#26c6da'];
   let balls=[],raf=0,spinning=false;
   function makeBalls(){
     balls=[];
     for(let i=0;i<26;i++){
       const a=Math.random()*6.2832,r=Math.random()*(R-18);
-      balls.push({x:CX+Math.cos(a)*r,y:CY+Math.sin(a)*r,vx:(Math.random()-.5)*140,vy:(Math.random()-.5)*140,n:1+Math.floor(Math.random()*99),col:LC[i%LC.length]});
+      balls.push({x:CX+Math.cos(a)*r,y:CY+Math.sin(a)*r,vx:(Math.random()-.5)*140,vy:(Math.random()-.5)*140,n:lmn+Math.floor(Math.random()*(lmx-lmn+1)),col:LC[i%LC.length]});
     }
   }
   function step(){
@@ -180,20 +202,32 @@ $('diceRoll').addEventListener('click',()=>{
     raf=requestAnimationFrame(step);
   }
   function startDrum(){makeBalls();if(!raf)raf=requestAnimationFrame(step);}
-  window.lottoStart=()=>{$('lottoResult').innerHTML='';startDrum();};
-  $('lottoDraw').addEventListener('click',()=>{
-    let mn=parseInt($('lottoMin').value),mx=parseInt($('lottoMax').value),cnt=parseInt($('lottoCnt').value);
+  function readRange(){
+    let mn=parseInt($('lottoMin').value),mx=parseInt($('lottoMax').value);
     mn=Math.max(0,Math.min(999,isNaN(mn)?0:mn));mx=Math.max(0,Math.min(999,isNaN(mx)?0:mx));
     if(mn>mx){const t=mn;mn=mx;mx=t;$('lottoMin').value=mn;$('lottoMax').value=mx;}
+    lmn=mn;lmx=mx;
+  }
+  window.lottoStart=()=>{drawSeq++;drawing=false;spinning=false;$('lottoDraw').disabled=false;$('lottoResult').innerHTML='';readRange();startDrum();};
+  $('lottoDraw').addEventListener('click',()=>{
+    // 추첨 중에 또 누르면 두 번의 결과가 한 줄에 섞여 나왔다 → 끝날 때까지 버튼을 잠근다
+    if(drawing)return;
+    let cnt=parseInt($('lottoCnt').value);
+    readRange();const mn=lmn,mx=lmx;
     const pool=mx-mn+1;cnt=Math.max(1,Math.min(20,Math.min(isNaN(cnt)?1:cnt,pool)));
+    $('lottoCnt').value=cnt;
+    const seq=++drawSeq;drawing=true;$('lottoDraw').disabled=true;
     $('lottoResult').innerHTML='';spinning=true;startDrum();beep(1);
     setTimeout(()=>{
+      if(seq!==drawSeq)return; // 그 사이 창을 닫았다 다시 열었으면 버린다
       spinning=false;
       const set=new Set();while(set.size<cnt)set.add(mn+Math.floor(Math.random()*pool));
       const wins=[...set].sort((a,b)=>a-b),res=$('lottoResult');
       wins.forEach((n,i)=>setTimeout(()=>{
+        if(seq!==drawSeq)return;
         const s=document.createElement('span');s.className='lotto-ball';s.textContent=n;s.style.background=LC[i%LC.length];
         res.appendChild(s);beep(1);
+        if(i===wins.length-1){drawing=false;$('lottoDraw').disabled=false;}
       },i*240));
     },1700);
   });
