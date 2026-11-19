@@ -42,5 +42,20 @@ main 브랜치에 push하면 GitHub Actions가 Windows EXE를 빌드해 `latest`
 
 Cloudflare Workers + KV, 도메인 `코코아팹.kr`. 단축URL 생성은 `main.js`의 `shorten` IPC가 처리합니다.
 
+## 다운로드 랜딩 페이지
+
+`docs/index.html`이 공식 다운로드 페이지입니다. **기존 도메인 `kocoafab.cc`의 서브도메인
+(`classmate.kocoafab.cc`)에 Cloudflare Pages로 배포하는 것이 최종 목표**입니다 — 다운로드 버튼과 Worker
+엔드포인트가 같은 도메인에 있어야 `/download`가 상대경로로 동작하고 workers.dev 주소가 주소창에 노출되지 않습니다.
+자세한 절차는 [WORKER_ENDPOINTS.md](WORKER_ENDPOINTS.md)의 "기존 도메인(kocoafab.cc)의 서브도메인으로 전환하기" 섹션 참고.
+
+서브도메인 연결 전 임시로 GitHub Pages에서도 확인 가능합니다(이 경우 다운로드는 workers.dev를 그대로 거침):
+1. 이 저장소 GitHub Settings → Pages → Source에서 Branch `main` / Folder `/docs` 선택 후 저장.
+2. `https://sooni95.github.io/classmate-desktop/`에서 페이지 확인.
+3. `docs/index.html` 안의 YouTube `iframe` `src`(`PLACEHOLDER_VIDEO_ID`)를 실제 시연 영상 ID로 교체.
+
+> ⚠️ 저장소가 Private면 GitHub Pages는 유료 플랜에서만 지원됩니다. `classmate.kocoafab.cc` + Cloudflare Pages로
+> 전환하면 저장소를 Public으로 바꿀 필요 없이(Cloudflare Pages는 Private 저장소도 연결 가능) 해결됩니다.
+
 ---
 ⓒ 네패스 코코아팹 — 컬러 `#F68C1F`
