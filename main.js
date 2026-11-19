@@ -518,10 +518,22 @@ const SC_DEFAULT = {
 const SC_EXTRA = [['F6','hk-ring'],['F7','hk-spot'],['F8','hk-lens'],['F9','hk-draw'],
   ['Control+Alt+1','hk-ring'],['Control+Alt+2','hk-spot'],['Control+Alt+3','hk-lens'],['Control+Alt+4','hk-draw']];
 let scCustom = {};
+// 전역 단축키는 등록되는 순간 다른 프로그램에서 그 키 입력이 사라진다.
+// 그래서 F키가 아니면 Ctrl/Alt/Win 중 하나가 반드시 포함된 조합만 허용한다
+// (예전 버전에서 저장된 'D', 'Shift+D' 같은 값이 타이핑을 막는 문제 방지).
+function scValid(acc) {
+  if (typeof acc !== 'string' || !acc) return false;
+  const parts = acc.split('+');
+  const key = parts[parts.length - 1];
+  if (/^F\d{1,2}$/.test(key)) return true;
+  return parts.slice(0, -1).some(m => ['Control', 'Ctrl', 'Alt', 'Super', 'Meta', 'Command', 'Cmd', 'CommandOrControl', 'CmdOrCtrl', 'AltGr', 'Option'].includes(m));
+}
 function registerShortcuts() {
   globalShortcut.unregisterAll();
   const send = ch => win && win.webContents.send(ch);
-  const eff = { ...SC_DEFAULT, ...scCustom }; // 사용자 지정이 기본을 덮어씀
+  const safe = {};
+  Object.entries(scCustom).forEach(([ch, k]) => { if (scValid(k)) safe[ch] = k; }); // 위험한 저장값은 무시 → 기본값 사용
+  const eff = { ...SC_DEFAULT, ...safe }; // 사용자 지정이 기본을 덮어씀
   const used = new Set();
   Object.entries(eff).forEach(([ch, k]) => { if (k) { try { if (globalShortcut.register(k, () => send(ch))) used.add(k); } catch (e) {} } });
   SC_EXTRA.forEach(([k, ch]) => { if (!used.has(k)) { try { globalShortcut.register(k, () => send(ch)); } catch (e) {} } }); // F6~9·레거시는 충돌 없을 때만

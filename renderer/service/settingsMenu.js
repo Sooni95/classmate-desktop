@@ -255,7 +255,11 @@
     ['hk-escape','⛔ 모두 끄기','Control+Alt+0'],
   ];
   const scModal=$('scModal'),scCard=scModal?scModal.querySelector('.sc-card'):null;
-  let scCustom=JSON.parse(localStorage.getItem('cm_shortcuts')||'{}');
+  let scCustom={};try{scCustom=JSON.parse(localStorage.getItem('cm_shortcuts')||'{}')||{};}catch(e){}
+  // 예전 버전에서 저장된 보조키 없는 단축키(예: 'D', 'Shift+D')는 다른 프로그램의 타이핑을 막으므로 제거
+  {const scOk=a=>typeof a==='string'&&(/(^|\+)F\d{1,2}$/.test(a)||/(^|\+)(Control|Alt|Super)\+/.test(a));
+   let dirty=false;Object.keys(scCustom).forEach(ch=>{if(!scOk(scCustom[ch])){delete scCustom[ch];dirty=true;}});
+   if(dirty)localStorage.setItem('cm_shortcuts',JSON.stringify(scCustom));}
   const scEff=ch=>scCustom[ch]||(SC_DEFS.find(d=>d[0]===ch)||[])[2]||'';
   const scPretty=a=>a.replace('Control','Ctrl').replace('Super','Win').replace(/\+/g,' + ');
   function scApply(){try{ipc.setShortcuts(scCustom);}catch(e){}}
