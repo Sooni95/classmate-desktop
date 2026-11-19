@@ -214,7 +214,10 @@ function saveSt(){if(undoStack.length>=20)undoStack.shift();undoStack.push(ctx.g
 function undo(){if(undoStack.length)ctx.putImageData(undoStack.pop(),0,0);}
 $('undoBtn').addEventListener('click',undo);
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
+  // 입력창(메모·AI·번역 등)에 타이핑 중이면 펜 단축키(r/c/a/숫자/Ctrl+Z)가 글자를 가로채지 않게 한다
+  const kt=e.target,typing=!!(kt&&kt.nodeType===1&&(kt.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(kt.tagName)));
+  if(!typing&&(e.ctrlKey||e.metaKey)&&e.key==='z')undo();
+  if(typing&&e.key!=='Escape')return;
   if(drawMode&&(e.key==='F5'||e.key==='r'||e.key==='R')){e.preventDefault();setTool('rect');}
   if(drawMode&&(e.key==='c'||e.key==='C')){e.preventDefault();setTool('circle');}
   if(drawMode&&(e.key==='a'||e.key==='A')){e.preventDefault();setTool('arrow');}
